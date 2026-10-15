@@ -98,7 +98,7 @@ let db = null, dataDb = null, cards = [], byId = new Map(), currentView = "home"
 const tagIndex = new Map(), searchIndex = new Map();
 let progress = emptyProgress();
 let settings = {newLimit: 6, reviewLimit: "", newOrder: "priority", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
-  welcomeDismissed: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null,
+  welcomeDismissed: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
   presentNew: true, levelGate: true, nwChapter: 7, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
   convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
@@ -228,7 +228,7 @@ function safeWrite(key, value) {
 }
 /* Configurações que valem em todos os aparelhos (vão junto na sincronização pelo GitHub). Tema, voz e afins ficam em cada um.
    `syncAt` só muda quando uma destas muda: assim, trocar o tema no PC não “ganha” de um capítulo novo marcado no celular. */
-const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo"];
+const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal"];
 function syncedSettings(s = settings) { const out = {}; for (const k of SYNCED_SETTINGS) if (s[k] !== undefined) out[k] = s[k]; return out; }
 // Valores de fábrica (lidos antes de init carregar as configurações salvas): um aparelho novo não “ganha” do outro.
 const SYNCED_DEFAULT = JSON.stringify(syncedSettings());
@@ -249,7 +249,7 @@ function hasAnyProgress(p = progress) {
   const practice = p.practice || {};
   return Object.keys(p.cards || {}).length > 0 || Object.keys(p.days || {}).length > 0 || Object.keys((p.mine || {}).items || {}).length > 0
     || Object.keys(practice.scenes || {}).length > 0 || Object.keys(practice.pron || {}).length > 0
-    || ((practice.conversa || {}).sessions || []).length > 0 || ((practice.f432 || {}).sessions || []).length > 0
+    || ((practice.conversa || {}).sessions || []).length > 0 || ((practice.f432 || {}).sessions || []).length > 0 || Object.keys((practice.reading || {}).days || {}).length > 0
     || Object.keys((practice.gram || {}).topics || {}).length > 0 || Object.keys((practice.bookWords || {}).items || {}).length > 0 || !!(p.schedule && p.schedule.updatedAt);
 }
 function idb(req) { return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
@@ -2097,6 +2097,7 @@ function sanitizeProgress(source) {
   if (practice.speed) result.practice.speed = sanitizeSpeed(practice.speed);
   if (practice.conversa) result.practice.conversa = sanitizeConversa(practice.conversa);
   if (practice.f432) result.practice.f432 = sanitizeF432(practice.f432);
+  if (practice.reading) result.practice.reading = sanitizeReadingLog(practice.reading);
   if (practice.gram) result.practice.gram = sanitizeGram(practice.gram);
   if (practice.bookWords) result.practice.bookWords = sanitizeBookWords(practice.bookWords);
   result.schedule = sanitizeSchedule(source.schedule);
@@ -2116,6 +2117,7 @@ function applyImportedSettings(s) {
   if (["neural", "system"].includes(s.audioSource)) settings.audioSource = s.audioSource;
   if (typeof s.alternateVoices === "boolean") settings.alternateVoices = s.alternateVoices;
   if (Number(s.medShare) >= 0 && Number(s.medShare) <= .5) settings.medShare = Number(s.medShare);
+  if ([15, 30, 60, 90, 120, 180].includes(Number(s.readingGoal))) settings.readingGoal = Number(s.readingGoal);
   if (Number.isInteger(Number(s.nwChapter)) && Number(s.nwChapter) >= 0 && Number(s.nwChapter) <= 37) settings.nwChapter = Number(s.nwChapter);
   if (typeof s.levelGate === "boolean") settings.levelGate = s.levelGate;
   if (typeof s.mineReview === "boolean") settings.mineReview = s.mineReview;
@@ -2162,6 +2164,7 @@ async function mergeIncoming(parsed, {settings: withSettings}) {
   if (incoming.practice.speed) progress.practice.speed = mergeSpeed(progress.practice.speed, incoming.practice.speed);
   if (incoming.practice.conversa) progress.practice.conversa = mergeConversa(progress.practice.conversa, incoming.practice.conversa);
   if (incoming.practice.f432) progress.practice.f432 = mergeF432(progress.practice.f432, incoming.practice.f432);
+  if (incoming.practice.reading) progress.practice.reading = mergeReadingLog(progress.practice.reading, incoming.practice.reading);
   if (incoming.practice.gram) progress.practice.gram = mergeGram(progress.practice.gram, incoming.practice.gram);
   if (incoming.practice.bookWords) progress.practice.bookWords = mergeBookWords(progress.practice.bookWords, incoming.practice.bookWords);
   if (incoming.schedule.updatedAt > ((progress.schedule || {}).updatedAt || 0)) progress.schedule = incoming.schedule;

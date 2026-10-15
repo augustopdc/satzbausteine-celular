@@ -3,7 +3,7 @@
    - App: na instalação, guarda o index.html e tudo o que ele carrega (lido do próprio index.html, sem lista para manter).
      A versão abaixo é trocada pelo script de publicação; versão nova = cache novo, e o antigo é apagado.
    - Áudio: guardado conforme toca ou é baixado antes pela página (celular.js), num cache que sobrevive às atualizações. */
-const VERSION = "8944f2d6da6e";
+const VERSION = "42bad7f22f9c";
 const APP_CACHE = "satz-app-" + VERSION;
 const AUDIO_CACHE = "satz-audio";
 const AUDIO_PATH = /\/(audio-charon|audio-cenas|audio-katja|audio|audio-pronuncia)\/[^/]+\.mp3$/;
@@ -41,6 +41,16 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const req = event.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== self.location.origin) return;
+  // Livros baixados no celular (leitura-celular.js): só existem no cache do aparelho.
+  if (url.pathname.includes("/livro-local/")) {
+    event.respondWith((async () => {
+      const hit = await (await caches.open("satz-livros")).match(url.pathname);
+      if (!hit) return new Response("Livro não baixado neste aparelho.", {status: 404});
+      const range = req.headers.get("range");
+      return range && /\.mp3$/.test(url.pathname) ? partial(hit, range) : hit;
+    })());
+    return;
+  }
   if (AUDIO_PATH.test(url.pathname)) {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE), range = req.headers.get("range");

@@ -432,7 +432,8 @@ function scheduleNotesSave() {
   clearTimeout(rdNotesTimer);
   const id = reading.book.id, notes = bookNotes();
   rdNotesTimer = setTimeout(() => {
-    window.satzDesktop.saveBookNotes(id, JSON.stringify(notes)).catch(e => setStatus("Não consegui salvar a explicação: " + cleanIpcError(e, "erro"), "error"));
+    const saved = window.satzDesktop ? window.satzDesktop.saveBookNotes(id, JSON.stringify(notes)) : rdWebSaveNotes(id, notes);
+    saved.catch(e => setStatus("Não consegui salvar a explicação: " + cleanIpcError(e, "erro"), "error"));
   }, 2500);
 }
 /* Palavras da frase como lista (índice = k) e se há fim de oração logo depois de cada uma. */

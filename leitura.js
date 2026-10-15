@@ -47,6 +47,8 @@ function bookCard(b) {
     h("p", {class: "muted small-text", text: b.chapters + " capítulos · " + (b.words || 0).toLocaleString("pt-BR") + " palavras" + (pos ? " · parou no capítulo " + (pos.ch + 1) : "")}),
     syncStatusNode(b),
     annotStatusNode(b),
+    typeof rdBookCardDifficulty === "function" ? rdBookCardDifficulty(b) : null,
+    typeof rdSendButton === "function" ? rdSendButton(b) : null,
     h("div", {class: "row"},
       h("button", {class: "primary", type: "button", onclick: () => openBook(b.id)}, pos ? "Continuar lendo" : "Abrir"),
       h("button", {class: "quiet small", type: "button", onclick: () => deleteBook(b.id)}, "Remover")));
@@ -55,10 +57,15 @@ async function renderLibrary() {
   const box = $("readingLibrary");
   $("readingBook").hidden = true;
   box.hidden = false;
-  if (!window.satzDesktop || !window.satzDesktop.listBooks) { fill(box, h("p", {class: "notice", text: "A leitura com áudio funciona no aplicativo do Windows."})); return; }
+  // Celular: os livros vêm do GitHub privado e ficam guardados no aparelho (leitura-celular.js).
+  if (!window.satzDesktop || !window.satzDesktop.listBooks) {
+    if (typeof rdWebLibrary === "function") return rdWebLibrary(box);
+    fill(box, h("p", {class: "notice", text: "A leitura com áudio funciona no aplicativo do Windows."})); return;
+  }
   try { reading.books = await window.satzDesktop.listBooks(); }
   catch (e) { reportError("livros", e.message, e.stack); reading.books = []; }
   fill(box,
+    typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
     h("div", {class: "row spaced-bottom"},
       h("button", {class: "primary", type: "button", onclick: importBook}, "Importar livro (EPUB + áudio)"),
       h("span", {class: "muted small-text", text: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados."})),
@@ -114,7 +121,7 @@ function onBookProgress(data) {
 // ---------- Livro aberto ----------
 async function openBook(id, keepPlace) {
   let book;
-  try { book = await window.satzDesktop.getBook(id); }
+  try { book = window.satzDesktop ? await window.satzDesktop.getBook(id) : await rdWebGetBook(id); }
   catch (e) { setStatus(cleanIpcError(e, "Não consegui abrir o livro."), "error"); return; }
   stopReadingAudio();
   const prevCh = reading.ch, prevSel = reading.sel;
@@ -130,8 +137,17 @@ async function openBook(id, keepPlace) {
   reading.wordCount = reading.articles = null;
   reading.audio = new Audio();
   reading.audio.preload = "metadata";
-  if (book.audio) reading.audio.src = "livro/" + book.id + "/audio";
-  reading.audio.addEventListener("ended", () => { reading.follow = false; reading.playing = null; updateReaderControls(); });
+  // No PC, um arquivo para o livro todo; no celular, um por capítulo (book.parts, com o início de cada um no tempo do livro).
+  reading.partIdx = -1;
+  if (book.audio && !book.parts) reading.audio.src = "livro/" + book.id + "/audio";
+  reading.audio.addEventListener("ended", () => {
+    const parts = book.parts, next = reading.partIdx + 1;
+    // Lendo ouvindo no celular: o capítulo acabou, segue para o arquivo do próximo (menos no ciclo, que para no fim do capítulo).
+    if (parts && reading.follow && !reading.cycle && next < parts.length) { rdSeek(parts[next].start).then(() => { reading.audio.play().catch(() => {}); tickReading(); }); return; }
+    reading.follow = false; reading.playing = null; updateReaderControls();
+    if (reading.cycle && typeof rdCycleChapterEnd === "function") rdCycleChapterEnd();
+  });
+  reading.cycle = null;
   const pos = keepPlace ? {ch: prevCh, sel: prevSel} : bookPosition(id);
   reading.ch = pos && pos.ch < book.chapters.length ? pos.ch : 0;
   reading.sel = pos && pos.sel >= 0 && pos.sel < reading.order.length ? pos.sel : -1;
@@ -152,6 +168,7 @@ function closeBook() {
   saveBookPosition();
   stopReadingAudio();
   reading.book = null;
+  reading.cycle = null;
   renderLibrary();
 }
 function hasSync() { return !!(reading.book && reading.book.audio && reading.book.sync); }
@@ -165,9 +182,10 @@ function renderBook() {
   reading.view = "text";
   $("readingLibrary").hidden = true;
   $("readingBook").hidden = false;
-  const chapterSelect = h("select", {id: "rdChapter", "aria-label": "Capítulo"}, ...book.chapters.map((c, i) => new Option((i + 1) + ". " + c.title, String(i))));
+  // Cada capítulo mostra quanto das palavras o app já ensina até o seu nível (leitura-extra.js).
+  const chapterSelect = h("select", {id: "rdChapter", "aria-label": "Capítulo"}, ...book.chapters.map((c, i) => new Option((i + 1) + ". " + c.title + (typeof rdChapterSuffix === "function" ? rdChapterSuffix(i) : ""), String(i))));
   chapterSelect.value = String(reading.ch);
-  chapterSelect.addEventListener("change", () => { reading.ch = Number(chapterSelect.value); reading.sel = -1; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); });
+  chapterSelect.addEventListener("change", () => { reading.ch = Number(chapterSelect.value); reading.sel = -1; reading.cycle = null; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); });
   const speed = h("select", {id: "rdSpeed", "aria-label": "Velocidade"}, ...[[.75, "0,75×"], [.9, "0,9×"], [1, "1×"], [1.1, "1,1×"]].map(([v, l]) => new Option(l, String(v))));
   speed.value = String(reading.rate);
   speed.addEventListener("change", () => { reading.rate = Number(speed.value); if (reading.audio) reading.audio.playbackRate = reading.rate; saveReadingState({rate: reading.rate}); });
@@ -216,7 +234,7 @@ function renderBook() {
   const last = reading.ch === book.chapters.length - 1;
   text.append(h("div", {class: "row center rd-end"},
     h("button", {type: "button", onclick: markChapterRead}, "Capítulo lido ✓"),
-    last ? null : h("button", {class: "primary", type: "button", onclick: () => { reading.ch++; reading.sel = -1; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); }}, "Próximo capítulo →")));
+    last ? null : h("button", {class: "primary", type: "button", onclick: () => { reading.ch++; reading.sel = -1; reading.cycle = null; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); }}, "Próximo capítulo →")));
   text.addEventListener("click", onReaderClick);
   applyReaderLook(text);
   hideReaderPop();
@@ -224,7 +242,8 @@ function renderBook() {
     h("div", {class: "reader-head"}, h("p", {class: "eyebrow"}, h("span", {lang: "de", text: book.title}), " · capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
     bar,
     warn ? h("p", {class: "notice warn", text: warn}) : null,
-    h("div", {class: "reader" + (reading.flow ? " flow" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel", hidden: reading.flow}, detailPlaceholder())));
+    typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
+    h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel", hidden: reading.flow}, detailPlaceholder())));
   if (reading.sel >= a && reading.sel <= b) { highlightSentence(reading.sel); renderDetail(); }
   updateReaderControls();
 }
@@ -425,6 +444,28 @@ async function copySentence(text) {
 }
 
 // ---------- Áudio ----------
+/* Tempo do livro (ms) ↔ arquivo de áudio. Sem partes (PC), é o próprio currentTime; com partes (celular), troca o arquivo
+   quando o trecho é de outro capítulo e espera os metadados antes de posicionar. */
+function rdSeek(ms) {
+  const a = reading.audio, parts = reading.book && reading.book.parts;
+  if (!parts) { a.currentTime = Math.max(0, ms) / 1000; return Promise.resolve(); }
+  let k = parts.findIndex(p => p.end == null || ms < p.end);
+  if (k < 0) k = parts.length - 1;
+  const place = () => { a.currentTime = Math.max(0, ms - parts[k].start) / 1000; };
+  if (reading.partIdx === k && a.src) { place(); return Promise.resolve(); }
+  reading.partIdx = k;
+  a.src = parts[k].url;
+  return new Promise(resolve => {
+    let done = false;
+    const finish = () => { if (done) return; done = true; a.removeEventListener("loadedmetadata", finish); try { place(); } catch (e) { /* posição fora do arquivo */ } resolve(); };
+    a.addEventListener("loadedmetadata", finish);
+    setTimeout(finish, 4000);
+  });
+}
+function rdNowMs() {
+  const a = reading.audio, parts = reading.book && reading.book.parts;
+  return a.currentTime * 1000 + (parts && reading.partIdx >= 0 ? parts[reading.partIdx].start : 0);
+}
 function sentenceEnd(i) {
   for (let k = i + 1; k < reading.starts.length; k++) if (reading.starts[k] != null && reading.starts[k] > reading.starts[i]) return reading.starts[k];
   return reading.starts[i] + 8000;
@@ -434,13 +475,15 @@ function playSentence(i, slow) {
   stopAudio();
   const a = reading.audio;
   reading.follow = false;
-  reading.playing = {i, end: sentenceEnd(i) - 60};
-  a.currentTime = Math.max(0, reading.starts[i] - 150) / 1000;
-  a.playbackRate = reading.rate * (slow ? .75 : 1);
-  a.play().catch(() => {});
+  const playing = reading.playing = {i, end: sentenceEnd(i) - 60};
   if (reading.sel !== i) { reading.sel = i; highlightSentence(i); renderDetail(); }
-  tickReading();
-  updateReaderControls();
+  rdSeek(Math.max(0, reading.starts[i] - 150)).then(() => {
+    if (reading.playing !== playing) return;
+    a.playbackRate = reading.rate * (slow ? .75 : 1);
+    a.play().catch(() => {});
+    tickReading();
+    updateReaderControls();
+  });
 }
 function currentSentenceAt(ms) {
   let lo = 0, hi = reading.starts.length - 1, ans = -1;
@@ -455,10 +498,12 @@ function tickReading() {
   const loop = () => {
     const a = reading.audio;
     if (!a || a.paused) { updateReaderControls(); return; }
-    const ms = a.currentTime * 1000;
+    const ms = rdNowMs();
     if (reading.follow) {
       const i = currentSentenceAt(ms);
       if (i >= 0 && i !== reading.sel) {
+        // No ciclo ouvir → ler → ouvir, a escuta para no fim do capítulo.
+        if (reading.order[i].ch !== reading.ch && reading.cycle && typeof rdCycleChapterEnd === "function") { a.pause(); reading.follow = false; rdCycleChapterEnd(); return; }
         if (reading.order[i].ch !== reading.ch) { reading.ch = reading.order[i].ch; reading.sel = i; renderBook(); window.scrollTo({top: 0}); }
         reading.sel = i;
         reading.word = ""; reading.wk = -1; reading.pick = [];
@@ -484,12 +529,15 @@ function toggleFollow() {
   if (i >= reading.starts.length) return;
   reading.follow = true;
   reading.playing = null;
-  a.currentTime = Math.max(0, reading.starts[i] - 150) / 1000;
-  a.playbackRate = reading.rate;
-  a.play().catch(() => {});
   if (reading.sel !== i) { reading.sel = i; highlightSentence(i); renderDetail(); }
-  tickReading();
   updateReaderControls();
+  return rdSeek(Math.max(0, reading.starts[i] - 150)).then(() => {
+    if (!reading.follow) return;
+    a.playbackRate = reading.rate;
+    a.play().catch(() => {});
+    tickReading();
+    updateReaderControls();
+  });
 }
 function stepSentence(delta) {
   if (!reading.book) return;
@@ -498,7 +546,7 @@ function stepSentence(delta) {
   reading.word = "";
   selectSentence(next, "");
   scrollToSentence(next);
-  if (reading.follow && reading.audio && !reading.audio.paused) { reading.audio.currentTime = Math.max(0, reading.starts[next] - 150) / 1000; }
+  if (reading.follow && reading.audio && !reading.audio.paused) { const a = reading.audio; rdSeek(Math.max(0, reading.starts[next] - 150)).then(() => { if (reading.follow && a.paused) a.play().catch(() => {}); }); }
   else if (reading.clickPlays) playSentence(next);
 }
 function stopReadingAudio() {

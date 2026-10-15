@@ -52,8 +52,12 @@ function tutorPackData(days, revlog, now = Date.now()) {
   const scenes = SCENES.filter(s => s.level === level || LEVELS.indexOf(s.level) === LEVELS.indexOf(level) + 1);
   const scenePick = scenes.map(s => ({s, st: sceneStats(s.id)})).sort((a, b) => (a.st ? a.st.best : -1) - (b.st ? b.st.best : -1))[0];
   const studyDays = Object.keys(progress.days || {}).filter(d => dayStart(d) >= dayStart(dateKey(new Date(since)))).length;
-  return {days, since, level, stuck, convSessions: convSessions.length, convErrors: convErrors.slice(0, 12), f432, mine, toCheck, reasons,
+  const read = typeof rdDiarySummary === "function" ? rdDiarySummary(days, now) : null;
+  return {days, since, level, stuck, convSessions: convSessions.length, convErrors: convErrors.slice(0, 12), f432, mine, toCheck, reasons, reading: read && read.ms >= 60000 ? read : null,
     scene: scenePick ? scenePick.s : null, studyDays, reviews: (revlog || []).filter(r => r.ts >= since).length};
+}
+function tutorReadingLine(r) {
+  return "Leitura em alemão: " + Math.round(r.ms / 60000) + " min em " + r.days + (r.days === 1 ? " dia" : " dias") + (r.cycles ? " · " + r.cycles + (r.cycles === 1 ? " ciclo" : " ciclos") + " ouvir → ler → ouvir" : "") + ".";
 }
 function tutorCounts(d) {
   const n = (v, one, many) => v + " " + (v === 1 ? one : many);
@@ -71,6 +75,7 @@ function tutorText(d, points) {
     lines.push("");
   }
   if (d.mine.length) { lines.push("Frases que eu criei (conferir se estão naturais):"); d.mine.forEach(m => lines.push("- " + m.frase + " (" + m.traducao + ")" + (m.erro ? " · meu erro: " + m.erro.errado : ""))); lines.push(""); }
+  if (d.reading) { lines.push(tutorReadingLine(d.reading)); lines.push(""); }
   if (d.reasons.length) { lines.push("Onde mais erro no treino: " + d.reasons.map(r => r.label + " (" + r.n + ")").join(", ") + "."); lines.push(""); }
   if (d.scene) { lines.push("Cena para praticar juntos: " + d.scene.title + " — " + d.scene.setting + " O tutor faz o papel de " + d.scene.other.name + "."); lines.push(""); }
   if (points && points.length) { lines.push("Pontos para revisar na aula:"); points.forEach(p => { lines.push("- " + p.ponto); (p.exemplos || []).forEach(x => lines.push("    · " + x)); }); }
@@ -118,6 +123,7 @@ function tutorRender() {
       list("Monólogos 4/3/2 (palavras por minuto, 1ª → 3ª rodada)", d.f432.map(s => h("li", null, formatDate(dateKey(new Date(s.at))) + ": " + s.rounds.map(f432Wpm).join(" → ") + " palavras/min · " + s.rounds.map(r => r.pauses).join(" → ") + " pausas"))),
       tutorCheckBlock(d.toCheck),
       list("Frases que eu criei (conferir se estão naturais)", d.mine.map(m => h("li", null, h("b", {lang: "de", text: m.frase}), h("span", {class: "muted", text: " — " + m.traducao}), m.erro ? h("span", {class: "muted", text: " · meu erro: " + m.erro.errado}) : null))),
+      d.reading ? h("p", {text: tutorReadingLine(d.reading)}) : null,
       d.reasons.length ? h("p", null, h("b", {text: "Onde mais erro no treino: "}), d.reasons.map(r => r.label + " (" + r.n + ")").join(", ") + ".") : null,
       d.scene ? h("p", null, h("b", {text: "Cena para praticar juntos: "}), d.scene.title + " — " + d.scene.setting + " O tutor faz o papel de " + d.scene.other.name + ".") : null,
       pts && pts.loading ? h("p", {class: "muted", text: "A IA está escolhendo os pontos…"}) : null,
