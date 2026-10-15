@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e1615" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Satzbausteine">
+<title>Satzbausteine · Treino de alemão</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+<script src="theme-boot.js"></script>
+</head>
+<body>
+<div class="app">
+ <aside class="sidebar">
+  <div class="brand"><img src="icon.png" alt="" width="34" height="34"><div class="brand-text"><strong>Satzbausteine</strong><span>Treino de alemão</span></div></div>
+  <nav class="nav" aria-label="Áreas do aplicativo">
+   <p class="nav-label">Estudar</p>
+   <button data-view="home" data-short="Início" title="Início"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 10.5 12 3.5l8.5 7"/><path d="M5.5 9v11.5h13V9"/><path d="M10 20.5v-6h4v6"/></svg><span>Início</span></button>
+   <button data-view="practice" data-short="Treino" title="Treino"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13.5" height="14" rx="2"/><path d="M7.5 3.5h11a2 2 0 0 1 2 2v11"/></svg><span>Treino</span><b id="navDue" class="nav-badge" hidden></b></button>
+   <button data-view="scenes" data-short="Cenas" title="Cenas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-4-3h-3"/></svg><span>Cenas</span></button>
+   <button data-view="conversa" title="Conversa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.6A7.5 7.5 0 1 1 20 12z"/><path d="M8.5 10.5h7M8.5 13.5h4.5"/></svg><span>Conversa</span></button>
+   <button data-view="minhas" title="Minhas frases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="13" height="16" rx="2"/><path d="M7 9h6M7 13h4"/><path d="M19.5 8v6M16.5 11h6"/></svg><span>Minhas frases</span></button>
+   <button data-view="pron" title="Pronúncia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"/><path d="M21.5 7.5v3M2.5 7.5v3"/></svg><span>Pronúncia</span></button>
+   <button data-view="reading" title="Leitura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5v13c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5z"/><path d="M12 6v13"/></svg><span>Leitura</span></button>
+   <button data-view="plan" data-short="Plano" title="Meu plano"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4"/><path d="M5 4h11l-2 3.5L16 11H5"/><circle cx="18" cy="18" r="2.5"/><path d="M5 18h10.5"/></svg><span>Meu plano</span></button>
+   <button data-view="template" title="Molde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12h6" stroke-dasharray="2 2"/></svg><span>Molde</span></button>
+   <button data-view="activation" title="Ativação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>Ativação</span></button>
+   <button data-view="exam" title="Modo Prova"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 2.5h4M12 2.5V6"/></svg><span>Modo Prova</span></button>
+   <p class="nav-label">Consultar</p>
+   <button data-view="catalog" title="Frases"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/><path d="M8.5 7.5h6.5M8.5 11h4.5"/></svg><span>Frases</span></button>
+   <button data-view="grammar" title="Gramática"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6M8 11h6M8 15h3"/><path d="M18 3v18"/></svg><span>Gramática</span></button>
+   <button data-view="coverage" title="Cobertura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M6.5 17v-6M11 17V5.5M15.5 17V9M20 17v-3.5"/></svg><span>Cobertura</span></button>
+   <p class="nav-label">Aplicativo</p>
+   <button data-view="settings" data-short="Ajustes" title="Configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/></svg><span>Configurações</span></button>
+  </nav>
+  <div class="sidebar-foot">
+   <div class="streak" title="Dias seguidos de estudo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8.3 1.8 1.2 2.8 2.3 3.1C11 9 11 6 12 3z"/></svg><span id="streakMini" class="streak-text">0 dias</span></div>
+   <button id="themeToggle" class="icon-btn quiet" type="button" aria-label="Alternar tema"></button>
+  </div>
+ </aside>
+
+ <div class="main-col">
+  <div id="focusBar" class="focus-bar" hidden>
+   <button id="stopSession" class="quiet" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>Encerrar <kbd>Esc</kbd></button>
+   <div class="focus-progress"><span id="sessionKind" class="counter kind"></span><div class="track"><span id="sessionBar"></span></div><span id="cardCounter" class="counter"></span></div>
+   <button id="undoRating" class="quiet" type="button" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5 4 10l5 5"/><path d="M4 10h10a5 5 0 0 1 0 10h-3"/></svg>Desfazer <kbd>Z</kbd></button>
+  </div>
+  <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+  <main id="main">
+
+  <section id="view-home" class="view">
+   <header class="page-head"><p id="homeGreeting" class="eyebrow"></p><h1 id="homeHeadline">Treino de frases</h1></header>
+   <div id="welcome" class="panel welcome" hidden>
+    <div><h2>Como funciona</h2>
+     <ol class="steps"><li><b>Leia a situação</b><span>Em português, com o registro indicado (du, Sie…).</span></li><li><b>Fale em alemão</b><span>Em voz alta, antes de revelar a resposta.</span></li><li><b>Revele e avalie</b><span>Uma alternativa natural e correta também vale.</span></li></ol></div>
+    <button id="dismissWelcome" type="button">Entendi</button>
+   </div>
+   <div id="restoreOffer" class="notice" hidden><span id="restoreOfferText"></span><button id="restoreYes" class="small primary" type="button">Restaurar</button><button id="restoreNo" class="small quiet" type="button">Agora não</button></div>
+   <div id="backupReminder" class="notice warn" hidden><span id="backupReminderText"></span><button id="reminderExport" class="small" type="button">Exportar agora</button><button id="reminderExtChoose" class="small" type="button" hidden>Escolher pasta</button></div>
+   <div id="hero" class="panel hero">
+    <div class="hero-main">
+     <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
+     <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
+     <div class="hero-count"><strong id="heroTotal">0</strong><span>cartões<br>para hoje</span></div>
+     <ul class="hero-split"><li><i class="dot due"></i><b id="heroDue">0</b> revisões</li><li><i class="dot new"></i><b id="heroNew">0</b> novas</li><li><i class="dot listen"></i><b id="heroListen">0</b> em escuta</li></ul>
+     <p id="heroEta" class="muted"></p>
+     <p id="heroShiftNote" class="shift-note" hidden></p>
+     <div id="heroFolga" class="row" hidden><button id="heroScene" class="small" type="button">Praticar uma cena</button><button id="heroExam" class="small" type="button">Fazer um Modo Prova</button></div>
+     <p id="heroPlan" class="hero-plan"></p>
+     <p id="heroGoal" class="hero-plan goal"></p>
+    </div>
+    <div class="hero-actions"><button id="homeProduction" class="primary lg" type="button">Treinar produção</button><button id="homeListening" class="lg" type="button">Treinar escuta</button></div>
+   </div>
+   <div id="homeMetrics" class="stats"></div>
+   <div class="grid two">
+    <section class="panel"><h2>Atividade</h2><p id="heatmapInfo" class="muted"></p><div id="heatmap" class="heatmap"></div><div class="heat-legend"><span>Menos</span><i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i><span>Mais</span></div></section>
+    <section class="panel"><h2>Revisões previstas</h2><p class="muted">Próximos 7 dias, somando produção e escuta.</p><div id="forecast" class="bars"></div></section>
+   </div>
+   <div class="grid two">
+    <section class="panel"><h2>Aprendidas por camada</h2><div id="layerMetrics"></div></section>
+    <section class="panel"><h2>Aprendidas por prioridade</h2><div id="priorityMetrics"></div></section>
+   </div>
+  </section>
+
+  <section id="view-practice" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Revisão espaçada</p><h1>Treino</h1><p class="lede">Fale antes de revelar. Uma alternativa correta e natural conta como acerto; travar conta como erro.</p></header>
+   <div id="sessionDone" class="panel summary" hidden></div>
+   <div id="practiceSetup" class="panel">
+    <div class="segmented three" role="group" aria-label="Modo de treino">
+     <button id="modeProduction" type="button" aria-pressed="true"><b>Produção</b><small>Situação em português → você fala em alemão</small></button>
+     <button id="modeListening" type="button" aria-pressed="false"><b>Escuta</b><small>Áudio em alemão → você entende</small></button>
+     <button id="modeDictation" type="button" aria-pressed="false"><b>Ditado</b><small>Áudio em alemão → você escreve exatamente</small></button>
+    </div>
+    <p id="dictationInfo" class="level-info" hidden>O ditado usa a fila da escuta. Maiúsculas, ä, ö, ü e ß contam; o app mostra que tipo de erro de grafia você cometeu. Ctrl+Espaço repete o áudio e Ctrl+Shift+Espaço repete devagar.</p>
+    <label id="typingRow" class="switch"><input id="typingMode" type="checkbox"><span><b id="typingTitle">Responder digitando</b><small id="typingHint"></small></span></label>
+    <label id="presentRow" class="switch"><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória.</small></span></label>
+    <p id="levelInfo" class="level-info"></p>
+    <div id="leechBox" class="notice warn spaced" hidden><span>Algumas frases estão travando: você errou cada uma delas várias vezes. Vale um treino focado.</span><button id="leechButton" class="small" type="button"></button></div>
+    <h3>Tema</h3>
+    <div id="themeChips" class="chips"></div>
+    <details class="filters-box"><summary>Filtros avançados <span id="sessionFilterCount" class="pill" hidden></span></summary><div id="sessionFilters" class="filters"></div><button id="clearSessionFilters" class="quiet small" type="button">Limpar filtros</button></details>
+    <div class="setup-foot"><p id="sessionPreview" class="muted"></p><div class="row"><button id="speedStart" class="lg" type="button" title="Mede quanto tempo você leva para começar a falar cada frase já aprendida">Rodada de velocidade</button><button id="contStart" class="lg" type="button" title="Ouve e repete frases já estudadas, sem precisar olhar a tela">Escuta contínua</button><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div></div>
+   </div>
+   <div id="contPlayer" class="panel cont-player" hidden>
+    <div class="row between"><h2>Escuta contínua</h2><span id="contCounter" class="counter"></span></div>
+    <p class="muted">Ouça cada frase, repita em voz alta na pausa e ouça de novo (com a outra voz). Ideal para o trânsito ou a academia.</p>
+    <div class="track"><span id="contBar"></span></div>
+    <div id="contCard" class="cont-card" lang="de"></div>
+    <div class="row center"><button id="contPause" class="primary" type="button">Pausar</button><button id="contNext" type="button">Próxima</button><button id="contStop" class="quiet" type="button">Parar</button></div>
+    <div class="row center cont-options"><label class="inline-check"><input id="contShuffle" type="checkbox"> Ordem aleatória (vale na próxima vez)</label><label id="contPortugueseRow" class="inline-check"><input id="contPortuguese" type="checkbox"> Ler a tradução em português</label></div>
+   </div>
+
+   <div id="speedPlayer" class="panel speed-player" hidden>
+    <div class="row between"><h2>Rodada de velocidade</h2><div class="row"><span id="speedCounter" class="counter"></span><button id="speedStop" class="quiet small" type="button">Encerrar <kbd>Esc</kbd></button></div></div>
+    <p class="muted small-text">Leia a situação e comece a falar o mais rápido que puder, sem traduzir na cabeça. O microfone só mede o volume da sua voz para marcar o tempo; nada é gravado.</p>
+    <div class="track"><span id="speedBar"></span></div>
+    <div id="speedStage" class="speed-stage"></div>
+   </div>
+
+   <div id="sessionStage" class="session" hidden>
+    <article id="flashCard" class="flash" tabindex="-1" aria-live="polite">
+     <div class="flash-meta"><span id="cardRegister"></span><span id="cardBadges" class="tagline"></span><span id="cardState" class="state"></span></div>
+     <div id="cardPrompt" class="prompt"></div>
+     <div id="clozeBox" class="cloze" hidden></div>
+     <div id="listenPad" class="listen-pad" hidden><button id="bigPlay" class="play-xl" type="button" aria-label="Ouvir o áudio de novo"><svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button></div>
+     <div id="typingBox" class="typing" hidden><input id="typingInput" type="text" lang="de" spellcheck="false" autocomplete="off" aria-label="Sua resposta em alemão" placeholder="Escreva em alemão e pressione Enter"><div id="umlautKeys" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button><button type="button" data-char="Ä">Ä</button><button type="button" data-char="Ö">Ö</button><button type="button" data-char="Ü">Ü</button></div></div>
+     <div id="cardAnswerBox" class="answer-box" hidden>
+      <div id="typingDiff" class="diff" hidden></div>
+      <div class="answer-row"><p id="cardAnswer" class="answer" lang="de"></p><button id="answerPlay" class="icon-btn" type="button" title="Ouvir (R)" aria-label="Ouvir a frase"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button></div>
+      <p id="cardTranslation" class="translation"></p>
+      <dl class="details">
+       <div id="situationRow" hidden><dt>Situação</dt><dd id="cardSituation"></dd></div>
+       <div id="moldRow"><dt>Molde</dt><dd id="cardMold" lang="de"></dd></div>
+       <div id="targetRow"><dt>Foco</dt><dd id="cardTarget"></dd></div>
+      </dl>
+      <div id="cardErro"></div>
+      <div id="grammarChips" class="chips grammar-chips"></div>
+      <p id="genderLegend" class="gender-legend" hidden><span class="gender g-der">der</span> masculino · <span class="gender g-die">die</span> feminino · <span class="gender g-das">das</span> neutro · <span class="gender g-pl">die</span> plural</p>
+      <div id="shadowPanel" class="shadow-panel" hidden></div>
+     </div>
+    </article>
+    <div class="controls">
+     <div class="row center audio-row">
+      <button id="playAudio" class="quiet" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>Ouvir <kbd>R</kbd></button>
+      <button id="playSlow" class="quiet" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l-3.5-4"/></svg>Devagar <kbd>D</kbd></button>
+      <button id="shadowButton" class="quiet" type="button" hidden title="Ouve a frase e grava você repetindo junto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg><span class="label">Shadowing</span> <kbd>S</kbd></button>
+     </div>
+     <div id="presentActions" class="present-actions" hidden><p class="muted">Ouça, leia e repita a frase em voz alta duas ou três vezes. Ela volta daqui a pouco para você tentar de memória.</p><div class="row center"><button id="presentContinue" class="primary lg" type="button">Repeti em voz alta · continuar <kbd>Espaço</kbd></button><button id="presentSkip" class="lg" type="button" title="Pula a etapa da lacuna">Já conheço <kbd>K</kbd></button></div></div>
+     <div class="reveal-row">
+      <button id="speakCheck" class="lg" type="button" hidden></button>
+      <button id="revealCard" class="primary lg reveal" type="button">Revelar resposta <kbd>Espaço</kbd></button>
+     </div>
+     <p id="speechStatus" class="speech-status" hidden></p>
+     <div id="reasonRow" class="reason-row" hidden><span class="muted small-text">Errou ou foi difícil? Marque o motivo (opcional):</span><div id="reasonChips" class="chips"></div></div>
+     <div id="gradeRow" class="grades" hidden>
+      <button data-grade="again" class="g-again" type="button"><span class="g-label">Errei</span><span id="ivl-again" class="g-ivl"></span><kbd>1</kbd></button>
+      <button data-grade="hard" class="g-hard" type="button"><span class="g-label">Difícil</span><span id="ivl-hard" class="g-ivl"></span><kbd>2</kbd></button>
+      <button data-grade="good" class="g-good" type="button"><span class="g-label">Bom</span><span id="ivl-good" class="g-ivl"></span><kbd>3</kbd></button>
+      <button data-grade="easy" class="g-easy" type="button"><span class="g-label">Fácil</span><span id="ivl-easy" class="g-ivl"></span><kbd>4</kbd></button>
+     </div>
+     <div id="rubric" class="rubric" hidden><span><b>Errei</b> travou, ou o erro muda o sentido</span><span><b>Difícil</b> saiu com esforço ou pequenos erros</span><span><b>Bom</b> saiu em até ~5 s, com pouca hesitação</span><span><b>Fácil</b> saiu no automático</span></div>
+    </div>
+    <p class="hint">Espaço revela · Espaço de novo = Bom · 1–4 avalia · R repete · D devagar · F fala e confere · S shadowing · K já conheço · Z desfaz · Esc encerra</p>
+   </div>
+  </section>
+
+  <section id="view-scenes" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Conversas inteiras</p><h1>Cenas</h1><p class="lede">Diálogos curtos com vozes neurais. O app faz a outra pessoa; você fala as suas falas. Depois, troque os papéis.</p></header>
+   <div id="sceneList"></div>
+   <div id="scenePlayer" hidden>
+    <div class="panel scene-head">
+     <button id="sceneBack" class="quiet small" type="button">← Todas as cenas <kbd>Esc</kbd></button>
+     <h2 id="sceneTitle"></h2><p id="sceneSetting" class="muted"></p><div id="sceneMeta" class="tagline"></div>
+     <div class="row spaced"><label class="inline-check"><input id="sceneShowOther" type="checkbox"> Mostrar o texto da outra pessoa (desligue para treinar a escuta)</label>
+      <label class="inline-field">Ajuda nas suas falas: <select id="sceneHelp"><option value="auto">Automática (sobe conforme você acerta)</option><option value="frase">Ver a frase em alemão</option><option value="tarefa">Só a tarefa em português</option><option value="livre">Sem ajuda</option></select></label></div>
+    </div>
+    <div id="sceneChat" class="chat" aria-live="polite"></div>
+    <div class="scene-controls">
+     <p id="sceneStatus" class="speech-status"></p>
+     <div class="row center"><button id="sceneSpeak" class="lg" type="button" hidden></button><button id="sceneReveal" class="primary lg" type="button" hidden>Revelar minha fala <kbd>Espaço</kbd></button></div>
+     <div id="sceneGrade" class="row center" hidden><button id="sceneMiss" class="lg g-again" type="button">Travei <kbd>1</kbd></button><button id="sceneOk" class="lg g-good" type="button">Saiu bem <kbd>3</kbd></button></div>
+    </div>
+    <div id="sceneSummary" class="panel summary" hidden></div>
+   </div>
+  </section>
+
+  <section id="view-conversa" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Parceira de conversa</p><h1>Conversa</h1><p class="lede">Converse em alemão sem limite, no seu nível. A parceira roda neste computador: você fala ou escreve, ela responde e, no fim, mostra os erros mais importantes.</p></header>
+   <div id="convSetup"></div>
+   <div id="f432Room" hidden></div>
+   <div id="convRoom" hidden>
+    <div class="panel scene-head">
+     <button id="convBack" class="quiet small" type="button">← Temas</button>
+     <h2 id="convTitle"></h2><p id="convSetting" class="muted"></p><div id="convMeta" class="tagline"></div>
+     <div class="row spaced"><label class="inline-check"><input id="convShowText" type="checkbox"> Mostrar o texto da parceira (desligue para treinar a escuta)</label><label class="inline-check"><input id="convAutoSend" type="checkbox"> Enviar direto depois de falar</label><label class="inline-check" title="Depois de cada resposta, um sinal toca e o app ouve; quando você para de falar, ele envia sozinho. Esc pausa."><input id="convHandsFree" type="checkbox"> Mãos livres (para usar só com fone)</label></div>
+    </div>
+    <div id="convChat" class="chat" aria-live="polite"></div>
+    <div id="convHelp" class="panel soft conv-help" hidden></div>
+    <div class="panel conv-input">
+     <textarea id="convText" lang="de" rows="2" spellcheck="false" aria-label="Sua fala em alemão" placeholder="Fale (F) ou escreva em alemão e aperte Enter"></textarea>
+     <div id="convUmlauts" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button></div>
+     <div class="row between conv-buttons">
+      <div class="row"><button id="convMic" class="lg" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Falar <kbd>F</kbd></button><button id="convSend" class="primary lg" type="button">Enviar <kbd>Enter</kbd></button></div>
+      <div class="row"><button id="convHuh" class="quiet small" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button><button id="convHowto" class="quiet small" type="button">Como digo…?</button><button id="convHint" class="quiet small" type="button">Dica</button><button id="convFinish" class="small" type="button">Terminar e ver erros</button></div>
+     </div>
+     <p id="convStatus" class="speech-status" aria-live="polite"></p>
+    </div>
+    <div id="convSummary" class="panel summary" hidden></div>
+   </div>
+  </section>
+
+  <section id="view-minhas" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Seus próprios cartões</p><h1>Minhas frases</h1><p class="lede">Frases que você encontrou ou errou viram cartões do treino, com o mesmo agendamento das outras.</p></header>
+   <section id="mineAdd" class="panel"></section>
+   <div id="mineDrafts"></div>
+   <section id="mineList" class="panel"></section>
+  </section>
+
+  <section id="view-pron" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Ouvido e boca</p><h1>Pronúncia</h1><p class="lede">Pares de palavras que só diferem por um som difícil para brasileiros. Primeiro treine o ouvido; depois repita em voz alta.</p></header>
+   <div id="pronList" class="scene-grid"></div>
+   <div id="pronPlayer" class="panel" hidden></div>
+  </section>
+
+  <section id="view-reading" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Livros com áudio</p><h1>Leitura</h1><p class="lede">Importe um livro (EPUB) com o audiolivro. O app liga o áudio ao texto neste computador: toque numa palavra para ouvir a frase e ver a palavra e a gramática, ou leia acompanhando o narrador.</p></header>
+   <div id="readingLibrary"></div>
+   <div id="readingBook" hidden></div>
+  </section>
+
+  <section id="view-grammar" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Gramática para brasileiros</h1><p class="lede">Os pontos em que o português mais atrapalha, com as armadilhas típicas e as frases do seu catálogo que usam cada estrutura.</p></header>
+   <div id="grammarTrain" class="panel" hidden></div>
+   <div id="grammarList" class="grammar-grid"></div>
+   <div id="grammarDetail" class="panel grammar-detail" hidden></div>
+  </section>
+
+  <section id="view-plan" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Rumo à Alemanha</p><h1>Meu plano</h1><p class="lede">Defina suas datas. O app calcula quantas frases novas por dia você precisa para chegar lá no tempo certo.</p></header>
+   <section class="panel"><h2>Linha do tempo</h2><div id="planTimeline" class="timeline"></div>
+    <div class="grid four-dates spaced">
+     <div class="field"><label for="plan-b1">Meta de B1</label><input id="plan-b1" type="date"></div>
+     <div class="field"><label for="plan-b2">Certificado B2</label><input id="plan-b2" type="date"></div>
+     <div class="field"><label for="plan-move">Mudança</label><input id="plan-move" type="date"></div>
+     <div class="field"><label for="plan-fsp">Fachsprachprüfung</label><input id="plan-fsp" type="date"></div>
+    </div>
+    <p class="muted small-text spaced">As frases gerais (K1 a K3 e chegada) são distribuídas até o B2; as frases médicas, até a FSP. Ajuste as datas à sua realidade; os requisitos da Approbation variam de estado para estado.</p>
+   </section>
+   <section class="panel"><h2>Escala de plantões</h2>
+    <p class="muted">No dia de plantão, o treino fica em cerca de 10 minutos, só com as revisões mais urgentes e sem frases novas. No pós-plantão, o acúmulo é dividido em até 3 dias. Na folga, entram mais frases novas. Plantão e pós-plantão sem estudo não quebram a sequência. No Início, você também escolhe quanto tempo tem em cada dia. Se a escala varia, deixe “sem escala fixa” e informe a média de plantões por semana, para o plano ficar realista.</p>
+    <div class="grid shift-fields">
+     <div class="field"><label for="shiftMode">Escala</label><select id="shiftMode"><option value="none">Sem escala fixa (marco dia a dia)</option><option value="weekly">Mesmos dias toda semana</option><option value="24x72">24 × 72 · plantão, pós e 2 folgas</option><option value="24x48">24 × 48 · plantão, pós e folga</option><option value="12x36">12 × 36 · plantão e folga</option></select></div>
+     <div id="shiftAvgRow" class="field"><label for="shiftAvg">Plantões por semana (média)</label><input id="shiftAvg" type="number" min="0" max="7" step="0.5" value="0"></div>
+     <div id="shiftCycleRow" class="field" hidden><label for="shiftCycleStart">Data de um plantão</label><input id="shiftCycleStart" type="date"></div>
+     <div class="field"><label for="shiftMinutes">Tempo padrão no dia de plantão (min)</label><input id="shiftMinutes" type="number" min="5" max="30" step="5" value="10"></div>
+    </div>
+    <div id="shiftWeekly" class="grid shift-week" hidden></div>
+    <label class="switch spaced"><input id="shiftAutoPos" type="checkbox"><span><b>Dia seguinte ao plantão é pós-plantão</b><small>Para plantões de 24 h ou noturnos. Desligue se os seus plantões são de 12 h diurnos.</small></span></label>
+    <h3>Próximas semanas</h3>
+    <p class="muted small-text">Clique num dia para trocar: comum → plantão → pós-plantão → folga. Dias com contorno foram marcados à mão e valem mais que a escala.</p>
+    <div id="shiftCalendar" class="shift-calendar"></div>
+    <div class="row between spaced"><p class="shift-legend"><span class="ct-plantao">P</span> plantão <span class="ct-pos">PP</span> pós-plantão <span class="ct-folga">F</span> folga</p><button id="shiftClear" class="quiet small" type="button" hidden>Limpar marcações manuais</button></div>
+    <p id="shiftSummary" class="muted small-text"></p>
+   </section>
+   <div id="planSummary" class="stats"></div>
+   <div class="row spaced-bottom plan-actions"><button id="planApply" class="primary" type="button" hidden></button></div>
+   <section class="panel"><h2>Curso Nicos Weg</h2>
+    <p class="muted">As frases do reforço (520 do A1 e 867 do A2) seguem os capítulos do Nicos Weg e cobrem as palavras das listas oficiais do Goethe que faltavam. Entre as frases novas, elas vêm logo depois das suas próprias, na ordem do curso, e só até o capítulo em que você está. Quando terminar o A1, escolha um capítulo do A2: o A1 inteiro continua liberado.</p>
+    <div class="grid"><div class="field"><label for="nwChapter">Estou no capítulo</label><select id="nwChapter"></select></div></div>
+    <p id="nwInfo" class="muted small-text"></p>
+   </section>
+   <section class="panel"><h2>Já consigo…</h2><p id="candoSummary" class="muted small-text"></p><div id="candoList" class="cando-list"></div></section>
+   <section class="panel"><h2>Onde você mais erra</h2><div id="diagnosis"></div><div id="diktatStats" class="subpanel spaced" hidden></div></section>
+   <section id="tutorPack" class="panel"></section>
+   <div class="grid two">
+    <section class="panel"><h2>Domínio por nível</h2><div id="planLevels"></div></section>
+    <section class="panel"><h2>Alemão médico desde já</h2>
+     <p class="muted">Parte das frases novas de cada dia pode vir do módulo médico, mesmo sem escolher o tema. Recomendado: 0% até o B1, depois 20–30%.</p>
+     <div class="field"><label for="planMedShare">Frases médicas entre as novas: <span id="planMedShareValue">0%</span></label><input id="planMedShare" type="range" min="0" max="50" step="5" value="0"></div>
+    </section>
+   </div>
+  </section>
+
+  <section id="view-template" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Prática livre</p><h1>Molde</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
+   <div class="panel row between"><span id="templateCount" class="muted"></span><button id="nextTemplate" class="primary" type="button">Sortear molde</button></div>
+   <div id="templateStage" hidden>
+    <div class="flash">
+     <div class="flash-meta"><span id="templateReg"></span></div>
+     <p id="templateText" class="prompt mold-big" lang="de"></p>
+     <p id="templateContext" class="muted"></p>
+    </div>
+    <div class="variations"><div id="variationDots" class="vdots"></div><p id="variationCount" class="muted"></p></div>
+    <div class="row center"><button id="markVariation" class="primary lg" type="button">Marcar variação falada</button><button id="showTemplateExample" class="lg" type="button">Mostrar frase do catálogo</button></div>
+    <div id="templateExample" class="panel soft example" hidden></div>
+   </div>
+  </section>
+
+  <section id="view-activation" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Uma vez por semana</p><h1>Ativação</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
+   <div class="panel row"><button id="startActivation" class="primary" type="button">Sortear 10 frases</button><button id="copyActivation" type="button" hidden>Copiar lista para o tutor</button></div>
+   <div id="activationStage" class="panel" hidden>
+    <h2 id="activationTheme"></h2>
+    <p id="activationFrame" class="lede"></p>
+    <p class="notice">Use as frases como apoio. Recombine livremente; não recite um texto.</p>
+    <div id="activationList" class="list"></div>
+    <div class="divider"></div>
+    <h3>Grave seu monólogo</h3>
+    <div id="activationRecorder"></div>
+    <button id="finishActivation" type="button" class="spaced">Concluir prática</button>
+   </div>
+  </section>
+
+  <section id="view-exam" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Goethe · telc · Fachsprachprüfung</p><h1>Modo Prova</h1><p class="lede">Tarefas originais para praticar o formato. A autoavaliação aparece ao concluir.</p></header>
+   <div class="panel exam-pick"><div class="field grow"><label for="examSelect">Escolha uma tarefa</label><select id="examSelect"></select></div><button id="loadExam" class="primary" type="button">Abrir tarefa</button></div>
+   <div id="examStage" class="panel" hidden>
+    <p id="examMeta" class="eyebrow"></p>
+    <h2 id="examTitle"></h2>
+    <p id="examPrompt" class="exam-prompt" lang="de"></p>
+    <div id="examSupport" class="panel soft support" lang="de" hidden></div>
+    <div id="examAiPatient" class="notice" hidden><span>Quer treinar sem o tutor? A IA faz o paciente com estes dados e só conta o que você perguntar; no fim, mostra o que faltou.</span><button id="examAiPatientBtn" class="small primary" type="button">Fazer com a IA como paciente</button></div>
+    <div id="examTimerWrap" class="timer-box">
+     <div class="timer-top"><div id="examTimer" class="timer">00:00</div><div class="row"><button id="timerStart" class="primary" type="button">Iniciar cronômetro</button><button id="timerPause" type="button" hidden>Pausar</button><button id="timerReset" type="button">Reiniciar</button></div></div>
+     <div class="track"><span id="examTimerBar"></span></div>
+    </div>
+    <div id="examOral" hidden><div id="examRecorder"></div></div>
+    <div id="examWritten" hidden><div class="field"><label for="examWriting">Sua resposta</label><textarea id="examWriting" lang="de" spellcheck="true"></textarea></div><p id="examWords" class="wordcount"></p></div>
+    <div class="row"><button id="finishExam" class="primary" type="button">Concluir e avaliar</button></div>
+   </div>
+   <div id="examResult" class="panel" hidden>
+    <h2>Autoavaliação</h2>
+    <div id="examQuestion" class="notice" hidden></div>
+    <p id="examOutcome"></p>
+    <div id="examChecklist"></div>
+    <p id="examScore" class="muted"></p>
+    <div class="divider"></div>
+    <h3>Frases relacionadas do catálogo</h3>
+    <p id="examLinkedCount" class="muted"></p>
+    <div id="examLinked" class="list"></div>
+    <button id="moreExamLinked" type="button" class="spaced" hidden>Mostrar mais</button>
+   </div>
+  </section>
+
+  <section id="view-catalog" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Frases</h1></header>
+   <div class="panel">
+    <div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="searchCards" type="search" aria-label="Buscar frases" placeholder="Buscar em alemão ou português: frase, situação, tradução, ID…"></div>
+    <div class="chips spaced"><button id="catalogLeeches" class="chip chip-leech" type="button" aria-pressed="false" hidden></button></div>
+    <div id="catalogThemeChips" class="chips spaced"></div>
+    <details class="filters-box"><summary>Filtros avançados <span id="catalogFilterCount" class="pill" hidden></span></summary><div id="catalogFilters" class="filters"></div><button id="clearCatalogFilters" class="quiet small" type="button">Limpar busca e filtros</button></details>
+    <div class="row between list-head"><p id="catalogCount" class="muted"></p><button id="exportAnkiFiltered" class="small" type="button">Exportar para o Anki</button></div>
+    <div id="catalogList" class="list"></div>
+    <button id="moreCatalog" type="button" class="spaced" hidden>Mostrar mais</button>
+   </div>
+  </section>
+
+  <section id="view-coverage" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Cobertura do catálogo</h1><p class="lede">Contagem por referência. “Aprendidas” inclui frases avaliadas com Difícil, Bom ou Fácil em pelo menos um modo.</p></header>
+   <div id="coverageContent"></div>
+  </section>
+
+  <section id="view-settings" class="view" hidden>
+   <header class="page-head"><p class="eyebrow">Aplicativo</p><h1>Configurações</h1></header>
+   <section class="panel"><h2>Estudo</h2>
+    <div class="grid two">
+     <div class="field"><label for="newLimit">Frases novas por dia</label><input id="newLimit" type="number" min="0" max="100" value="6"></div>
+     <div class="field"><label for="reviewLimit">Limite diário de revisões</label><input id="reviewLimit" type="number" min="0" max="10000" placeholder="Sem limite"></div>
+     <div class="field"><label for="newOrder">Ordem das novas</label><select id="newOrder"><option value="priority">Prioridade → camada → ID</option><option value="layer">Camada → prioridade → ID</option><option value="id">ID</option></select></div>
+     <div class="field"><label for="retention">Retenção desejada</label><select id="retention"><option value="0.85">85% · menos revisões</option><option value="0.9">90% · recomendado</option><option value="0.95">95% · mais revisões</option></select></div>
+    </div>
+    <div class="subpanel spaced">
+     <h3>Como aprender</h3>
+     <div class="settings-switches">
+      <label class="switch"><input id="setPresentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Frase nova → apresentação → lacuna → frase inteira.</small></span></label>
+      <label class="switch"><input id="setLevelGate" type="checkbox"><span><b>Progressão por nível</b><small>As novas vêm só de níveis abertos; o próximo abre com 60% do atual.</small></span></label>
+      <label class="switch"><input id="setGermanSituations" type="checkbox"><span><b>Situações em alemão</b><small>Recomendado a partir do B1. Vale para o módulo médico, os termos técnicos e a chegada.</small></span></label>
+      <label class="switch"><input id="setGenderColors" type="checkbox"><span><b>Cores de gênero</b><small>der em azul, die em vermelho, das em verde (termos médicos e notas de gênero).</small></span></label>
+     </div>
+     <div class="grid two spaced"><div class="field"><label for="setRubric">Critérios das notas abaixo dos botões</label><select id="setRubric"><option value="auto">Nas primeiras 300 avaliações</option><option value="always">Sempre</option><option value="never">Nunca</option></select></div></div>
+    </div>
+    <div class="subpanel spaced">
+     <h3>Ajustar o agendamento à sua memória</h3>
+     <p id="optStatus" class="muted small-text"></p>
+     <div id="optProgress" class="track spaced" hidden><span id="optBar"></span></div>
+     <div class="row spaced"><button id="optRun" type="button">Otimizar agora</button><button id="optReset" class="quiet" type="button" hidden>Restaurar padrão</button></div>
+     <p class="muted small-text">O FSRS aprende com o seu histórico de revisões e recalcula os intervalos. Refaça a cada um ou dois meses.</p>
+    </div>
+   </section>
+   <section class="panel"><h2>Aparência</h2>
+    <div class="grid two"><div class="field"><label for="themeSelect">Tema</label><select id="themeSelect"><option value="auto">Automático (segue o Windows)</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div></div>
+   </section>
+   <section class="panel"><h2>Áudio alemão</h2>
+    <div class="grid two spaced-bottom"><div class="field"><label for="audioSource">Fonte do áudio</label><select id="audioSource"><option value="neural">Voz neural embutida (recomendada)</option><option value="system">Voz do Windows</option></select></div><p id="audioSourceInfo" class="muted small-text align-end"></p></div>
+    <label id="alternateRow" class="switch spaced-bottom"><input id="alternateVoices" type="checkbox"><span><b>Alternar vozes no treino de escuta</b><small>Charon, Katja e Florian se revezam, para o ouvido não se acostumar com uma voz só.</small></span></label>
+    <div class="grid two"><div class="field"><label for="voiceSelect">Voz do Windows (reserva)</label><select id="voiceSelect"></select></div><div class="field"><label for="speechRate">Velocidade: <span id="speechRateValue">0,9×</span></label><input id="speechRate" type="range" min="0.6" max="1.3" step="0.05" value="0.9"></div></div>
+    <p id="voiceWarning" class="notice warn spaced" hidden>Não há voz alemã neste computador. Em Configurações do Windows → Hora e idioma → Idioma e região, adicione “Deutsch (Deutschland)” com o recurso de fala e reabra o aplicativo.</p>
+    <button id="testVoice" type="button" class="spaced">Testar voz</button>
+   </section>
+   <section class="panel desktop-only"><h2>Conversa</h2>
+    <div class="grid two"><div class="field"><label for="convVoice">Voz da parceira</label><select id="convVoice"><option value="charon">Charon · Google (Jonas)</option><option value="aoede">Aoede · Google (Lena)</option><option value="system">Voz do Windows (offline, sem cota)</option></select></div><p id="convModelInfo" class="muted small-text align-end"></p></div>
+    <div id="convKeyBox" class="subpanel spaced" hidden></div>
+   </section>
+   <section id="desktopPanel" class="panel" hidden><h2>Este computador</h2>
+    <h3>Conferência de fala</h3>
+    <p id="speechInfo" class="muted small-text"></p>
+    <div id="whisperModelRow" class="grid two spaced-bottom" hidden><div class="field"><label for="whisperModel">Transcrição da sua fala</label><select id="whisperModel"><option value="fast">Rápida (cerca de 1 s por frase)</option><option value="precise">Mais precisa para sotaque e barulho (cerca de 4 s)</option></select></div><p class="muted small-text align-end">Se o app entende errado o que você fala, experimente a opção mais precisa. Vale para o treino, as cenas e a conversa.</p></div>
+    <h3>Lembrete e inicialização</h3>
+    <div class="desktop-grid">
+     <label class="switch"><input id="reminderEnabled" type="checkbox"><span><b>Lembrete diário</b><small>Notificação do Windows no horário escolhido, se houver cartões pendentes.</small></span></label>
+     <div class="field time-field"><label for="reminderTime">Horário</label><input id="reminderTime" type="time" value="19:00"></div>
+     <label class="switch"><input id="trayMode" type="checkbox"><span><b>Manter na bandeja ao fechar</b><small>O aplicativo continua perto do relógio, e o lembrete funciona mesmo com a janela fechada.</small></span></label>
+     <label class="switch"><input id="openAtLogin" type="checkbox"><span><b>Iniciar com o Windows</b><small>Abre discretamente na bandeja ao ligar o computador.</small></span></label>
+    </div>
+    <h3>Sincronizar entre computadores</h3>
+    <p id="syncStatus" class="muted small-text"></p>
+    <div class="row"><button id="syncChoose" type="button">Escolher pasta</button><button id="syncNow" type="button" hidden>Sincronizar agora</button><button id="syncClear" class="quiet" type="button" hidden>Desligar</button></div>
+    <h3>Backup automático</h3>
+    <div id="autoBackupInfo" class="notice"><span id="autoBackupText"></span><button id="openBackups" class="small" type="button">Abrir pasta</button></div>
+    <h3>Cópia em outro disco</h3>
+    <div id="extBackupInfo" class="notice"><span id="extBackupText"></span></div>
+    <div class="row"><button id="extBackupChoose" type="button">Escolher pasta</button><button id="extBackupOpen" type="button" hidden>Abrir pasta</button><button id="extBackupNow" type="button" hidden>Copiar agora</button><button id="extBackupClear" class="quiet" type="button" hidden>Desligar</button></div>
+    <div class="row"><button id="openLogs" class="quiet small" type="button">Abrir registro de erros</button></div>
+   </section>
+   <section id="cloudPanel" class="panel" hidden></section>
+   <section id="offlinePanel" class="panel" hidden><h2>Uso sem internet</h2><div id="offlineText"></div><div class="row"><button id="offlineAll" type="button">Baixar todo o áudio</button></div></section>
+   <section class="panel"><h2>Backup</h2>
+    <p>Seu progresso fica salvo neste computador, separado da pasta do aplicativo. Para continuar em outro computador, exporte o backup JSON aqui e importe-o lá (ou use a sincronização acima).</p>
+    <div class="row spaced"><button id="exportProgress" class="primary" type="button">Exportar progresso</button><label class="file-label">Importar progresso<input id="progressInput" type="file" accept=".json,application/json"></label></div>
+    <p id="storageInfo" class="muted small-text spaced"></p>
+   </section>
+   <section class="panel"><h2>Catálogo</h2>
+    <p><span id="importCount"></span>. Importe lotes TSV adicionais ou corrigidos; o progresso é preservado pelos IDs.</p>
+    <div class="row"><label class="file-label secondary">Importar lotes TSV<input id="tsvInput" type="file" accept=".txt,.tsv,text/plain,text/tab-separated-values" multiple></label><button id="exportAnkiAll" type="button">Exportar catálogo para o Anki (texto)</button></div>
+    <div id="ankiDeckRow" class="notice spaced" hidden><span><b>Baralho Anki com áudio:</b> o arquivo <code>Satzbausteine-Anki.apkg</code> está na pasta do aplicativo. Abra-o no Anki do computador e sincronize com o AnkiDroid ou o AnkiMobile para estudar no celular.</span><button id="openAppFolder" class="small" type="button">Abrir pasta</button></div>
+   </section>
+   <section class="panel no-phone"><h2>Atalhos de teclado no treino</h2>
+    <dl class="shortcuts">
+     <div><dt><kbd>Espaço</kbd> ou <kbd>Enter</kbd></dt><dd>Revelar; depois, avaliar como Bom</dd></div>
+     <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>Errei · Difícil · Bom · Fácil</dd></div>
+     <div><dt><kbd>R</kbd> / <kbd>D</kbd></dt><dd>Ouvir de novo / ouvir devagar</dd></div>
+     <div><dt><kbd>F</kbd></dt><dd>Falar e conferir (transcrição offline)</dd></div>
+     <div><dt><kbd>S</kbd></dt><dd>Shadowing: ouvir e repetir junto</dd></div>
+     <div><dt><kbd>K</kbd></dt><dd>Frase nova: já conheço (pula a lacuna)</dd></div>
+     <div><dt><kbd>Z</kbd></dt><dd>Desfazer a última avaliação</dd></div>
+     <div><dt><kbd>Esc</kbd></dt><dd>Encerrar a sessão</dd></div>
+     <div><dt><kbd>Ctrl</kbd> + <kbd>1</kbd>…<kbd>9</kbd></dt><dd>Ir para cada área do aplicativo</dd></div>
+    </dl>
+   </section>
+  </section>
+  </main>
+  <footer class="footer">Satzbausteine para Windows · <span id="appVersion"></span> · Offline e sem conta. Áudio neural embutido; as gravações e a transcrição de fala ficam no computador.</footer>
+ </div>
+</div>
+<dialog id="grammarDialog" class="grammar-dialog" aria-labelledby="grammarDialogTitle"><div class="dialog-head"><h2 id="grammarDialogTitle"></h2><button id="grammarDialogClose" class="icon-btn quiet" type="button" aria-label="Fechar">×</button></div><div id="grammarDialogBody"></div></dialog>
+<div id="toasts" class="toasts"></div>
+<script src="fsrs.js"></script>
+<script src="catalog.js"></script>
+<script src="catalog-medizin.js"></script>
+<script src="catalog-fach.js"></script>
+<script src="catalog-ankunft.js"></script>
+  <script src="catalog-nicosweg.js"></script>
+  <script src="catalog-nicosweg-a2.js"></script>
+<script src="situacoes-de.js"></script>
+<script src="cenas-data.js"></script>
+<script src="gramatica-data.js"></script>
+<script src="pronuncia-data.js"></script>
+<script src="audio-index.js"></script>
+<script src="didatica.js"></script>
+<script src="pratica-oral.js"></script>
+<script src="plantao.js"></script>
+<script src="fluencia.js"></script>
+<script src="leitura.js"></script>
+<script src="leitura-pratica.js"></script>
+<script src="conversa.js"></script>
+<script src="minhas.js"></script>
+<script src="anotar.js"></script>
+<script src="monologo.js"></script>
+<script src="fsp.js"></script>
+<script src="tutor.js"></script>
+  <script src="exercicios.js"></script>
+<script src="app.js"></script>
+<script src="celular.js"></script>
+<script src="nuvem.js"></script>
+</body>
+</html>
