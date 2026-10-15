@@ -221,15 +221,21 @@ function renderBook() {
     : !book.sync ? (book.status && book.status.sync.state === "running" ? "Sincronizando o áudio (" + book.status.sync.pct + "%). Quando terminar, as frases ficam clicáveis para ouvir." : "O áudio ainda não foi sincronizado. Volte à lista de livros e toque em “Sincronizar áudio”.") : "";
   const [a, b] = chapterRange(reading.ch);
   const text = h("div", {id: "rdText", class: "reader-text", lang: "de"});
-  let para = null, lastBlock = -1;
-  for (let i = a; i <= b; i++) {
-    const s = reading.order[i];
-    if (s.h) { text.append(h("h2", {class: "rd-h"}, sentenceNode(i))); lastBlock = -1; continue; }
-    if (s.block !== lastBlock) { para = h("p", {class: "rd-p"}); text.append(para); lastBlock = s.block; }
-    else para.append(" ");
-    para.append(sentenceNode(i));
-    if ((reading.ptMode === "abaixo" || reading.ptMode === "borrada") && notes && notes[s.id] && notes[s.id].pt)
-      para.append(h("span", {class: "rd-pt" + (reading.ptMode === "borrada" ? " blur" : ""), lang: "pt-BR", title: reading.ptMode === "borrada" ? "Toque para ver a tradução" : null, text: " " + notes[s.id].pt}));
+  // Bloco a bloco: título, parágrafo (frases) ou ilustração do livro.
+  for (const blk of book.chapters[reading.ch].blocks) {
+    if (blk.img) {
+      if (typeof rdImageUrl === "function") text.append(h("figure", {class: "rd-fig"}, h("img", {src: rdImageUrl(book, blk.img), alt: blk.alt || "", loading: "lazy"})));
+      continue;
+    }
+    let para = null;
+    for (const [sid] of blk.s) {
+      const i = reading.byId.get(sid), s = reading.order[i];
+      if (s.h) { text.append(h("h2", {class: "rd-h"}, sentenceNode(i))); continue; }
+      if (!para) { para = h("p", {class: "rd-p"}); text.append(para); } else para.append(" ");
+      para.append(sentenceNode(i));
+      if ((reading.ptMode === "abaixo" || reading.ptMode === "borrada") && notes && notes[s.id] && notes[s.id].pt)
+        para.append(h("span", {class: "rd-pt" + (reading.ptMode === "borrada" ? " blur" : ""), lang: "pt-BR", title: reading.ptMode === "borrada" ? "Toque para ver a tradução" : null, text: " " + notes[s.id].pt}));
+    }
   }
   const last = reading.ch === book.chapters.length - 1;
   text.append(h("div", {class: "row center rd-end"},

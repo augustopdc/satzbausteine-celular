@@ -6,6 +6,8 @@
 
 const RD_BOOKS_CACHE = "satz-livros", RD_LOCAL_KEY = "satzbausteine.livrosLocal", RD_INDEX_KEY = "satzbausteine.livrosIndex";
 const rdLocalUrl = (id, file) => new URL("livro-local/" + id + "/" + file, location.href).pathname;
+/* Endereço de uma ilustração do livro: no PC vem do processo principal; no celular, do que foi baixado. */
+function rdImageUrl(book, name) { return window.satzDesktop ? "livro/" + book.id + "/img/" + encodeURIComponent(name) : rdLocalUrl(book.id, "img/" + name); }
 const rdMB = n => (n / 1048576).toLocaleString("pt-BR", {maximumFractionDigits: 0}) + " MB";
 const rdWeb = {busy: null, done: 0, total: 0, index: null, error: ""};
 
@@ -64,7 +66,7 @@ async function rdWebIndex() {
 }
 async function rdWebDownload(entry) {
   if (rdWeb.busy) return;
-  rdWeb.busy = entry.id; rdWeb.done = 0; rdWeb.total = entry.parts + 1;
+  rdWeb.busy = entry.id; rdWeb.done = 0; rdWeb.total = entry.parts + (entry.images ? 1 : 0) + 1;
   rdWebRender();
   try {
     const cache = await caches.open(RD_BOOKS_CACHE);
@@ -75,6 +77,20 @@ async function rdWebDownload(entry) {
       const bytes = await rdCloudRaw("livros/" + entry.id + "/" + p.file);
       if (!bytes) throw new Error("Falta o áudio " + p.file + ". Envie o livro de novo pelo PC.");
       await cache.put(rdLocalUrl(entry.id, p.file), new Response(bytes, {headers: {"Content-Type": "audio/mpeg"}}));
+      rdWeb.done++;
+      rdWebRender();
+    }
+    // Ilustrações: um arquivo com todas (nome → base64), guardadas uma a uma em livro-local/<id>/img/<nome>.
+    if ((meta.images || []).length) {
+      const gzImg = await rdCloudRaw("livros/" + entry.id + "/imagens.json.gz");
+      if (gzImg) {
+        const imgs = JSON.parse(await gunzipText(gzImg));
+        for (const [name, b64] of Object.entries(imgs)) {
+          if (!/^[\w.-]{1,80}$/.test(name)) continue;
+          const type = /\.png$/i.test(name) ? "image/png" : /\.gif$/i.test(name) ? "image/gif" : /\.webp$/i.test(name) ? "image/webp" : /\.svg$/i.test(name) ? "image/svg+xml" : "image/jpeg";
+          await cache.put(rdLocalUrl(entry.id, "img/" + name), new Response(b64ToBytes(b64), {headers: {"Content-Type": type}}));
+        }
+      }
       rdWeb.done++;
       rdWebRender();
     }
