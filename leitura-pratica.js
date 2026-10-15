@@ -413,9 +413,12 @@ function bookPracticeKey(e) {
 const RD_CLASSES = ["substantivo", "verbo", "adjetivo", "advérbio", "preposição", "pronome", "artigo", "conjunção", "numeral", "interjeição", "nome próprio", "partícula"];
 const RD_PARTICLES = new Set(["an", "auf", "aus", "ein", "mit", "zu", "ab", "vor", "zurück", "weg", "nach", "fest", "hin", "her", "los", "vorbei", "weiter", "zusammen",
   "herein", "heraus", "hinaus", "herum", "fort", "um", "dar", "bei", "entgegen", "nieder", "hinzu", "herab", "hinauf", "hervor", "zurecht"]);
+/* Função na frase (para artigos e adjetivos, a do grupo do substantivo a que pertencem). */
+const RD_FUNCS = ["", "sujeito", "verbo conjugado", "verbo no fim", "objeto direto", "objeto indireto", "complemento de preposição", "predicativo", "adjunto (tempo, lugar, modo)", "conector", "negação ou partícula"];
 const RD_GLOSS_SCHEMA = {type: "object", properties: {pt: {type: "string"}, lema: {type: "string"}, classe: {type: "string", enum: RD_CLASSES}, flexao: {type: "string"},
   genero: {type: "string", enum: ["", "der", "die", "das"]}, plural: {type: "string"}, caso: {type: "string", enum: ["", "nominativo", "acusativo", "dativo", "genitivo"]},
-  parte: {type: "string"}, obs: {type: "string"}}, required: ["pt", "lema", "classe", "flexao", "genero", "plural", "caso", "parte", "obs"]};
+  parte: {type: "string"}, funcao: {type: "string", enum: RD_FUNCS}, porque: {type: "string"}, obs: {type: "string"}},
+  required: ["pt", "lema", "classe", "flexao", "genero", "plural", "caso", "parte", "funcao", "porque", "obs"]};
 const RD_EXPR_SCHEMA = {type: "object", properties: {expressao: {type: "string"}, pt: {type: "string"}, uso: {type: "string"}, exemplo: {type: "string"}, exemplo_pt: {type: "string"}},
   required: ["expressao", "pt", "uso", "exemplo", "exemplo_pt"]};
 const rdPending = new Map();
@@ -482,10 +485,15 @@ function prepCase(text, k) {
    só quando o prefixo fecha de fato a oração (em “hob … an seine Lippen”, an é preposição). */
 function fixGloss(text, k, word, g, notesW) {
   const out = {...g};
-  if (["substantivo", "pronome", "artigo"].includes(out.classe)) {
-    const c = prepCase(text, k);
-    if (c) { out.caso = c; if (out.flex) out.flex = out.flex.replace(/nominativo|acusativo|dativo|genitivo/g, c); }
-  }
+  const prep = ["substantivo", "pronome", "artigo", "adjetivo"].includes(out.classe) ? prepCase(text, k) : "";
+  if (prep && out.classe !== "adjetivo") { out.caso = prep; if (out.flex) out.flex = out.flex.replace(/nominativo|acusativo|dativo|genitivo/g, prep); }
+  // Função × caso: depois de preposição de caso fixo é complemento dela; sujeito só no nominativo, objeto direto só no
+  // acusativo, objeto indireto só no dativo. Se a IA se contradiz, a função não aparece (melhor nada que errado).
+  if (prep && out.fn && !["adjunto (tempo, lugar, modo)", "complemento de preposição"].includes(out.fn)) out.fn = "complemento de preposição";
+  const need = {"sujeito": "nominativo", "objeto direto": "acusativo", "objeto indireto": "dativo"}[out.fn];
+  if (need && out.caso && out.caso !== need) { out.fn = ""; out.pq = ""; }
+  if (out.fn && out.classe === "verbo" && !["verbo conjugado", "verbo no fim"].includes(out.fn)) { out.fn = ""; out.pq = ""; }
+  if (!out.fn) out.pq = "";
   if (out.classe === "verbo" && out.lema) {
     const sep = sepParticle(text, k, notesW), lema = out.lema.toLocaleLowerCase("de").replace(/^sich\s+/, "");
     const p = [...RD_PARTICLES].filter(x => lema.startsWith(x) && lema.length > x.length + 2).sort((a, b) => b.length - a.length)[0];
@@ -525,7 +533,31 @@ function nearText(i) {
 function requestGloss(i, k, word) {
   const s = reading.order[i], key = "o|" + s.id + "|" + k, bookId = reading.book.id;
   if (occurrence(i, k) || rdPending.has(key) || !llmReady()) return;
-  const sys = "You explain one word in a German sentence to Luiz, a Brazilian learner (level " + convLevel() + "). The word is marked with [[ ]]. Answer as JSON:\n"
+  const sys = rdGlossSystem(convLevel());
+  const user = nearText(i) + "Sentence: " + markedSentence(s.text, [k]);
+  const job = window.satzDesktop.convChat([{role: "system", content: sys}, {role: "user", content: user}], {kind: "gloss", temperature: .1, maxTokens: 400, schema: RD_GLOSS_SCHEMA})
+    .then(r => rdGlossApply(r, s, i, k, word, bookId))
+    .catch(e => { reading.glossError = cleanIpcError(e, "a IA não respondeu"); })
+    .finally(() => { rdPending.delete(key); if (reading.book && reading.sel === i && reading.wk === k) { renderDetail(); refreshReaderPop(); } });
+  rdPending.set(key, job);
+}
+/* Lê a resposta da IA sobre a palavra e grava (com as correções de fixGloss), a não ser que você já tenha corrigido. */
+function rdGlossApply(r, s, i, k, word, bookId) {
+  const j = parseLooseJson(r.text);
+  if (!j || !j.pt || !reading.book || reading.book.id !== bookId) return;
+  const o = bookNotes().o;
+  if (o[s.id] && o[s.id][k] && o[s.id][k].fix) return;
+  (o[s.id] = o[s.id] || {})[k] = rdGlossFromJson(j, s.text, k, word, reading.book.notes && reading.book.notes.w);
+  scheduleNotesSave();
+}
+function rdGlossFromJson(j, text, k, word, notesW) {
+  const c = v => convClean(v || "");
+  return fixGloss(text, k, word, {w: word, pt: c(j.pt), lema: c(j.lema), classe: RD_CLASSES.includes(j.classe) ? j.classe : "", flex: c(j.flexao),
+    gen: ["der", "die", "das"].includes(j.genero) ? j.genero : "", pl: c(j.plural), caso: c(j.caso), parte: c(j.parte),
+    fn: RD_FUNCS.includes(j.funcao) ? j.funcao : "", pq: c(j.porque), obs: c(j.obs)}, notesW);
+}
+function rdGlossSystem(level) {
+  return "You explain one word in a German sentence to Luiz, a Brazilian learner (level " + level + "). The word is marked with [[ ]]. Answer as JSON:\n"
     + "- pt: what the word means IN THIS SENTENCE, in Brazilian Portuguese (1 to 5 words). If it is part of a separable verb or a fixed expression, give the meaning of the whole here.\n"
     + "- lema: dictionary form (nouns with article, e.g. \"die Bank\"; verbs in the infinitive, separable verbs complete, e.g. \"anrufen\"; adjectives in the base form).\n"
     + "- classe: word class, in Portuguese.\n"
@@ -534,22 +566,9 @@ function requestGloss(i, k, word) {
     + "- plural: for nouns only: the plural with article, e.g. \"die Bänke\"; otherwise empty.\n"
     + "- caso: for nouns, pronouns and articles: the case in THIS sentence; otherwise empty. The case depends on the sentence, the gender does not.\n"
     + "- parte: if the word belongs to a separable verb or a fixed multi-word expression in this sentence, its full dictionary form (e.g. \"anrufen\", \"sich kümmern um\"); otherwise empty.\n"
+    + "- funcao: the function of the word in THIS sentence, from the list. For articles and adjectives, the function of the noun phrase they belong to. \"verbo conjugado\" = the finite verb (2nd position in a main clause); \"verbo no fim\" = infinitive, participle or a finite verb sent to the end by a subordinating conjunction (weil, dass, wenn…); \"predicativo\" = after sein/werden/bleiben (\"Er ist Arzt\"). Empty if not sure.\n"
+    + "- porque: one short sentence in Portuguese linking the function to the form, e.g. \"quem recebe a ação → acusativo: der vira den\", \"vai para o fim por causa do weil\", \"depois de mit sempre dativo\". Empty if not sure.\n"
     + "- obs: at most one short, useful note in Portuguese, or empty.\nOnly write what you are sure is correct.";
-  const user = nearText(i) + "Sentence: " + markedSentence(s.text, [k]);
-  const job = window.satzDesktop.convChat([{role: "system", content: sys}, {role: "user", content: user}], {kind: "gloss", temperature: .1, maxTokens: 300, schema: RD_GLOSS_SCHEMA})
-    .then(r => {
-      const j = parseLooseJson(r.text);
-      if (!j || !j.pt || !reading.book || reading.book.id !== bookId) return;
-      const c = v => convClean(v || "");
-      const o = bookNotes().o;
-      if (o[s.id] && o[s.id][k] && o[s.id][k].fix) return;
-      (o[s.id] = o[s.id] || {})[k] = fixGloss(s.text, k, word, {w: word, pt: c(j.pt), lema: c(j.lema), classe: RD_CLASSES.includes(j.classe) ? j.classe : "", flex: c(j.flexao),
-        gen: ["der", "die", "das"].includes(j.genero) ? j.genero : "", pl: c(j.plural), caso: c(j.caso), parte: c(j.parte), obs: c(j.obs)}, reading.book.notes && reading.book.notes.w);
-      scheduleNotesSave();
-    })
-    .catch(e => { reading.glossError = cleanIpcError(e, "a IA não respondeu"); })
-    .finally(() => { rdPending.delete(key); if (reading.book && reading.sel === i && reading.wk === k) { renderDetail(); refreshReaderPop(); } });
-  rdPending.set(key, job);
 }
 function requestExpr(i, ks) {
   const s = reading.order[i], key = "x|" + s.id + "|" + exprKey(ks), bookId = reading.book.id;
@@ -596,6 +615,7 @@ function occurrenceBlock(i, k, word, compact) {
     noun ? h("p", {class: "small-text"}, h("span", {class: "muted", text: "Da palavra: "}), [occ.gen ? "gênero " + occ.gen : "", occ.pl ? "plural " + occ.pl : ""].filter(Boolean).join(" · "),
       occ.caso ? h("span", null, h("span", {class: "muted", text: " · nesta frase: "}), occ.caso) : null) : occ.caso ? h("p", {class: "small-text", text: "Caso nesta frase: " + occ.caso}) : null,
     occ.parte ? h("p", {class: "small-text"}, h("span", {class: "muted", text: "Faz parte de: "}), h("b", {lang: "de", text: occ.parte})) : null,
+    occ.fn ? h("p", {class: "small-text rd-fn"}, h("span", {class: "muted", text: "Função na frase: "}), h("b", {text: occ.fn}), occ.pq ? h("span", {class: "muted", text: " — " + occ.pq}) : null) : null,
     !compact && occ.obs ? h("p", {class: "muted small-text", text: occ.obs}) : null,
     h("div", {class: "row"}, sepBtn, compact ? null : h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.closest(".rd-occ").replaceWith(occEditor(i, k, word, occ))}, "Corrigir")));
 }
@@ -603,7 +623,7 @@ function occurrenceBlock(i, k, word, compact) {
 function occEditor(i, k, word, occ) {
   const f = (label, key) => { const el = h("input", {type: "text", value: occ[key] || "", lang: key === "lema" || key === "parte" ? "de" : null}); el.dataset.key = key; return h("div", {class: "field"}, h("label", {text: label}), el); };
   const box = h("div", {class: "rd-occ rd-edit"},
-    f("Sentido nesta frase", "pt"), f("Forma de dicionário", "lema"), f("Flexão", "flex"), f("Caso nesta frase", "caso"), f("Faz parte de", "parte"), f("Observação", "obs"),
+    f("Sentido nesta frase", "pt"), f("Forma de dicionário", "lema"), f("Flexão", "flex"), f("Caso nesta frase", "caso"), f("Função na frase", "fn"), f("Por quê", "pq"), f("Faz parte de", "parte"), f("Observação", "obs"),
     h("div", {class: "row"},
       h("button", {class: "primary small", type: "button", onclick: () => {
         const s = reading.order[i], o = bookNotes().o, v = {...occ, w: word, fix: true};

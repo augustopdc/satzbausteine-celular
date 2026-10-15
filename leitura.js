@@ -26,6 +26,16 @@ async function renderReading() {
 function syncStatusNode(b) {
   if (!b.audio) return h("div", {class: "book-status"}, h("span", {class: "muted", text: "Sem áudio."}),
     h("button", {class: "small", type: "button", onclick: () => addBookAudio(b.id)}, "Adicionar áudio"));
+  // MP3 de taxa variável: o player pula para o lugar errado. A conversão mantém os tempos (a sincronização continua valendo).
+  if (b.audio.vbr || b.audio.fixing) return h("div", {class: "book-status warn"},
+    h("span", {class: "small-text", text: b.audio.fixing ? "Corrigindo o áudio… (1 a 2 minutos; pode continuar usando o app)"
+      : "O áudio deste livro é de taxa variável (comum em áudio baixado da internet): ao tocar uma frase, o app pode cair na frase vizinha. Corrigir converte o áudio para taxa fixa; a sincronização já feita continua valendo."}),
+    b.audio.fixing ? null : h("button", {class: "primary small", type: "button", onclick: async e => {
+      e.currentTarget.disabled = true; b.audio.fixing = true; renderLibrary();
+      try { await window.satzDesktop.fixBookAudio(b.id); setStatus("Áudio corrigido: agora cada frase toca do ponto certo.", "success"); }
+      catch (err) { setStatus(cleanIpcError(err, "Não consegui corrigir o áudio."), "error"); }
+      renderLibrary();
+    }}, "Corrigir o áudio"));
   if (b.sync.state === "running") {
     const bar = h("span");
     setWidth(bar, b.sync.pct || 0);
@@ -74,6 +84,7 @@ async function renderLibrary() {
 }
 async function importBook() {
   try {
+    setStatus("Escolha o EPUB e o áudio. Se o áudio precisar de ajuste, a importação leva 1 a 2 minutos.", "info");
     const b = await window.satzDesktop.importBook();
     if (!b) return;
     setStatus("Livro importado: " + b.title + ".", "success");
@@ -248,6 +259,9 @@ function renderBook() {
     h("div", {class: "reader-head"}, h("p", {class: "eyebrow"}, h("span", {lang: "de", text: book.title}), " · capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
     bar,
     warn ? h("p", {class: "notice warn", text: warn}) : null,
+    // Resumo do capítulo (anotação): para ler antes; já aberto no 1º passo do ouvir → ler → ouvir.
+    book.notes && book.notes.c && book.notes.c[reading.ch] ? h("details", {class: "rd-summary", open: !!(reading.cycle && reading.cycle.step === 1)},
+      h("summary", {text: "Resumo do capítulo (para ler antes)"}), h("p", {text: book.notes.c[reading.ch]})) : null,
     typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
     h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel", hidden: reading.flow}, detailPlaceholder())));
   if (reading.sel >= a && reading.sel <= b) { highlightSentence(reading.sel); renderDetail(); }

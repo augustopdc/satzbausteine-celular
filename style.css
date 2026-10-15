@@ -439,6 +439,10 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   .hero-actions { min-width: 0; width: 100%; }
   .summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+.book-status.warn { background: var(--warn-soft); border-color: var(--warn-line); }
+.rd-summary { margin: .3rem 0 .8rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.rd-summary summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
+.rd-summary p { margin: .45rem 0 0; }
 /* Ilustrações do livro */
 .rd-fig { margin: 1.1rem auto; text-align: center; }
 .rd-fig img { max-width: min(100%, 420px); max-height: 60vh; height: auto; border-radius: 6px; }
