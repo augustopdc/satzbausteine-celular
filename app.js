@@ -548,6 +548,7 @@ function showView(view) {
   if (view === "minhas") renderMinhas();
   if (view === "pron") renderPron();
   if (view === "reading") renderReading();
+  else if (typeof rdApplyFocus === "function") rdApplyFocus();
   if (view === "grammar") renderGrammar();
   if (view === "catalog") renderCatalog();
   if (view === "coverage") renderCoverage();

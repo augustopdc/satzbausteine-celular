@@ -675,7 +675,7 @@ function passageButton(i) {
     if (!on) toast("Trecho guardado para estudar depois.", "success");
   }}, on ? "✓ Estudar depois" : "📌 Estudar depois");
 }
-function updateSavedCount() { const btn = $("rdSavedBtn"); if (btn && reading.book) btn.textContent = "★ Guardados (" + savedWordsOf(reading.book.id).length + ")"; }
+function updateSavedCount() { const btn = $("rdSavedBtn"); if (btn && reading.book) btn.textContent = "★ (" + savedWordsOf(reading.book.id).length + ")"; }
 /* Conteúdo do balão do modo contínuo: o essencial e atalhos; o resto abre no painel. */
 function readerPopContent() {
   const i = reading.sel;

@@ -440,9 +440,12 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   .summary-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .book-status.warn { background: var(--warn-soft); border-color: var(--warn-line); }
-.rd-summary { margin: .3rem 0 .8rem; padding: .55rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-.rd-summary summary { cursor: pointer; font-weight: 600; font-size: .92rem; }
-.rd-summary p { margin: .45rem 0 0; }
+.rd-summary { margin: 0 0 1rem; padding: .7rem .95rem; max-width: 68ch; }
+.rd-summary p { margin: 0; line-height: 1.6; }
+.rd-chips { display: flex; flex-wrap: wrap; align-items: center; gap: .45rem; margin: 0 0 1rem; }
+.rd-chips .chip { min-height: 32px; padding: .2rem .8rem; }
+.rd-chips .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+.rd-chips .rd-diff .tag { font-size: .82rem; padding: .3rem .75rem; cursor: help; }
 /* Ilustrações do livro */
 .rd-fig { margin: 1.1rem auto; text-align: center; }
 .rd-fig img { max-width: min(100%, 420px); max-height: 60vh; height: auto; border-radius: 6px; }
@@ -854,7 +857,27 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .reader-head .eyebrow { margin-bottom: .2rem; }
 .reader-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; padding: .6rem .8rem; margin: 0 0 1rem;
   background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: var(--radius); }
-.reader-bar select { width: auto; max-width: 260px; }
+.reader-bar select { width: auto; max-width: 240px; }
+.reader-bar .on { color: var(--accent); }
+.rd-bar-end { margin-left: auto; }
+.rd-look-wrap { position: relative; }
+#rdLookBtn { font-family: var(--font-display); font-weight: 700; font-size: .95rem; }
+#rdLookBtn.on { background: var(--accent-soft); border-color: var(--accent); }
+.rd-look { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 310px; display: grid; gap: .65rem; padding: .9rem 1rem; box-shadow: var(--shadow-lg); }
+.rd-look[hidden] { display: none; }
+.rd-look p { margin: 0; }
+.rd-look-row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; font-weight: 600; font-size: .9rem; }
+.rd-look-row select { max-width: 200px; }
+.rd-look #rdPickBtn { justify-self: start; }
+/* Livro aberto: some o cabeçalho da página; em tela cheia, também o menu do app. */
+body.book-open #view-reading > .page-head { display: none; }
+@media (min-width: 601px) {
+  body.reading-focus .sidebar, body.reading-focus .footer { display: none !important; }
+  body.reading-focus .app { grid-template-columns: minmax(0, 1fr); }
+  body.reading-focus main { max-width: 1140px; padding-top: 1rem; }
+  body.reading-focus .reader { grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
+}
+@media (max-width: 600px) { #rdFocusBtn { display: none; } }
 .reader-controls { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .reader-controls .icon-btn { font-size: 1rem; }
 .reader { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.4rem; align-items: start; }
@@ -868,7 +891,7 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .rd-w.on { text-decoration: underline 2px var(--accent); text-underline-offset: 4px; }
 .rd-pt { display: block; font-size: .9rem; line-height: 1.5; color: var(--ink-3); margin: .1rem 0 .5rem; }
 .rd-end { margin: 2rem 0 1rem; }
-.reader-detail { position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow: auto; display: grid; gap: 1rem; padding: 1rem 1.1rem; }
+.reader-detail { position: sticky; top: calc(var(--rdbar, 60px) + 14px); max-height: calc(100vh - var(--rdbar, 60px) - 30px); overflow: auto; display: grid; gap: 1rem; padding: 1rem 1.1rem; }
 .reader-detail section + section { border-top: 1px solid var(--line); padding-top: .9rem; }
 .rd-word p, .rd-sentence p { margin: .3rem 0; }
 .rd-word-form { font-size: 1.35rem; font-family: var(--font-display); }
@@ -947,3 +970,44 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .scene-card-row { display: flex; gap: .6rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .scene-card.later { opacity: .6; }
 .scene-card.later:hover, .scene-card.later:focus-within { opacity: 1; }
+
+/* ---------- Leitura no celular: barra fina em cima, player embaixo, gaveta da frase ---------- */
+.rd-player { flex-wrap: nowrap; }
+.rd-sheet-head { display: none; }
+@media (max-width: 600px) {
+  :root { --rdplayer: calc(58px + env(safe-area-inset-bottom)); }
+  /* Livro aberto: some a barra de abas (o ← volta para os livros) e o título da página. */
+  body.book-open .sidebar, body.book-open .reader-head { display: none; }
+  body.book-open main { padding-bottom: calc(var(--rdplayer) + 46vh); padding-top: .6rem; }
+  body.book-open .toasts { bottom: calc(var(--rdplayer) + .6rem); }
+  .reader-bar.rd-bar-phone { flex-wrap: nowrap; gap: .4rem; padding: .35rem .45rem; margin-bottom: .7rem; transition: transform .2s ease, opacity .2s ease; }
+  .rd-bar-phone select { flex: 1; min-width: 0; max-width: none; }
+  .rd-bar-phone .icon-btn { width: 40px; flex: none; }
+  body.rd-bar-up .reader-bar.rd-bar-phone { transform: translateY(calc(-100% - 14px)); opacity: 0; pointer-events: none; }
+  .rd-look { position: fixed; left: .75rem; right: .75rem; top: auto; width: auto; margin-top: .5rem; max-height: 70vh; overflow: auto; }
+  .rd-look-more { gap: .5rem; flex-wrap: wrap; }
+  .reader-text { padding: 0 .3rem; }
+  .rd-chips { margin-bottom: .8rem; }
+  /* Player: faixa fixa embaixo, na altura do polegar. */
+  .rd-player {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 36; justify-content: center; gap: .5rem;
+    height: var(--rdplayer); padding: .4rem .75rem env(safe-area-inset-bottom);
+    background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  .rd-player #rdPlay { flex: 1; max-width: 170px; min-height: 42px; }
+  .rd-player select { width: auto; flex: none; }
+  /* Gaveta: fechada até tocar no texto; pequena mostra palavra, frase e tradução; puxando, abre inteira. */
+  .reader-detail.rd-sheet {
+    position: fixed; left: 0; right: 0; top: auto; bottom: var(--rdplayer); z-index: 35; max-height: 50vh; overflow: auto;
+    border-radius: 18px 18px 0 0; border-bottom: 0; padding: 0 1.1rem 1rem; gap: .7rem; box-shadow: 0 -8px 30px rgba(0, 0, 0, .14);
+    overscroll-behavior: contain;
+  }
+  .reader-detail.rd-sheet.full { max-height: calc(100vh - var(--rdplayer) - 3.5rem); }
+  .reader-detail.rd-sheet[hidden] { display: none; }
+  .rd-sheet-head { display: flex; position: sticky; top: 0; z-index: 1; justify-content: center; align-items: center; margin: 0 -1.1rem; padding: .35rem 0 .1rem; background: var(--surface); }
+  .rd-grip { width: 100%; min-height: 26px; border: 0; background: transparent; padding: 0; display: flex; justify-content: center; }
+  .rd-grip span { width: 42px; height: 5px; border-radius: 3px; background: var(--line-strong); }
+  .rd-sheet-x { position: absolute; right: .4rem; top: .15rem; width: 34px; height: 34px; min-height: 34px; font-size: .9rem; }
+  .rd-sheet.peek .rd-examples, .rd-sheet.peek .rd-sentence > .row, .rd-sheet.peek .rd-grammar { display: none; }
+  .reader-detail.rd-sheet section + section { padding-top: .7rem; }
+}

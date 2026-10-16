@@ -168,6 +168,8 @@ async function openBook(id, keepPlace) {
   reading.clickPlays = s.clickPlays !== false;
   reading.ptMode = RD_PT_MODES[s.ptMode] ? s.ptMode : s.showPt ? "abaixo" : "painel";
   reading.flow = !!s.flow;
+  reading.focus = s.focus !== false;
+  reading.lookOpen = false; reading.summaryOpen = null; reading.sheet = null;
   reading.fs = Math.min(1.8, Math.max(.9, Number(s.fs) || 1.14));
   reading.lh = [1.6, 1.85, 2.15].includes(Number(s.lh)) ? Number(s.lh) : 1.85;
   reading.pick = []; reading.wk = -1; reading.picking = false;
@@ -180,6 +182,8 @@ function closeBook() {
   stopReadingAudio();
   reading.book = null;
   reading.cycle = null;
+  reading.lookOpen = false;
+  rdApplyFocus();
   renderLibrary();
 }
 function hasSync() { return !!(reading.book && reading.book.audio && reading.book.sync); }
@@ -206,28 +210,46 @@ function renderBook() {
     ...Object.entries(RD_PT_MODES).map(([k, l]) => new Option(l, k)));
   ptMode.value = reading.ptMode;
   ptMode.addEventListener("change", () => { reading.ptMode = ptMode.value; saveReadingState({ptMode: reading.ptMode}); renderBook(); });
-  const bar = h("div", {class: "reader-bar"},
-    h("button", {class: "quiet small", type: "button", onclick: closeBook}, "← Livros"),
-    chapterSelect,
-    h("div", {class: "reader-controls"},
-      h("button", {class: "icon-btn", type: "button", title: "Frase anterior (←)", "aria-label": "Frase anterior", onclick: () => stepSentence(-1)}, "⏮"),
-      h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, "▶ Ler ouvindo"),
-      h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, "⏭"),
-      h("button", {class: "small", type: "button", title: "Repetir a frase (R)", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, "Repetir"),
-      speed),
-    h("label", {class: "inline-check", title: "Toca a frase quando você escolhe outra frase"}, h("input", {type: "checkbox", checked: reading.clickPlays, onchange: e => { reading.clickPlays = e.target.checked; saveReadingState({clickPlays: reading.clickPlays}); }}), "Tocar ao clicar"),
-    notes ? ptMode : null,
-    h("div", {class: "reader-controls"},
-      h("label", {class: "inline-check", title: "Tela limpa: a consulta abre num balão ao lado da palavra, sem o painel lateral"},
-        h("input", {id: "rdFlow", type: "checkbox", checked: reading.flow, onchange: e => { reading.flow = e.target.checked; saveReadingState({flow: reading.flow}); renderBook(); }}), "Leitura contínua"),
-      h("button", {class: "icon-btn", type: "button", title: "Letra menor", "aria-label": "Letra menor", onclick: () => setReaderLook(-.08, 0)}, "A−"),
-      h("button", {class: "icon-btn", type: "button", title: "Letra maior", "aria-label": "Letra maior", onclick: () => setReaderLook(.08, 0)}, "A+"),
-      h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, "↕"),
-      h("button", {id: "rdPickBtn", class: "quiet small" + (reading.picking ? " on" : ""), type: "button", title: "Toque em várias palavras da mesma frase para explicar a expressão (ou use Ctrl + clique)",
-        onclick: () => { reading.picking = !reading.picking; if (!reading.picking) reading.pick = []; renderBook(); }}, reading.picking ? "✓ Marcando expressão" : "Marcar expressão")),
-    h("div", {class: "reader-controls"},
-      h("button", {class: "small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, "🎯 Praticar o capítulo"),
-      h("button", {id: "rdSavedBtn", class: "quiet small", type: "button", onclick: () => renderSavedWords()}, "★ Guardados (" + savedWordsOf(book.id).length + ")")));
+  const togglePick = () => { reading.picking = !reading.picking; if (!reading.picking) reading.pick = []; renderBook(); };
+  const phone = rdPhone();
+  const practiceBtn = h("button", {class: "small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, phone ? "🎯 Praticar o capítulo" : "🎯 Praticar");
+  const savedBtn = h("button", {id: "rdSavedBtn", class: "quiet small", type: "button", title: "Palavras e expressões guardadas deste livro", onclick: () => renderSavedWords()}, "★ (" + savedWordsOf(book.id).length + ")");
+  // Ajustes de exibição (“Aa”): ficam num menu para a barra caber numa linha só. No celular, praticar e guardados também.
+  const look = h("div", {id: "rdLook", class: "rd-look panel", hidden: !reading.lookOpen},
+    notes ? h("label", {class: "rd-look-row"}, h("span", {text: "Tradução"}), ptMode) : null,
+    h("div", {class: "rd-look-row"}, h("span", {text: "Letra"}),
+      h("div", {class: "reader-controls"},
+        h("button", {class: "icon-btn", type: "button", title: "Letra menor", "aria-label": "Letra menor", onclick: () => setReaderLook(-.08, 0)}, "A−"),
+        h("button", {class: "icon-btn", type: "button", title: "Letra maior", "aria-label": "Letra maior", onclick: () => setReaderLook(.08, 0)}, "A+"),
+        h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, "↕"))),
+    h("label", {class: "inline-check", title: "Tela limpa: a consulta abre num balão ao lado da palavra, sem o painel lateral"},
+      h("input", {id: "rdFlow", type: "checkbox", checked: reading.flow, onchange: e => { reading.flow = e.target.checked; saveReadingState({flow: reading.flow}); renderBook(); }}), phone ? "Leitura contínua (balão em vez da gaveta)" : "Leitura contínua (sem painel lateral)"),
+    h("label", {class: "inline-check", title: "Toca a frase quando você escolhe outra frase"}, h("input", {type: "checkbox", checked: reading.clickPlays, onchange: e => { reading.clickPlays = e.target.checked; saveReadingState({clickPlays: reading.clickPlays}); }}), "Tocar a frase ao clicar"),
+    h("button", {id: "rdPickBtn", class: "quiet small" + (reading.picking ? " on" : ""), type: "button", title: "Toque em várias palavras da mesma frase para explicar a expressão (ou use Ctrl + clique)",
+      onclick: togglePick}, reading.picking ? "✓ Marcando expressão" : phone ? "Marcar expressão" : "Marcar expressão (ou Ctrl + clique)"),
+    phone ? h("div", {class: "row rd-look-more"}, practiceBtn, savedBtn)
+      : h("p", {class: "muted small-text", text: "Teclado: Espaço lê ouvindo · ← → frase · R repete · D devagar · T tradução · F tela cheia"}));
+  const lookWrap = h("div", {class: "rd-look-wrap"},
+    h("button", {id: "rdLookBtn", class: "icon-btn" + (reading.lookOpen ? " on" : ""), type: "button", title: "Tradução, tamanho da letra, leitura contínua", "aria-label": "Ajustes de exibição", "aria-expanded": String(!!reading.lookOpen),
+      onclick: e => { e.stopPropagation(); rdToggleLook(); }}, "Aa"),
+    look);
+  const player = h("div", {class: "reader-controls rd-player"},
+    h("button", {class: "icon-btn", type: "button", title: "Frase anterior (←)", "aria-label": "Frase anterior", onclick: () => stepSentence(-1)}, "⏮"),
+    h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, "▶ Ler ouvindo"),
+    h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, "⏭"),
+    h("button", {class: "icon-btn", type: "button", title: "Repetir a frase (R)", "aria-label": "Repetir a frase", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, "↻"),
+    speed);
+  const pickChip = reading.picking ? h("button", {class: "quiet small on", type: "button", title: "Parar de marcar a expressão", onclick: togglePick}, phone ? "✓ ✕" : "✓ Marcando expressão ✕") : null;
+  const bar = phone
+    ? h("div", {class: "reader-bar rd-bar-phone"},
+      h("button", {class: "icon-btn quiet", type: "button", title: "Voltar à lista de livros", "aria-label": "Voltar à lista de livros", onclick: closeBook}, "←"),
+      chapterSelect, pickChip, lookWrap)
+    : h("div", {class: "reader-bar"},
+      h("button", {class: "quiet small", type: "button", title: "Voltar à lista de livros", onclick: closeBook}, "← Livros"),
+      chapterSelect, player, pickChip,
+      h("div", {class: "reader-controls rd-bar-end"}, practiceBtn, savedBtn, lookWrap,
+        h("button", {id: "rdFocusBtn", class: "icon-btn", type: "button", title: reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)", "aria-label": "Tela cheia de leitura",
+          onclick: () => rdSetFocus(!reading.focus)}, reading.focus ? "⤡" : "⛶")));
   const warn = !book.audio ? "Este livro não tem áudio. Adicione o MP3 na lista de livros para ouvir frase por frase."
     : !book.sync ? (book.status && book.status.sync.state === "running" ? "Sincronizando o áudio (" + book.status.sync.pct + "%). Quando terminar, as frases ficam clicáveis para ouvir." : "O áudio ainda não foi sincronizado. Volte à lista de livros e toque em “Sincronizar áudio”.") : "";
   const [a, b] = chapterRange(reading.ch);
@@ -255,17 +277,128 @@ function renderBook() {
   text.addEventListener("click", onReaderClick);
   applyReaderLook(text);
   hideReaderPop();
+  // Resumo do capítulo (anotação): para ler antes; já aberto no 1º passo do ouvir → ler → ouvir.
+  const summary = book.notes && book.notes.c && book.notes.c[reading.ch];
+  const summaryOpen = !!summary && (reading.summaryOpen === reading.ch || !!(reading.cycle && reading.cycle.step === 1));
   fill($("readingBook"),
     h("div", {class: "reader-head"}, h("p", {class: "eyebrow"}, h("span", {lang: "de", text: book.title}), " · capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
     bar,
     warn ? h("p", {class: "notice warn", text: warn}) : null,
-    // Resumo do capítulo (anotação): para ler antes; já aberto no 1º passo do ouvir → ler → ouvir.
-    book.notes && book.notes.c && book.notes.c[reading.ch] ? h("details", {class: "rd-summary", open: !!(reading.cycle && reading.cycle.step === 1)},
-      h("summary", {text: "Resumo do capítulo (para ler antes)"}), h("p", {text: book.notes.c[reading.ch]})) : null,
-    typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
-    h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel", hidden: reading.flow}, detailPlaceholder())));
+    rdChapterChips(summary, summaryOpen),
+    summaryOpen ? h("div", {id: "rdSummary", class: "rd-summary panel"}, h("p", {text: summary})) : null,
+    reading.cycle && typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
+    h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel" + (phone ? " rd-sheet " + (reading.sheet === "full" ? "full" : "peek") : ""), hidden: reading.flow || (phone && !reading.sheet)}, detailPlaceholder())),
+    phone ? player : null);
   if (reading.sel >= a && reading.sel <= b) { highlightSentence(reading.sel); renderDetail(); }
   updateReaderControls();
+  rdApplyFocus();
+  rdWatchBar();
+  document.body.classList.remove("rd-bar-up");
+}
+/* Linha curta antes do texto: resumo do capítulo, ouvir → ler → ouvir e a dificuldade (explicação no título). */
+function rdChapterChips(summary, summaryOpen) {
+  const chips = [
+    summary ? h("button", {id: "rdSummaryBtn", class: "chip small" + (summaryOpen ? " on" : ""), type: "button", "aria-expanded": String(summaryOpen), title: "Resumo do capítulo, para ler antes",
+      onclick: () => { reading.summaryOpen = summaryOpen ? null : reading.ch; renderBook(); }}, "📖 Resumo") : null,
+    !reading.cycle && hasSync() && typeof rdCycleStart === "function" ? h("button", {class: "chip small", type: "button", title: "Ouvir o capítulo sem texto, ler com apoio e ouvir de novo", onclick: rdCycleStart}, "🔁 Ouvir → ler → ouvir") : null,
+    typeof rdDifficultyNode === "function" ? rdDifficultyNode(true) : null].filter(Boolean);
+  return chips.length ? h("div", {class: "rd-chips"}, ...chips) : null;
+}
+/* Tela cheia de leitura: sem o menu do app e sem o cabeçalho da página, só com um livro aberto na Leitura. */
+function rdApplyFocus() {
+  const open = currentView === "reading" && !!reading.book && !$("readingBook").hidden;
+  document.body.classList.toggle("book-open", open);
+  document.body.classList.toggle("reading-focus", open && !!reading.focus);
+}
+function rdSetFocus(on) {
+  reading.focus = !!on;
+  saveReadingState({focus: reading.focus});
+  const btn = $("rdFocusBtn");
+  if (btn) { btn.textContent = reading.focus ? "⤡" : "⛶"; btn.title = reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)"; }
+  rdApplyFocus();
+  hideReaderPop();
+}
+function rdToggleLook(open = !reading.lookOpen) {
+  reading.lookOpen = open;
+  if (open) document.body.classList.remove("rd-bar-up");
+  const menu = $("rdLook"), btn = $("rdLookBtn");
+  if (menu) menu.hidden = !open;
+  if (btn) { btn.classList.toggle("on", open); btn.setAttribute("aria-expanded", String(open)); }
+}
+document.addEventListener("click", e => { if (reading.lookOpen && !e.target.closest(".rd-look-wrap")) rdToggleLook(false); });
+/* O painel lateral fica preso logo abaixo da barra, qualquer que seja a altura dela. */
+function rdWatchBar() {
+  const bar = document.querySelector("#readingBook .reader-bar");
+  if (!bar || typeof ResizeObserver === "undefined") return;
+  if (reading.barObs) reading.barObs.disconnect();
+  reading.barObs = new ResizeObserver(() => $("readingBook").style.setProperty("--rdbar", Math.ceil(bar.offsetHeight) + "px"));
+  reading.barObs.observe(bar);
+}
+// ---------- Celular: player embaixo, gaveta da frase e barra que se esconde ao rolar ----------
+const rdPhoneMq = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(max-width: 600px)") : null;
+function rdPhone() { return !!(rdPhoneMq && rdPhoneMq.matches); }
+if (rdPhoneMq && rdPhoneMq.addEventListener) rdPhoneMq.addEventListener("change", () => { if (reading.book && reading.view === "text" && !$("readingBook").hidden) renderBook(); });
+/* Altura coberta embaixo (player + gaveta aberta), para a frase escolhida não ficar escondida. */
+function rdBottomCover() {
+  let px = 0;
+  for (const el of all("#readingBook .rd-player, #rdDetail.rd-sheet")) if (!el.hidden) px += el.getBoundingClientRect().height;
+  return px;
+}
+/* Gaveta: fechada (null), pequena ("peek") ou aberta ("full"). Tocar no texto abre pequena. */
+function rdOpenSheet() {
+  if (!rdPhone() || reading.flow || reading.sheet) return;
+  rdSetSheet("peek");
+}
+function rdSetSheet(state) {
+  reading.sheet = state || null;
+  const box = $("rdDetail");
+  if (!box || !box.classList.contains("rd-sheet")) return;
+  box.hidden = !reading.sheet;
+  box.classList.toggle("full", reading.sheet === "full");
+  box.classList.toggle("peek", reading.sheet === "peek");
+  const grip = box.querySelector(".rd-grip");
+  if (grip) grip.setAttribute("aria-label", reading.sheet === "full" ? "Mostrar menos" : "Mostrar mais");
+  if (reading.sheet === "peek") box.scrollTop = 0;
+  if (reading.sheet && reading.sel >= 0) requestAnimationFrame(() => scrollToSentence(reading.sel));
+}
+/* Topo da gaveta: puxador (toque alterna pequena/aberta; arrastar para cima abre, para baixo fecha) e ✕. */
+function rdSheetHead() {
+  if (!rdPhone() || reading.flow) return null;
+  let y0 = null;
+  const grip = h("button", {class: "rd-grip", type: "button", "aria-label": reading.sheet === "full" ? "Mostrar menos" : "Mostrar mais",
+    onclick: () => rdSetSheet(reading.sheet === "full" ? "peek" : "full")}, h("span"));
+  const head = h("div", {class: "rd-sheet-head"}, grip,
+    h("button", {class: "icon-btn quiet rd-sheet-x", type: "button", "aria-label": "Fechar", onclick: () => rdSetSheet(null)}, "✕"));
+  head.addEventListener("touchstart", e => { y0 = e.touches[0].clientY; }, {passive: true});
+  head.addEventListener("touchend", e => {
+    if (y0 == null) return;
+    const dy = e.changedTouches[0].clientY - y0; y0 = null;
+    if (dy < -30) rdSetSheet("full");
+    else if (dy > 30) rdSetSheet(reading.sheet === "full" ? "peek" : null);
+  });
+  return head;
+}
+/* Rolar para baixo esconde a barra de cima; rolar um pouco para cima mostra de novo. */
+let rdLastY = 0;
+if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("scroll", () => {
+  const y = window.scrollY;
+  // Rolagem feita pelo app (abrir na última frase, acompanhar o áudio) não esconde a barra.
+  if (!rdPhone() || !document.body.classList.contains("book-open") || reading.lookOpen || Date.now() - (reading.autoScroll || 0) < 1200) { rdLastY = y; if (y < 60) document.body.classList.remove("rd-bar-up"); return; }
+  if (y > rdLastY + 8 && y > 90) document.body.classList.add("rd-bar-up");
+  else if (y < rdLastY - 8 || y < 60) document.body.classList.remove("rd-bar-up");
+  if (Math.abs(y - rdLastY) > 8) rdLastY = y;
+}, {passive: true});
+/* T: mostra ou esconde a tradução da frase escolhida, em qualquer modo de tradução. */
+function rdToggleTranslation() {
+  const i = reading.sel, s = reading.order[i], note = s && reading.book.notes && reading.book.notes.s && reading.book.notes.s[s.id];
+  if (!note || !note.pt) { setStatus(i < 0 ? "Escolha uma frase primeiro." : "Esta frase não tem tradução anotada.", "info"); return; }
+  const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]'), next = el && el.nextElementSibling;
+  if (next && next.classList.contains("rd-pt")) { next.classList.toggle("shown"); return; }
+  if (reading.flow) { const w = el && (el.querySelector(".rd-w.on") || el.querySelector(".rd-w")); if (w) showReaderPop(w); return; }
+  const box = $("rdDetail"), shown = box && box.querySelector(".rd-translation");
+  if (shown && reading.ptMode === "pedir") { renderDetail(); return; }
+  const ask = box && [...box.querySelectorAll("button")].find(b => b.textContent === "Ver tradução");
+  if (ask) ask.click();
 }
 /* Palavras da frase com o índice (k) de cada uma: é a chave do significado por ocorrência e das expressões. */
 function sentenceWords(text) { return text.split(/([\p{L}\p{N}]+(?:[-'’][\p{L}\p{N}]+)*)/u); }
@@ -279,7 +412,7 @@ function sentenceNode(i) {
   return span;
 }
 function detailPlaceholder() {
-  return h("p", {class: "muted small-text", text: "Toque numa palavra: a frase toca uma vez e aqui aparecem a palavra, a frase e a gramática. Outras palavras da mesma frase não repetem o áudio; para ouvir de novo, toque no espaço entre as palavras, em “Ouvir” ou aperte R. Teclado: Espaço lê ouvindo, ← → trocam de frase, D devagar."});
+  return h("p", {class: "muted small-text", text: "Toque numa palavra: a frase toca uma vez e aqui aparecem a palavra, a frase e a gramática. Outras palavras da mesma frase não repetem o áudio; para ouvir de novo, toque no espaço entre as palavras, em “Ouvir” ou aperte R. Teclado: Espaço lê ouvindo, ← → trocam de frase, D devagar, T mostra a tradução, F tela cheia."});
 }
 /* Clique no texto: palavra da frase que já está escolhida só mostra a palavra (não relê a frase);
    frase nova toca o trecho; clique fora das palavras (espaço, pontuação) repete a frase.
@@ -296,11 +429,13 @@ function onReaderClick(e) {
     if (!same) reading.pick = [];
     reading.pick = reading.pick.includes(k) ? reading.pick.filter(x => x !== k) : [...reading.pick, k].sort((a, b) => a - b);
     reading.sel = i; reading.word = ""; reading.wk = -1;
+    rdOpenSheet();
     highlightSentence(i); renderDetail(); hideReaderPop();
     if (reading.flow && reading.pick.length) showReaderPop(w);
     return;
   }
   reading.pick = [];
+  rdOpenSheet();
   const listening = reading.follow && reading.audio && !reading.audio.paused;
   if (listening) { reading.word = word; reading.wk = k; if (!same) reading.sel = i; highlightSentence(i); renderDetail(); if (reading.flow && w) showReaderPop(w); return; }
   selectSentence(i, word, k);
@@ -370,6 +505,12 @@ function scrollToSentence(i, block = "nearest") {
   const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]');
   if (!el) return;
   const r = el.getBoundingClientRect();
+  if (rdPhone()) {
+    reading.autoScroll = Date.now();
+    const bottom = window.innerHeight - rdBottomCover() - 16;
+    if (block === "center" || r.top < 70 || r.bottom > bottom) window.scrollBy({top: r.top - Math.max(70, (bottom - r.height) * .35), behavior: "smooth"});
+    return;
+  }
   if (block === "center" || r.top < 110 || r.bottom > window.innerHeight - 40) el.scrollIntoView({block: "center", behavior: "smooth"});
 }
 
@@ -435,10 +576,14 @@ function renderDetail() {
   const i = reading.sel, s = reading.order[i], note = reading.book.notes && reading.book.notes.s && reading.book.notes.s[s.id];
   const topics = note && Array.isArray(note.t) && note.t.length ? note.t.filter(id => GRAMMAR_BY_ID.has(id)) : bookGrammar(i);
   const picked = (reading.pick || []).length;
-  fill(box,
+  fill(box, rdSheetHead(),
     picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? wordDetail(reading.word, i, reading.wk) : null,
     h("section", {class: "rd-sentence"},
       h("p", {class: "rd-sent-de", lang: "de", text: s.text}),
+      note && note.pt ? (reading.ptMode === "pedir"
+        ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
+        : h("p", {class: "rd-translation", text: note.pt})) : null,
+      note && note.g ? h("p", {class: "small-text", text: note.g}) : null,
       h("div", {class: "row"},
         h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i)}, icon("volume", 16), "Ouvir"),
         h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i, true)}, icon("slow", 16), "Devagar"),
@@ -449,10 +594,6 @@ function renderDetail() {
           toast("Rascunho criado em Minhas frases: confira e salve lá.", "success");
         }}, "Virar cartão"),
         typeof passageButton === "function" ? passageButton(i) : null),
-      note && note.pt ? (reading.ptMode === "pedir"
-        ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
-        : h("p", {class: "rd-translation", text: note.pt})) : null,
-      note && note.g ? h("p", {class: "small-text", text: note.g}) : null,
       topics.length ? h("div", {class: "rd-grammar"}, h("span", {class: "muted small-text", text: "Gramática nesta frase:"}),
         ...topics.map(id => { const t = GRAMMAR_BY_ID.get(id); return h("div", {class: "rd-topic"},
           h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, "📘 " + t.title), h("p", {class: "muted small-text", text: t.short})); }))
@@ -594,6 +735,7 @@ function markChapterRead() {
 function readingKey(e) {
   if (!reading.book || $("readingBook").hidden) return false;
   if (reading.view !== "text") return typeof bookPracticeKey === "function" ? bookPracticeKey(e) : false;
+  if (e.key === "Escape" && reading.lookOpen) { e.preventDefault(); rdToggleLook(false); return true; }
   if (e.key === "Escape" && (document.getElementById("rdPop") || (reading.pick || []).length)) {
     e.preventDefault(); hideReaderPop(); reading.pick = []; if (reading.sel >= 0) { highlightSentence(reading.sel); renderDetail(); } return true;
   }
@@ -603,6 +745,8 @@ function readingKey(e) {
   if (e.key === "ArrowLeft") { e.preventDefault(); stepSentence(-1); return true; }
   if (key === "r" && reading.sel >= 0) { e.preventDefault(); playSentence(reading.sel); return true; }
   if (key === "d" && reading.sel >= 0) { e.preventDefault(); playSentence(reading.sel, true); return true; }
+  if (key === "t") { e.preventDefault(); rdToggleTranslation(); return true; }
+  if (key === "f") { e.preventDefault(); rdSetFocus(!reading.focus); return true; }
   return false;
 }
 function bindReading() {

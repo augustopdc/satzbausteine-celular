@@ -57,15 +57,18 @@ function rdBookDifficulty() {
 }
 const rdPct = x => Math.round(x * 100) + "%";
 function rdChapterSuffix(ci) { const d = rdBookDifficulty().chapters[ci]; return d && d.words ? " · " + rdPct(d.level) : ""; }
-function rdDifficultyNode() {
+/* compact: só a etiqueta (com a porcentagem), e a explicação vai no título; sem compact, a etiqueta e a frase por extenso. */
+function rdDifficultyNode(compact) {
   const d = rdBookDifficulty(), c = d.chapters[reading.ch];
   if (!c || !c.words) return null;
   const [, label, hint] = rdDiffLabel(c.level);
   const easier = d.chapters.map((x, i) => [i, x.level]).filter(([i, l]) => i !== reading.ch && l > c.level + .01).sort((a, b) => b[1] - a[1])[0];
-  return h("div", {class: "rd-diff", title: "Proporção das palavras do capítulo que aparecem nas frases do app até o nível " + (LEVELS[LEVELS.indexOf(currentLevel()) + 1] || currentLevel()) + ". Para ler com folga, o ideal é perto de 98%."},
-    h("span", {class: "tag rd-diff-" + RD_DIFF.findIndex(x => x[1] === label), text: label}),
-    h("span", {class: "muted small-text", text: rdPct(c.level) + " das palavras o app já ensina até o seu nível · " + rdPct(c.mine) + " você já estudou · " + hint
-      + (easier && c.level < .95 ? " · o capítulo " + (easier[0] + 1) + " é mais fácil (" + rdPct(easier[1]) + ")" : "")}));
+  const why = "Proporção das palavras do capítulo que aparecem nas frases do app até o nível " + (LEVELS[LEVELS.indexOf(currentLevel()) + 1] || currentLevel()) + ". Para ler com folga, o ideal é perto de 98%.";
+  const detail = rdPct(c.level) + " das palavras o app já ensina até o seu nível · " + rdPct(c.mine) + " você já estudou · " + hint
+    + (easier && c.level < .95 ? " · o capítulo " + (easier[0] + 1) + " é mais fácil (" + rdPct(easier[1]) + ")" : "");
+  const cls = "tag rd-diff-" + RD_DIFF.findIndex(x => x[1] === label);
+  if (compact) return h("span", {class: "rd-diff", tabindex: "0", title: detail + ". " + why}, h("span", {class: cls, text: label + " · " + rdPct(c.level)}));
+  return h("div", {class: "rd-diff", title: why}, h("span", {class: cls, text: label}), h("span", {class: "muted small-text", text: detail}));
 }
 function rdBookCardDifficulty(b) {
   const d = (readingState().diff || {})[b.id];
@@ -185,8 +188,8 @@ function rdCycleFinish(answer) {
 }
 function rdCycleBanner() {
   const c = reading.cycle;
-  if (!c) return hasSync() ? h("div", {class: "row rd-cycle-start"}, h("button", {class: "small", type: "button", title: "Ouvir o capítulo sem texto, ler com apoio e ouvir de novo", onclick: rdCycleStart}, "🔁 Ouvir → ler → ouvir"),
-    rdDifficultyNode()) : rdDifficultyNode();
+  // Sem ciclo, o botão de começar fica na linha de etiquetas do capítulo (rdChapterChips, em leitura.js).
+  if (!c) return null;
   if (c.step === 4) return h("div", {class: "panel rd-cycle done"},
     h("b", {text: "Ciclo concluído · capítulo " + (c.ch + 1)}),
     h("p", {text: "Na segunda escuta, você entendeu…"}),
