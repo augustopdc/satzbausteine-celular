@@ -250,7 +250,7 @@ function hasAnyProgress(p = progress) {
   return Object.keys(p.cards || {}).length > 0 || Object.keys(p.days || {}).length > 0 || Object.keys((p.mine || {}).items || {}).length > 0
     || Object.keys(practice.scenes || {}).length > 0 || Object.keys(practice.pron || {}).length > 0
     || ((practice.conversa || {}).sessions || []).length > 0 || ((practice.f432 || {}).sessions || []).length > 0 || Object.keys((practice.reading || {}).days || {}).length > 0
-    || Object.keys((practice.gram || {}).topics || {}).length > 0 || Object.keys((practice.bookWords || {}).items || {}).length > 0 || !!(p.schedule && p.schedule.updatedAt);
+    || Object.keys((practice.gram || {}).topics || {}).length > 0 || Object.keys((practice.bookWords || {}).items || {}).length > 0 || Object.keys((practice.escrita || {}).texts || {}).length > 0 || !!(p.schedule && p.schedule.updatedAt);
 }
 function idb(req) { return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
 function openDataDB() {
@@ -527,7 +527,7 @@ async function importTSV(files) {
 }
 
 // ---------- Navegação ----------
-const VIEWS = ["home", "practice", "scenes", "conversa", "minhas", "pron", "reading", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
+const VIEWS = ["home", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
 function showView(view) {
   if (!VIEWS.includes(view)) return;
   if (session.active && view !== "practice") endSession();
@@ -548,6 +548,7 @@ function showView(view) {
   if (view === "minhas") renderMinhas();
   if (view === "pron") renderPron();
   if (view === "reading") renderReading();
+  if (view === "escrita") renderEscrita();
   else if (typeof rdApplyFocus === "function") rdApplyFocus();
   if (view === "grammar") renderGrammar();
   if (view === "catalog") renderCatalog();
@@ -2101,6 +2102,7 @@ function sanitizeProgress(source) {
   if (practice.reading) result.practice.reading = sanitizeReadingLog(practice.reading);
   if (practice.gram) result.practice.gram = sanitizeGram(practice.gram);
   if (practice.bookWords) result.practice.bookWords = sanitizeBookWords(practice.bookWords);
+  if (practice.escrita) result.practice.escrita = sanitizeEscrita(practice.escrita);
   result.schedule = sanitizeSchedule(source.schedule);
   result.mine = sanitizeMine(source.mine);
   return result;
@@ -2168,6 +2170,7 @@ async function mergeIncoming(parsed, {settings: withSettings}) {
   if (incoming.practice.reading) progress.practice.reading = mergeReadingLog(progress.practice.reading, incoming.practice.reading);
   if (incoming.practice.gram) progress.practice.gram = mergeGram(progress.practice.gram, incoming.practice.gram);
   if (incoming.practice.bookWords) progress.practice.bookWords = mergeBookWords(progress.practice.bookWords, incoming.practice.bookWords);
+  if (incoming.practice.escrita) progress.practice.escrita = mergeEscrita(progress.practice.escrita, incoming.practice.escrita);
   if (incoming.schedule.updatedAt > ((progress.schedule || {}).updatedAt || 0)) progress.schedule = incoming.schedule;
   progress.mine = mergeMine(progress.mine, incoming.mine);
   applyMine();
@@ -2176,6 +2179,7 @@ async function mergeIncoming(parsed, {settings: withSettings}) {
   saveProgress(changed);
   await flushProgress();
   if (changed.length && !session.active) refreshAll();
+  if (incoming.practice.escrita && typeof escritaAfterMerge === "function") escritaAfterMerge();
   return changed.length;
 }
 async function importProgress(file) {
@@ -2622,6 +2626,8 @@ async function init() {
   showView("home");
   // GitHub em paralelo: se trouxer progresso, o aviso de restauração some sozinho.
   if (typeof cloudSync === "function") cloudSync({force: true});
+  // Textos da Escrita que ficaram sem correção (o app fechou no meio, ou vieram do celular sem sincronização nova).
+  if (typeof escritaPump === "function") setTimeout(escritaPump, 6000);
   await offerRestore();
 }
 init().then(() => { document.documentElement.dataset.ready = "true"; }).catch(e => {

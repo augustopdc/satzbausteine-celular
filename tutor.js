@@ -53,8 +53,11 @@ function tutorPackData(days, revlog, now = Date.now()) {
   const scenePick = scenes.map(s => ({s, st: sceneStats(s.id)})).sort((a, b) => (a.st ? a.st.best : -1) - (b.st ? b.st.best : -1))[0];
   const studyDays = Object.keys(progress.days || {}).filter(d => dayStart(d) >= dayStart(dateKey(new Date(since)))).length;
   const read = typeof rdDiarySummary === "function" ? rdDiarySummary(days, now) : null;
+  // Textos da Escrita corrigidos pela IA no período: o tutor confere as correções.
+  const escrita = Object.values((((progress.practice || {}).escrita || {}).texts) || {}).filter(t => !t.deleted && t.fb && t.at >= since)
+    .sort((a, b) => b.at - a.at).slice(0, 5).map(t => ({title: t.title, at: t.at, v1: t.v1, erros: t.fb.erros}));
   return {days, since, level, stuck, convSessions: convSessions.length, convErrors: convErrors.slice(0, 12), f432, mine, toCheck, reasons, reading: read && read.ms >= 60000 ? read : null,
-    scene: scenePick ? scenePick.s : null, studyDays, reviews: (revlog || []).filter(r => r.ts >= since).length};
+    scene: scenePick ? scenePick.s : null, escrita, studyDays, reviews: (revlog || []).filter(r => r.ts >= since).length};
 }
 function tutorReadingLine(r) {
   return "Leitura em alemão: " + Math.round(r.ms / 60000) + " min em " + r.days + (r.days === 1 ? " dia" : " dias") + (r.cycles ? " · " + r.cycles + (r.cycles === 1 ? " ciclo" : " ciclos") + " ouvir → ler → ouvir" : "") + ".";
@@ -75,6 +78,15 @@ function tutorText(d, points) {
     lines.push("");
   }
   if (d.mine.length) { lines.push("Frases que eu criei (conferir se estão naturais):"); d.mine.forEach(m => lines.push("- " + m.frase + " (" + m.traducao + ")" + (m.erro ? " · meu erro: " + m.erro.errado : ""))); lines.push(""); }
+  if ((d.escrita || []).length) {
+    lines.push("Textos que eu escrevi (corrigidos pela IA; conferir as correções):");
+    d.escrita.forEach((t, i) => {
+      lines.push((i + 1) + ". " + t.title + " (" + formatDate(dateKey(new Date(t.at))) + ")", t.v1.split("\n").map(l => "   " + l).join("\n"));
+      if (t.erros.length) { lines.push("   Correções da IA:"); t.erros.forEach(e => lines.push("   - " + e.trecho + " → " + e.certo + (e.explicacao ? " · " + e.explicacao : "") + "   ( ) certo  ( ) errado")); }
+      else lines.push("   A IA não achou erros.   ( ) concordo  ( ) há erros");
+    });
+    lines.push("");
+  }
   if (d.reading) { lines.push(tutorReadingLine(d.reading)); lines.push(""); }
   if (d.reasons.length) { lines.push("Onde mais erro no treino: " + d.reasons.map(r => r.label + " (" + r.n + ")").join(", ") + "."); lines.push(""); }
   if (d.scene) { lines.push("Cena para praticar juntos: " + d.scene.title + " — " + d.scene.setting + " O tutor faz o papel de " + d.scene.other.name + "."); lines.push(""); }
@@ -114,7 +126,7 @@ function tutorRender() {
   const pts = tutor.points;
   fill(box,
     h("div", {class: "row between no-print"}, h("h2", {text: "Pacote para a aula"}), days),
-    !d ? h("div", {class: "no-print"}, h("p", {class: "muted small-text", text: "Junta numa folha o que vale levar ao tutor: frases que travaram, erros das conversas, evolução da fluência, frases que você criou e uma cena para praticarem juntos."}),
+    !d ? h("div", {class: "no-print"}, h("p", {class: "muted small-text", text: "Junta numa folha o que vale levar ao tutor: frases que travaram, erros das conversas, evolução da fluência, frases que você criou, textos que você escreveu e uma cena para praticarem juntos."}),
       h("button", {class: "primary", type: "button", onclick: tutorBuild}, "Montar pacote")) : null,
     d ? h("div", {class: "tutor-sheet", id: "tutorSheet"},
       h("p", {class: "muted small-text", text: "Período: " + formatDate(dateKey(new Date(d.since))) + " a " + formatDate(dateKey()) + " · nível atual " + d.level + " · " + tutorCounts(d)}),
@@ -123,12 +135,18 @@ function tutorRender() {
       list("Monólogos 4/3/2 (palavras por minuto, 1ª → 3ª rodada)", d.f432.map(s => h("li", null, formatDate(dateKey(new Date(s.at))) + ": " + s.rounds.map(f432Wpm).join(" → ") + " palavras/min · " + s.rounds.map(r => r.pauses).join(" → ") + " pausas"))),
       tutorCheckBlock(d.toCheck),
       list("Frases que eu criei (conferir se estão naturais)", d.mine.map(m => h("li", null, h("b", {lang: "de", text: m.frase}), h("span", {class: "muted", text: " — " + m.traducao}), m.erro ? h("span", {class: "muted", text: " · meu erro: " + m.erro.errado}) : null))),
+      (d.escrita || []).length ? h("div", null, h("h3", {text: "Textos que eu escrevi (corrigidos pela IA; conferir)"}),
+        ...d.escrita.map(t => h("div", {class: "tutor-text"}, h("p", null, h("b", {text: t.title}), h("span", {class: "muted", text: " · " + formatDate(dateKey(new Date(t.at)))})),
+          h("p", {class: "tutor-text-body", lang: "de", text: t.v1}),
+          t.erros.length ? h("ul", {class: "tutor-list"}, ...t.erros.map(e => h("li", null, h("s", {lang: "de", text: e.trecho}), " → ", h("b", {lang: "de", text: e.certo}),
+            e.explicacao ? h("span", {class: "muted", text: " · " + e.explicacao}) : null, h("span", {class: "print-only", text: "   ( ) certo  ( ) errado"}))))
+            : h("p", {class: "muted small-text", text: "A IA não achou erros."})))) : null,
       d.reading ? h("p", {text: tutorReadingLine(d.reading)}) : null,
       d.reasons.length ? h("p", null, h("b", {text: "Onde mais erro no treino: "}), d.reasons.map(r => r.label + " (" + r.n + ")").join(", ") + ".") : null,
       d.scene ? h("p", null, h("b", {text: "Cena para praticar juntos: "}), d.scene.title + " — " + d.scene.setting + " O tutor faz o papel de " + d.scene.other.name + ".") : null,
       pts && pts.loading ? h("p", {class: "muted", text: "A IA está escolhendo os pontos…"}) : null,
       pts && pts.length ? list("Pontos para revisar na aula", pts.map(p => h("li", null, h("b", {text: p.ponto}), ...p.exemplos.map(x => h("span", {class: "tutor-ex", lang: "de", text: x}))))) : null,
-      !d.stuck.length && !d.convErrors.length && !d.mine.length && !d.toCheck.length && !d.f432.length ? h("p", {class: "muted", text: "Pouco material neste período. Treine, converse ou faça um monólogo e monte o pacote de novo."}) : null) : null,
+      !d.stuck.length && !d.convErrors.length && !d.mine.length && !d.toCheck.length && !d.f432.length && !(d.escrita || []).length ? h("p", {class: "muted", text: "Pouco material neste período. Treine, converse ou faça um monólogo e monte o pacote de novo."}) : null) : null,
     d ? h("div", {class: "row no-print"},
       h("button", {class: "primary", type: "button", onclick: async () => {
         try { await navigator.clipboard.writeText(tutorText(tutor.data, Array.isArray(tutor.points) ? tutor.points : null)); toast("Pacote copiado. Cole na mensagem para o tutor.", "success"); }

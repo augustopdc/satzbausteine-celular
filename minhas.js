@@ -6,7 +6,7 @@
    Carregado antes de app.js; usa o estado e as funções de app.js apenas quando chamado. */
 
 const MINE_ID = /^M-[a-z0-9]{6,20}$/;
-const MINE_SOURCES = {aula: "Aula", serie: "Série ou filme", livro: "Livro", conversa: "Conversa", cena: "Cena", outro: "Outro"};
+const MINE_SOURCES = {aula: "Aula", serie: "Série ou filme", livro: "Livro", conversa: "Conversa", escrita: "Escrita", cena: "Cena", outro: "Outro"};
 const MINE_LEVELS = ["A1", "A2", "B1", "B2"];
 const MINE_REGS = {du: "du · informal", Sie: "Sie · formal", neutro: "neutro"};
 const MINE_CHECKS = {conferir: "Para conferir", tutor: "Validado pelo tutor"};
@@ -111,7 +111,7 @@ async function mineFromConversa(entry) {
   const id = newMineId();
   const erro = entry.erro ? {errado: entry.erro.errado, certo: entry.erro.certo, explicacao: entry.erro.explicacao} : (!f.correta && f.correcao ? {errado: entry.frase, certo: f.frase, explicacao: f.correcao} : null);
   // A correção e o cartão vêm da IA sem você ver: por padrão, esperam a conferência em Minhas frases.
-  saveMineItem(id, {...f, fonte: "conversa", erro, check: settings.mineReview !== false ? "conferir" : undefined});
+  saveMineItem(id, {...f, fonte: MINE_SOURCES[entry.fonte] ? entry.fonte : "conversa", erro, check: settings.mineReview !== false ? "conferir" : undefined});
   return id;
 }
 
