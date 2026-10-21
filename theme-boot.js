@@ -7,4 +7,9 @@
   } catch (e) { /* armazenamento indisponível: segue o sistema */ }
   // Fora do aplicativo do PC (navegador, iPhone): esconde as telas que dependem do PC (Whisper, IA local, livros).
   if (!window.satzDesktop) document.documentElement.classList.add("web");
+  // Windows 11 com a barra de título do app: abre espaço em cima para os botões da janela (e some em tela cheia).
+  const wco = navigator.windowControlsOverlay;
+  const setWco = () => document.documentElement.classList.toggle("wco", !!(wco && wco.visible));
+  setWco();
+  if (wco) wco.addEventListener("geometrychange", setWco);
 })();

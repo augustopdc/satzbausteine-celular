@@ -96,7 +96,6 @@ function rdContinueNode(b, open) {
   return h("section", {class: "panel rd-continue"},
     h("button", {class: "shelf-book", type: "button", "aria-label": "Continuar " + b.title, onclick: open}, rdCoverNode(b)),
     h("div", {class: "rd-continue-text"},
-      h("p", {class: "eyebrow", text: "Continuar lendo"}),
       h("h2", {lang: "de", text: b.title}),
       rdAuthor(b) ? h("p", {class: "muted", text: rdAuthor(b)}) : null,
       h("span", {class: "shelf-bar"}, bar),
@@ -139,7 +138,7 @@ function rdBookSettings(id) {
   return [b.title, [
     h("div", {class: "bd-cover"}, rdCoverNode(b), h("button", {class: "small", type: "button", onclick: () => rdPickCover(b.id)}, b.cover ? "Trocar a capa" : "Buscar a capa")),
     h("div", {class: "bd-info"},
-      h("p", {class: "muted small-text", text: [rdAuthor(b), b.chapters + " capítulos", (b.words || 0).toLocaleString("pt-BR") + " palavras"].filter(Boolean).join(" · ")}),
+      h("p", {class: "muted small-text", text: (rdAuthor(b) ? rdAuthor(b) + ". " : "") + b.chapters + " capítulos, " + (b.words || 0).toLocaleString("pt-BR") + " palavras."}),
       h("h3", {text: "Áudio"}), syncStatusNode(b),
       h("h3", {text: "Traduções e gramática"}), annotStatusNode(b),
       typeof rdBookCardDifficulty === "function" ? rdBookCardDifficulty(b) : null,
@@ -328,7 +327,7 @@ function renderBook() {
     h("button", {class: "icon-btn", type: "button", title: "Frase anterior (←)", "aria-label": "Frase anterior", onclick: () => stepSentence(-1)}, icon("skipBack", 16)),
     h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, iconText("play", "Ler ouvindo")),
     h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, icon("skipFwd", 16)),
-    h("button", {class: "icon-btn", type: "button", title: "Repetir a frase (R)", "aria-label": "Repetir a frase", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, "↻"),
+    h("button", {class: "icon-btn", type: "button", title: "Repetir a frase (R)", "aria-label": "Repetir a frase", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, icon("repeat", 16)),
     speed);
   const pickChip = reading.picking ? h("button", {class: "quiet small on", type: "button", title: "Parar de marcar a expressão", onclick: togglePick}, phone ? "✓ ✕" : "✓ Marcando expressão ✕") : null;
   const bar = phone
@@ -336,11 +335,12 @@ function renderBook() {
       h("button", {class: "icon-btn quiet", type: "button", title: "Voltar à lista de livros", "aria-label": "Voltar à lista de livros", onclick: closeBook}, "←"),
       chapterSelect, pickChip, lookWrap)
     : h("div", {class: "reader-bar"},
-      h("button", {class: "quiet small", type: "button", title: "Voltar à lista de livros", onclick: closeBook}, "← Livros"),
+      h("button", {class: "quiet small", type: "button", title: "Voltar à estante", onclick: closeBook}, iconText("back", "Estante")),
       chapterSelect, player, pickChip,
+      h("span", {class: "rd-progress", "aria-hidden": "true"}, h("i", {id: "rdProgress"})),
       h("div", {class: "reader-controls rd-bar-end"}, practiceBtn, savedBtn, lookWrap,
         h("button", {id: "rdFocusBtn", class: "icon-btn", type: "button", title: reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)", "aria-label": "Tela cheia de leitura",
-          onclick: () => rdSetFocus(!reading.focus)}, reading.focus ? "⤡" : "⛶")));
+          onclick: () => rdSetFocus(!reading.focus)}, icon(reading.focus ? "minimize" : "maximize", 17))));
   const warn = !book.audio ? "Este livro não tem áudio. Adicione o MP3 na lista de livros para ouvir frase por frase."
     : !book.sync ? (book.status && book.status.sync.state === "running" ? "Sincronizando o áudio (" + book.status.sync.pct + "%). Quando terminar, as frases ficam clicáveis para ouvir." : "O áudio ainda não foi sincronizado. Volte à lista de livros e toque em “Sincronizar áudio”.") : "";
   const [a, b] = chapterRange(reading.ch);
@@ -372,7 +372,7 @@ function renderBook() {
   const summary = book.notes && book.notes.c && book.notes.c[reading.ch];
   const summaryOpen = !!summary && (reading.summaryOpen === reading.ch || !!(reading.cycle && reading.cycle.step === 1));
   fill($("readingBook"),
-    h("div", {class: "reader-head"}, h("p", {class: "eyebrow"}, h("span", {lang: "de", text: book.title}), " · capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
+    h("div", {class: "reader-head"}, h("p", {class: "label"}, h("span", {lang: "de", text: book.title}), ", capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
     bar,
     warn ? h("p", {class: "notice warn", text: warn}) : null,
     rdChapterChips(summary, summaryOpen),
@@ -405,7 +405,7 @@ function rdSetFocus(on) {
   reading.focus = !!on;
   saveReadingState({focus: reading.focus});
   const btn = $("rdFocusBtn");
-  if (btn) { btn.textContent = reading.focus ? "⤡" : "⛶"; btn.title = reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)"; }
+  if (btn) { fill(btn, icon(reading.focus ? "minimize" : "maximize", 17)); btn.title = reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)"; }
   rdApplyFocus();
   hideReaderPop();
 }
@@ -555,6 +555,8 @@ function highlightSentence(i) {
     if (hit) hit.classList.add("on");
   }
   for (const k of reading.pick || []) if (ws[k]) ws[k].classList.add("pick");
+  const prog = $("rdProgress");
+  if (prog) { const [a, b] = chapterRange(reading.ch); setWidth(prog, a < 0 ? 0 : (i - a + 1) / Math.max(1, b - a + 1) * 100); }
 }
 /* Modo contínuo: consulta rápida num balão ao lado da palavra, sem painel lateral e sem mexer na rolagem. */
 function showReaderPop(anchor) {
@@ -647,7 +649,7 @@ function wordDetail(word, i = reading.sel, wk = reading.wk) {
     typeof occurrenceBlock === "function" ? occurrenceBlock(i, wk, word) : null,
     entry ? h("p", {class: "small-text"}, h("span", {class: "muted", text: "Dicionário do livro: "}), h("span", {lang: "de", class: "rd-lemma", text: entry[0]}), entry[1] ? h("span", {class: "muted", text: " · " + entry[1]}) : null) : null,
     entry && entry[2] ? h("p", {class: "small-text", text: entry[2]}) : null,
-    entry && entry[3] ? h("p", {class: "muted small-text", text: entry[3]}) : null,
+    entry && entry[3] && !(typeof occurrence === "function" && occurrence(i, wk)) ? h("p", {class: "muted small-text", text: entry[3]}) : null,
     artText ? h("p", {class: "small-text"}, h("span", {class: "muted", text: "Com artigo no livro: "}), h("span", {lang: "de", text: artText})) : null,
     h("p", {class: "muted small-text", text: "Aparece " + (reading.wordCount.get(k) || 1) + "× no livro."}),
     examples.length ? h("div", {class: "rd-examples"}, h("span", {class: "muted small-text", text: "No seu catálogo:"}),

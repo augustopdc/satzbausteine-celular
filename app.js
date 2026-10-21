@@ -161,6 +161,10 @@ const ICONS = {
   text: '<path d="M4 6h16M4 12h16M4 18h10"/>',
   alert: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
   chevron: '<path d="m9 18 6-6-6-6"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  maximize: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  minimize: '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
@@ -2360,6 +2364,15 @@ function applyTheme() {
   btn.title = labels[t] + " (clique para alternar)";
   btn.setAttribute("aria-label", labels[t] + ". Alternar tema");
   if (window.satzDesktop) window.satzDesktop.setTheme(t).catch(() => {});
+  syncTitleBar();
+}
+/* Cor da barra de título do Windows igual à do menu lateral (claro, escuro ou automático). */
+function syncTitleBar() {
+  if (!window.satzDesktop || !window.satzDesktop.setTitleBar) return;
+  requestAnimationFrame(() => {
+    const cs = getComputedStyle(document.documentElement);
+    window.satzDesktop.setTitleBar(cs.getPropertyValue("--sidebar-bg").trim(), cs.getPropertyValue("--ink-2").trim()).catch(() => {});
+  });
 }
 function cycleTheme() {
   const order = ["auto", "light", "dark"];
@@ -2391,6 +2404,8 @@ function refreshAll() {
 function bindEvents() {
   initNav();
   $("themeToggle").addEventListener("click", cycleTheme);
+  $("appMenuBtn").addEventListener("click", () => { if (window.satzDesktop && window.satzDesktop.appMenu) window.satzDesktop.appMenu().catch(() => {}); });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTitleBar);
   $("tsvInput").addEventListener("change", async e => { await importTSV(Array.from(e.target.files)); e.target.value = ""; });
   $("homeProduction").addEventListener("click", () => { showView("practice"); setSessionMode("production"); startSession(); });
   $("homeListening").addEventListener("click", () => { showView("practice"); setSessionMode("listening"); startSession(); });

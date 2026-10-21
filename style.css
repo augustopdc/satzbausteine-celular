@@ -2,6 +2,7 @@
 /* Letras embutidas (SIL Open Font License, licenças em fonts/). No iPhone/Mac valem as da Apple (SF e New York). */
 @font-face { font-family: "Inter"; src: url("fonts/inter.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Source Serif"; src: url("fonts/source-serif.woff2") format("woff2"); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Source Serif"; src: url("fonts/source-serif-italic.woff2") format("woff2"); font-weight: 200 900; font-style: italic; font-display: swap; }
 :root {
   color-scheme: light;
   --font: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
@@ -188,11 +189,17 @@ main { width: 100%; max-width: 1060px; margin: 0 auto; padding: 1.8rem 2.2rem 2r
 }
 
 /* Páginas */
-.view:not([hidden]) { animation: viewIn .42s var(--ease); }
-@keyframes viewIn { from { opacity: 0; transform: translateY(10px) scale(.995); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .view:not([hidden]) { animation: fadeOnly .2s ease-out; } @keyframes fadeOnly { from { opacity: 0; } } }
+.view:not([hidden]) { animation: fadeOnly .22s ease-out; }
+@keyframes fadeOnly { from { opacity: 0; } }
+
 .page-head { margin-bottom: 1.4rem; }
-.eyebrow { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 .35rem; }
+/* Nome da tela em alemão, em letra de livro: identidade do app e uma palavra a mais aprendida. */
+.eyebrow { font-family: var(--font-de); font-style: italic; font-size: 1.1rem; font-weight: 500; color: var(--accent-strong); margin: 0 0 .1rem; }
+.label { font-size: .86rem; font-weight: 600; color: var(--ink-3); margin: 0 0 .3rem; }
+.title-row { display: flex; align-items: center; gap: .35rem; }
+.help-toggle { width: 34px; height: 34px; min-height: 34px; color: var(--ink-3); border-radius: 50%; }
+.help-toggle[aria-expanded="true"] { color: var(--accent-strong); background: var(--accent-soft); }
+.page-help:not([hidden]) { animation: fadeOnly .25s ease-out; }
 .lede { color: var(--ink-2); font-size: 1.02rem; max-width: 62ch; margin: .5rem 0 0; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.3rem 1.45rem; box-shadow: var(--shadow-sm); margin-bottom: 1.1rem; }
 .panel.soft { background: var(--surface-2); box-shadow: none; }
@@ -911,7 +918,7 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .book-status .track { width: 100%; }
 .book-status.ok { background: var(--good-soft); color: var(--good); font-weight: 600; }
 .reader-head h2 { margin: 0 0 .6rem; font-size: 1.5rem; }
-.reader-head .eyebrow { margin-bottom: .2rem; }
+.reader-head .label { margin-bottom: .2rem; }
 .reader-bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; padding: .6rem .8rem; margin: 0 0 1rem;
   background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border: 1px solid var(--line); border-radius: var(--radius); }
 .reader-bar select { width: auto; max-width: 240px; }
@@ -1163,14 +1170,14 @@ body.book-open #view-reading > .page-head { display: none; }
 /* Tela Hoje: cabeçalho com tipo de dia e tempo, anel da meta, roteiro e painéis. */
 .home-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem 2rem; }
 .home-hello { flex: 1 1 320px; }
-.home-hello .eyebrow { color: var(--ink-3); }
+.home-hello .label { margin-bottom: .15rem; }
 .home-hello h1 { font-size: 2.2rem; }
 .home-day { display: grid; gap: .45rem; justify-items: start; }
 .home-day .shift-today { margin: 0; }
 .hero-main { flex: 1 1 380px; display: grid; gap: 1rem; align-content: start; }
 .hero-top { display: flex; align-items: center; gap: 1.6rem; flex-wrap: wrap; }
 .hero-next { flex: 1 1 200px; display: grid; gap: .35rem; }
-.hero-next .eyebrow { margin: 0; }
+.hero-next .label { margin: 0; color: var(--accent-strong); }
 .hero-next h2 { margin: 0; font-size: 1.45rem; line-height: 1.25; letter-spacing: -.015em; }
 .hero .hero-actions { flex-direction: row; flex-wrap: wrap; min-width: 0; }
 .hero.done .hero-next h2 { color: var(--good); }
@@ -1255,7 +1262,6 @@ body.book-open #view-reading > .page-head { display: none; }
 .rd-continue .shelf-book { width: 118px; padding: 0; }
 .rd-continue .shelf-book::after { display: none; }
 .rd-continue-text { flex: 1 1 260px; display: grid; gap: .4rem; align-content: center; }
-.rd-continue-text .eyebrow { margin: 0; }
 .rd-continue-text h2 { font-family: var(--font-de); font-size: 1.8rem; font-weight: 600; line-height: 1.15; margin: 0; }
 .rd-continue-text p { margin: 0; }
 .rd-continue-text .shelf-bar { max-width: 320px; margin-top: .3rem; }
@@ -1312,4 +1318,47 @@ body.book-open #view-reading > .page-head { display: none; }
   .shelf-gear { width: 26px; height: 26px; min-height: 26px; }
   .book-dialog-body { grid-template-columns: 1fr; }
   .bd-cover .cover { width: 130px; }
+}
+
+/* Hierarquia de bordas: o cartão principal de cada tela é um pouco mais redondo que os demais. */
+.hero, .rd-continue { border-radius: 16px; }
+/* Player da leitura no PC: uma pílula só, com a linha do capítulo embaixo da barra. */
+@media (min-width: 601px) {
+  .rd-player { background: var(--surface-2); border-radius: 99px; padding: 4px; gap: 2px; }
+  .rd-player .icon-btn { border: 0; background: transparent; border-radius: 50%; width: 36px; height: 36px; min-height: 36px; }
+  .rd-player .icon-btn:hover { background: var(--surface); }
+  .rd-player #rdPlay { border-radius: 99px; min-height: 36px; padding: .3rem 1.05rem; }
+  .rd-player select { border: 0; background: transparent; min-height: 36px; padding: 0 .4rem; border-radius: 99px; }
+}
+.rd-progress { position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; border-radius: 2px; background: var(--surface-3); overflow: hidden; pointer-events: none; }
+.rd-progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .5s var(--ease); }
+/* Meta do dia cumprida: o anel pulsa uma vez e solta um punhado de pontos (um único momento, só quando acontece). */
+@media (prefers-reduced-motion: no-preference) {
+  .ring.celebrate { animation: ring-pop .7s var(--ease); }
+  .ring.celebrate::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+    box-shadow: 0 -74px 0 var(--good), 52px -52px 0 var(--accent), 74px 0 0 var(--warn), 52px 52px 0 var(--good),
+      0 74px 0 var(--accent), -52px 52px 0 var(--warn), -74px 0 0 var(--good), -52px -52px 0 var(--accent);
+    animation: ring-burst 1.1s var(--ease) forwards;
+  }
+}
+@keyframes ring-pop { 40% { transform: scale(1.07); } }
+@keyframes ring-burst { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.3); opacity: 0; } }
+/* Windows 11: a barra de título é do próprio app (os botões de minimizar/fechar ficam por cima, desenhados pelo Windows). */
+.titlebar { display: none; }
+html.wco { --tb: env(titlebar-area-height, 36px); }
+html.wco body { padding-top: var(--tb); }
+html.wco .titlebar {
+  display: flex; align-items: center; position: fixed; top: 0; left: 0; z-index: 70; width: env(titlebar-area-width, calc(100% - 140px)); height: var(--tb);
+  padding-left: 8px; background: var(--sidebar-bg); -webkit-app-region: drag; app-region: drag;
+}
+html.wco .titlebar button { -webkit-app-region: no-drag; app-region: no-drag; width: 36px; height: 28px; min-height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); }
+html.wco .titlebar svg { width: 18px; height: 18px; flex: none; }
+html.wco .titlebar button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+html.wco .sidebar { top: var(--tb); height: calc(100vh - var(--tb)); }
+html.wco .focus-bar, html.wco .reader-bar { top: var(--tb); }
+html.wco .reader-detail { top: calc(var(--rdbar, 60px) + 14px + var(--tb)); max-height: calc(100vh - var(--rdbar, 60px) - 30px - var(--tb)); }
+@media (min-width: 601px) {
+  html.wco .main-col { min-height: calc(100vh - var(--tb) - .5rem); }
+  html.wco body.focus .main-col, html.wco body.reading-focus .main-col { min-height: calc(100vh - var(--tb)); }
 }

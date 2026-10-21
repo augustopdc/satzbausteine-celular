@@ -113,7 +113,7 @@ function readingShell(title, ...content) {
   $("readingLibrary").hidden = true;
   $("readingBook").hidden = false;
   fill($("readingBook"),
-    h("div", {class: "reader-head"}, h("p", {class: "eyebrow"}, h("span", {lang: "de", text: reading.book.title}), " · capítulo " + (reading.ch + 1) + " de " + reading.book.chapters.length)),
+    h("div", {class: "reader-head"}, h("p", {class: "label"}, h("span", {lang: "de", text: reading.book.title}), ", capítulo " + (reading.ch + 1) + " de " + reading.book.chapters.length)),
     h("div", {class: "reader-bar"}, h("button", {class: "quiet small", type: "button", onclick: backToText}, "← Voltar ao texto"), h("b", {text: title})),
     h("div", {class: "rd-practice"}, ...content));
   window.scrollTo({top: 0});

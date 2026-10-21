@@ -15,10 +15,12 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/source-serif.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/source-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <script src="theme-boot.js"></script>
 </head>
 <body>
+<div class="titlebar"><button id="appMenuBtn" type="button" aria-label="Menu do aplicativo" title="Menu: arquivo, ir, exibir, ajuda"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
 <div class="app">
  <aside class="sidebar">
   <div class="brand"><img src="icon.png" alt="" width="34" height="34"><div class="brand-text"><strong>Satzbausteine</strong><span>Treino de alemão</span></div></div>
@@ -70,7 +72,7 @@
 
   <section id="view-home" class="view">
    <header class="page-head home-head">
-    <div class="home-hello"><p id="homeGreeting" class="eyebrow"></p><h1 id="homeHeadline">Bom dia.</h1><p id="homeSub" class="lede"></p></div>
+    <div class="home-hello"><p id="homeGreeting" class="label"></p><h1 id="homeHeadline">Bom dia.</h1><p id="homeSub" class="lede"></p></div>
     <div class="home-day">
      <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
      <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
@@ -88,7 +90,7 @@
      <div class="hero-top">
       <div id="heroRing" class="ring" role="img" aria-label="Meta de hoje"></div>
       <div class="hero-next">
-       <p class="eyebrow">Próximo passo</p>
+       <p class="label">Próximo passo</p>
        <h2 id="heroNext"></h2>
        <ul class="hero-split"><li><i class="dot due"></i><b id="heroDue">0</b> revisões</li><li><i class="dot new"></i><b id="heroNew">0</b> novas</li><li><i class="dot listen"></i><b id="heroListen">0</b> em escuta</li></ul>
        <p id="heroEta" class="muted"></p>
@@ -115,7 +117,7 @@
   </section>
 
   <section id="view-practice" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Revisão espaçada</p><h1>Treino</h1><p class="lede">Fale antes de revelar. Uma alternativa correta e natural conta como acerto; travar conta como erro.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Üben</p><h1>Treino</h1><p class="lede">Fale antes de revelar. Uma alternativa correta e natural conta como acerto; travar conta como erro.</p></header>
    <div id="sessionDone" class="panel summary" hidden></div>
    <div id="practiceSetup" class="panel">
     <div class="segmented three" role="group" aria-label="Modo de treino">
@@ -197,7 +199,7 @@
   </section>
 
   <section id="view-scenes" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Conversas inteiras</p><h1>Cenas</h1><p class="lede">Diálogos curtos com vozes neurais. O app faz a outra pessoa; você fala as suas falas. Depois, troque os papéis.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Szenen</p><h1>Cenas</h1><p class="lede">Diálogos curtos com vozes neurais. O app faz a outra pessoa; você fala as suas falas. Depois, troque os papéis.</p></header>
    <div id="sceneList"></div>
    <div id="scenePlayer" hidden>
     <div class="panel scene-head">
@@ -217,7 +219,7 @@
   </section>
 
   <section id="view-conversa" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Parceira de conversa</p><h1>Conversa</h1><p class="lede">Converse em alemão sem limite, no seu nível. A parceira roda neste computador: você fala ou escreve, ela responde e, no fim, mostra os erros mais importantes.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Sprechen</p><h1>Conversa</h1><p class="lede">Converse em alemão sem limite, no seu nível. A parceira roda neste computador: você fala ou escreve, ela responde e, no fim, mostra os erros mais importantes.</p></header>
    <div id="convSetup"></div>
    <div id="f432Room" hidden></div>
    <div id="convRoom" hidden>
@@ -242,38 +244,38 @@
   </section>
 
   <section id="view-minhas" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Seus próprios cartões</p><h1>Minhas frases</h1><p class="lede">Frases que você encontrou ou errou viram cartões do treino, com o mesmo agendamento das outras.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Meine Sätze</p><h1>Minhas frases</h1><p class="lede">Frases que você encontrou ou errou viram cartões do treino, com o mesmo agendamento das outras.</p></header>
    <section id="mineAdd" class="panel"></section>
    <div id="mineDrafts"></div>
    <section id="mineList" class="panel"></section>
   </section>
 
   <section id="view-pron" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Ouvido e boca</p><h1>Pronúncia</h1><p class="lede">Pares de palavras que só diferem por um som difícil para brasileiros. Primeiro treine o ouvido; depois repita em voz alta.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Aussprache</p><h1>Pronúncia</h1><p class="lede">Pares de palavras que só diferem por um som difícil para brasileiros. Primeiro treine o ouvido; depois repita em voz alta.</p></header>
    <div id="pronList" class="scene-grid"></div>
    <div id="pronPlayer" class="panel" hidden></div>
   </section>
 
   <section id="view-reading" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Livros com áudio</p><h1>Leitura</h1><p class="lede">Seus livros com o audiolivro ligado ao texto, frase por frase.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Lesen</p><h1>Leitura</h1><p class="lede">Seus livros com o audiolivro ligado ao texto, frase por frase.</p></header>
    <div id="readingLibrary"></div>
    <div id="readingBook" hidden></div>
   </section>
 
   <section id="view-escrita" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Schreiben</p><h1>Escrita</h1><p class="lede">Textos curtos no formato da prova, diário de 3 frases e resumo do livro. Primeiro o app marca onde estão os erros e você tenta consertar; depois vem a correção, com a versão natural do seu texto. Os erros viram cartões.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Schreiben</p><h1>Escrita</h1><p class="lede">Textos curtos no formato da prova, diário de 3 frases e resumo do livro. Primeiro o app marca onde estão os erros e você tenta consertar; depois vem a correção, com a versão natural do seu texto. Os erros viram cartões.</p></header>
    <div id="escritaRoot"></div>
   </section>
 
   <section id="view-grammar" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Gramática para brasileiros</h1><p class="lede">Os pontos em que o português mais atrapalha, com as armadilhas típicas e as frases do seu catálogo que usam cada estrutura.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Grammatik</p><h1>Gramática para brasileiros</h1><p class="lede">Os pontos em que o português mais atrapalha, com as armadilhas típicas e as frases do seu catálogo que usam cada estrutura.</p></header>
    <div id="grammarTrain" class="panel" hidden></div>
    <div id="grammarList" class="grammar-grid"></div>
    <div id="grammarDetail" class="panel grammar-detail" hidden></div>
   </section>
 
   <section id="view-plan" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Rumo à Alemanha</p><h1>Meu plano</h1><p class="lede">Defina suas datas. O app calcula quantas frases novas por dia você precisa para chegar lá no tempo certo.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Mein Plan</p><h1>Meu plano</h1><p class="lede">Defina suas datas. O app calcula quantas frases novas por dia você precisa para chegar lá no tempo certo.</p></header>
    <section class="panel"><h2>Linha do tempo</h2><div id="planTimeline" class="timeline"></div>
     <div class="grid four-dates spaced">
      <div class="field"><label for="plan-b1">Meta de B1</label><input id="plan-b1" type="date"></div>
@@ -319,7 +321,7 @@
   </section>
 
   <section id="view-template" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Prática livre</p><h1>Molde</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Satzmuster</p><h1>Molde</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
    <div class="panel row between"><span id="templateCount" class="muted"></span><button id="nextTemplate" class="primary" type="button">Sortear molde</button></div>
    <div id="templateStage" hidden>
     <div class="flash">
@@ -334,7 +336,7 @@
   </section>
 
   <section id="view-activation" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Uma vez por semana</p><h1>Ativação</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Aktivieren</p><h1>Ativação</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
    <div class="panel row"><button id="startActivation" class="primary" type="button">Sortear 10 frases</button><button id="copyActivation" type="button" hidden>Copiar lista para o tutor</button></div>
    <div id="activationStage" class="panel" hidden>
     <h2 id="activationTheme"></h2>
@@ -349,10 +351,10 @@
   </section>
 
   <section id="view-exam" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Goethe · telc · Fachsprachprüfung</p><h1>Modo Prova</h1><p class="lede">Tarefas originais para praticar o formato. A autoavaliação aparece ao concluir.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Prüfung</p><h1>Modo Prova</h1><p class="lede">Tarefas originais para praticar o formato. A autoavaliação aparece ao concluir.</p></header>
    <div class="panel exam-pick"><div class="field grow"><label for="examSelect">Escolha uma tarefa</label><select id="examSelect"></select></div><button id="loadExam" class="primary" type="button">Abrir tarefa</button></div>
    <div id="examStage" class="panel" hidden>
-    <p id="examMeta" class="eyebrow"></p>
+    <p id="examMeta" class="label"></p>
     <h2 id="examTitle"></h2>
     <p id="examPrompt" class="exam-prompt" lang="de"></p>
     <div id="examSupport" class="panel soft support" lang="de" hidden></div>
@@ -380,7 +382,7 @@
   </section>
 
   <section id="view-catalog" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Frases</h1></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Sätze</p><h1>Frases</h1></header>
    <div class="panel">
     <div class="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="searchCards" type="search" aria-label="Buscar frases" placeholder="Buscar em alemão ou português: frase, situação, tradução, ID…"></div>
     <div class="chips spaced"><button id="catalogLeeches" class="chip chip-leech" type="button" aria-pressed="false" hidden></button></div>
@@ -393,12 +395,12 @@
   </section>
 
   <section id="view-coverage" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Consulta</p><h1>Cobertura do catálogo</h1><p class="lede">Contagem por referência. “Aprendidas” inclui frases avaliadas com Difícil, Bom ou Fácil em pelo menos um modo.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Überblick</p><h1>Cobertura do catálogo</h1><p class="lede">Contagem por referência. “Aprendidas” inclui frases avaliadas com Difícil, Bom ou Fácil em pelo menos um modo.</p></header>
    <div id="coverageContent"></div>
   </section>
 
   <section id="view-settings" class="view" hidden>
-   <header class="page-head"><p class="eyebrow">Aplicativo</p><h1>Configurações</h1></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Einstellungen</p><h1>Configurações</h1></header>
    <section class="panel"><h2>Estudo</h2>
     <div class="grid two">
      <div class="field"><label for="newLimit">Frases novas por dia</label><input id="newLimit" type="number" min="0" max="100" value="6"></div>

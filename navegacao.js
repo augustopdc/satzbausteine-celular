@@ -97,7 +97,22 @@ function renderHub() {
   })));
 }
 
+/* As explicações longas do topo de cada tela ficam atrás de um “i” ao lado do título. */
+function initPageHelp() {
+  all(".page-head").forEach(head => {
+    const lede = head.querySelector(".lede"), title = head.querySelector("h1");
+    if (!lede || !title || lede.id) return;
+    lede.hidden = true;
+    lede.classList.add("page-help");
+    const btn = h("button", {class: "icon-btn quiet help-toggle", type: "button", "aria-expanded": "false", "aria-label": "Sobre esta tela", title: "Sobre esta tela"}, icon("info", 18));
+    btn.addEventListener("click", () => { lede.hidden = !lede.hidden; btn.setAttribute("aria-expanded", String(!lede.hidden)); });
+    const row = h("div", {class: "title-row"});
+    title.before(row);
+    row.append(title, btn);
+  });
+}
 function initNav() {
+  initPageHelp();
   try { nav.last = JSON.parse(localStorage.getItem(NAV_KEY)) || {}; } catch (e) { nav.last = {}; }
   all(".nav-hub").forEach(b => b.addEventListener("click", () => navHub(b.dataset.hub)));
   all(".nav-sub button[data-view]").forEach(b => b.addEventListener("click", () => navGo(b.dataset.view)));

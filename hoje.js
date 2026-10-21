@@ -3,6 +3,7 @@
    Tudo é calculado por regra a partir do progresso; nada aqui grava dados. */
 const HOJE_NAME = "Luiz";
 const HOJE_READ_MIN = 10, HOJE_DIARY_MIN = 3;
+const hoje = {seenIncomplete: false};
 const SVG_NS = "http://www.w3.org/2000/svg";
 function svgEl(tag, attrs = {}) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -26,7 +27,7 @@ function hojeRoute(load) {
   const doneMin = Math.round((stats.ms || 0) / 60000);
   return [
     {id: "cards", title: "Cartões", done: !total, min: cardsMin,
-      meta: total ? (load.dueProd + load.dueListen) + " revisões · " + load.fresh + " novas" : stats.reviews ? stats.reviews + " avaliações hoje" : "Nada pendente",
+      meta: total ? (load.dueProd + load.dueListen) + " revisões e " + load.fresh + " novas" : stats.reviews ? stats.reviews + " avaliações hoje" : "Nada pendente",
       time: total ? "~" + cardsMin + " min" : doneMin ? doneMin + " min" : ""},
     {id: "reading", title: "Leitura com áudio", done: readMin >= HOJE_READ_MIN, optional: rest, min: Math.max(0, HOJE_READ_MIN - readMin),
       meta: rest && !readMin ? "Opcional hoje" : readMin ? readMin + " de " + HOJE_READ_MIN + " min" : HOJE_READ_MIN + " min de livro",
@@ -58,6 +59,14 @@ function hojeRing(box, m) {
   box.classList.toggle("complete", m.complete);
   box.setAttribute("aria-label", m.complete ? "Meta de hoje cumprida" : m.done + " de " + m.goal + " minutos de estudo hoje");
 }
+function hojeCelebrate() {
+  const ring = $("heroRing");
+  ring.classList.remove("celebrate");
+  void ring.offsetWidth;
+  ring.classList.add("celebrate");
+  setTimeout(() => ring.classList.remove("celebrate"), 1600);
+  toast("Meta de hoje cumprida. Até amanhã!", "success");
+}
 function hojeRouteList(items, next) {
   fill($("homeRoute"), items.map(it => {
     let bar = null;
@@ -66,7 +75,7 @@ function hojeRouteList(items, next) {
       h("button", {class: "route-btn", type: "button", onclick: () => hojeGo(it.id)},
         h("span", {class: "route-mark"}, it.done ? icon("check", 14) : null),
         h("span", {class: "route-text"}, h("b", {text: it.title}),
-          h("span", {class: "route-meta"}, it.de ? [h("i", {lang: "de", class: "route-de", text: it.de}), " · "] : null, it.meta), bar),
+          h("span", {class: "route-meta"}, it.de ? h("i", {lang: "de", class: "route-de", text: it.de}) : it.meta), bar),
         h("span", {class: "route-time", text: it.done ? "" : it.time})));
   }));
 }
@@ -113,8 +122,8 @@ function hojeTiles() {
   const trend = rates.length >= 2 ? Math.round((rates[rates.length - 1] - rates[0]) / Math.max(.1, rates[0]) * 100) : null;
   return [
     hojeTile("flame", "Sequência", String(st), st === 1 ? "dia" : "dias", week, best > st ? "Recorde: " + best + " dias. Plantão não quebra a sequência." : "Plantão não quebra a sequência.", "warm"),
-    hojeTile("target", "Rumo à Approbation", lv.level, "· " + lv.pct + "%", trail,
-      (b2 > 0 ? "B2 em " + formatDate(plan.b2, {month: "short", year: "numeric"}).replace(".", "") : "Meta do B2 no Meu plano") + (move > 0 ? " · mudança em " + move.toLocaleString("pt-BR") + " dias" : "")),
+    hojeTile("target", "Rumo à Approbation", lv.level, lv.pct + "% dominado", trail,
+      (b2 > 0 ? "B2 em " + formatDate(plan.b2, {month: "long", year: "numeric"}) : "Meta do B2 no Meu plano") + (move > 0 ? ", mudança em " + move.toLocaleString("pt-BR") + " dias." : ".")),
     hojeTile("book", "Aprendidas", learned.toLocaleString("pt-BR"), learned === 1 ? "frase" : "frases", null,
       acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + acc.reviews + " avaliações)"),
     hojeTile("pen", "Escrita", es && es.rate != null ? es.rate.toLocaleString("pt-BR") : "—", es && es.rate != null ? "erros / 100 palavras" : "",
@@ -127,11 +136,15 @@ function hojeTiles() {
 function renderHoje(load) {
   const items = hojeRoute(load), next = hojeNext(items), m = hojeMinutes(load, items);
   const total = load.dueProd + load.dueListen + load.fresh, now = new Date(), hour = now.getHours(), type = load.plan.type;
-  $("homeGreeting").textContent = now.toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"}) + (type !== "normal" ? " · " + SHIFT_LABELS[type].toLowerCase() : "");
+  const date = now.toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"});
+  $("homeGreeting").textContent = date.charAt(0).toUpperCase() + date.slice(1) + (type === "plantao" ? ", dia de plantão" : type === "pos" ? ", pós-plantão" : type === "folga" ? ", dia de folga" : "");
   $("homeHeadline").textContent = (hour < 5 ? "Boa noite" : hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite") + ", " + HOJE_NAME + ".";
   $("homeSub").textContent = !next ? "Tudo feito por hoje. Bom descanso!" : "";
   $("homeSub").hidden = !!next;
   hojeRing($("heroRing"), m);
+  // Comemora só quando a meta fecha durante o uso (abrir o app com ela já cumprida não conta).
+  if (!m.complete) hoje.seenIncomplete = true;
+  else if (hoje.seenIncomplete) { hoje.seenIncomplete = false; hojeCelebrate(); }
   hojeRouteList(items, next);
   $("heroNext").textContent = !next ? "Tudo feito por hoje"
     : next.id === "cards" ? (total === 1 ? "1 cartão para hoje" : total + " cartões para hoje")
