@@ -111,8 +111,9 @@ const CONV_SUMMARY_SCHEMA = {type: "object", properties: {
 const CONV_ERROR_RULES = `Split his problems into two lists. "erros" = real mistakes only: a broken rule of German (gender/article, case, adjective ending, verb conjugation, sein/haben in the Perfekt, verb position V2 or verb at the end, separable prefix, wrong preposition, wrong or non-existent word, wrong meaning, du/Sie mixed up). For each: the wrong part exactly as he said it, the correct German, and a one-sentence explanation in Brazilian Portuguese. "estilo" = sentences that are grammatically correct but a native speaker would usually say differently (word choice, a more idiomatic phrase, more natural word order): what he said, the more natural version and a short explanation in Brazilian Portuguese. Never put the same thing in both lists, never list a correct sentence as an error, and when in doubt, it is style, not an error. Ignore capitalization and punctuation (it is transcribed speech). Short answers without a verb that are normal in spoken German (e.g. "Mit Milch, bitte.", "Ja, gern.", "Aus Brasilien.") are correct.`;
 /* Lê o JSON do resumo (Conversa e 4/3/2). Descarta “erros” em que o certo só difere em maiúsculas, pontuação ou espaços:
    na fala transcrita isso não é erro do aluno. */
+const convBare = s => String(s || "").toLowerCase().replace(/[.,!?;:"“”„'’()…-]/g, "").replace(/\s+/g, " ").trim();
 function convFeedback(j) {
-  const bare = s => String(s || "").toLowerCase().replace(/[.,!?;:"“”„'’()…-]/g, "").replace(/\s+/g, " ").trim();
+  const bare = convBare;
   const errors = j && Array.isArray(j.erros) ? j.erros.filter(e => e && e.certo && bare(e.errado) !== bare(e.certo))
     .map(e => ({errado: convClean(e.errado), certo: convClean(e.certo), explicacao: convClean(e.explicacao)})) : [];
   const seen = new Set(errors.map(e => bare(e.errado)));
@@ -140,6 +141,97 @@ function parseLooseJson(text) {
   return null;
 }
 const convClean = text => String(text || "").replace(/\*\*?|__|`/g, "").replace(/\s+/g, " ").trim();
+
+// ---------- Correção a cada fala ----------
+/* Cada fala sua ganha um sinal claro: “Certo”, “N erros” (toque para ver a versão corrigida) ou “Certo, com uma dica”
+   (só estilo, na correção rígida). Roda depois da resposta da parceira (a placa de vídeo atende um pedido por vez)
+   e não trava a conversa. */
+const CONV_CHECK_LEVELS = {
+  off: {label: "Desligada"},
+  suave: {label: "Suave", rule: `Report ONLY mistakes that make the line hard to understand or change what he means: a wrong or non-existent word, the wrong meaning, a missing or wrong verb that makes the sentence unclear. Do NOT report wrong endings, articles, gender, cases, conjugation, sein/haben or word order when the meaning is still clear: in this mode "in ein Krankenhaus", "mein Frau", "gestern ich habe", "weil es ist gesund" and "ich habe nach Hause gegangen" are NOT reported. When in doubt, report nothing. "estilo" must be empty.`},
+  equilibrado: {label: "Equilibrada", rule: `Report real mistakes only: a broken rule of German (gender/article, case, adjective ending, verb conjugation, sein/haben in the Perfekt, verb position V2 or verb at the end, separable prefix, wrong preposition, wrong or non-existent word, wrong meaning, du/Sie mixed up). Something that is correct but unusual is NOT a mistake. "estilo" must be empty.`},
+  rigido: {label: "Rígida", rule: `Report every real mistake: a broken rule of German (gender/article, case, adjective ending, verb conjugation, sein/haben in the Perfekt, verb position V2 or verb at the end, separable prefix, wrong preposition, wrong or non-existent word, wrong meaning, du/Sie mixed up). Also, in "estilo", up to 2 things that are correct but a native speaker would say differently (more natural word order, word choice, idiom). Never put the same thing in both lists.`}};
+const CONV_CHECK_SCHEMA = {type: "object", properties: {
+  erros: {type: "array", maxItems: 3, items: {type: "object", properties: {errado: {type: "string"}, certo: {type: "string"}, explicacao: {type: "string"}}, required: ["errado", "certo", "explicacao"]}},
+  estilo: {type: "array", maxItems: 2, items: {type: "object", properties: {disse: {type: "string"}, natural: {type: "string"}, explicacao: {type: "string"}}, required: ["disse", "natural", "explicacao"]}},
+  corrigida: {type: "string"}}, required: ["erros", "estilo", "corrigida"]};
+function convCheckLevel() { return CONV_CHECK_LEVELS[settings.convCheck] ? settings.convCheck : "equilibrado"; }
+function convCheckPrompt(level, cefr = convLevel()) {
+  return `You check ONE line that Luiz, a Brazilian learner of German (level ${cefr}), said in a spoken conversation. The partner's previous line is given only as context; do not check it. ${CONV_CHECK_LEVELS[level].rule} Ignore capitalization and punctuation (it is transcribed speech). Short answers without a verb that are normal in spoken German (e.g. "Mit Milch, bitte.", "Ja, gern.", "Aus Brasilien.") are correct. For each mistake: the wrong part exactly as he said it, the correct German, and one short sentence in Brazilian Portuguese explaining the rule. "corrigida" = his whole line with the mistakes fixed and nothing else changed (keep his words and meaning); with no mistakes, repeat his line. Only report something you are sure is wrong; when in doubt, it is not a mistake. Never assume facts he did not say (for example how he travelled). When a word is wrong or does not exist, give the word that best fits what he most likely meant, using the partner's question as context. The correction must itself be correct German. Answer as JSON.`;
+}
+/* Lê a resposta da IA com os mesmos filtros do resumo final; sem erro e sem dica = certo. */
+function convCheckResult(said, j, level) {
+  if (!j) return {state: "fail", errors: [], style: [], fixed: ""};
+  const {errors, style} = convFeedback(j);
+  const fixed = convClean(j.corrigida), changed = errors.length && fixed && convBare(fixed) !== convBare(said);
+  // Dica de estilo que só repete a frase corrigida (o Gemma faz isso às vezes) não é dica.
+  const st = level === "rigido" ? style.filter(s => convBare(s.natural) !== convBare(fixed)) : [];
+  return {state: errors.length ? "erro" : st.length ? "estilo" : "ok", errors, style: st, fixed: changed ? fixed : ""};
+}
+async function convCheckTurn(turn, bubble) {
+  const level = convCheckLevel(), token = conv.token;
+  if (level === "off" || !convAvailable() || turn.de === CONV_HUH || turn.de === CONV_HUH_SIE) return;
+  const k = conv.turns.indexOf(turn), prev = conv.turns.slice(0, Math.max(0, k)).reverse().find(t => t.who === "partner");
+  turn.check = {state: "checking", errors: [], style: [], fixed: ""};
+  convCheckMark(turn, bubble);
+  let j = null;
+  try {
+    const r = await window.satzDesktop.convChat([{role: "system", content: convCheckPrompt(level)},
+      {role: "user", content: (prev ? "Partner: " + prev.de + "\n" : "") + "Luiz: " + turn.de}], {kind: "check", temperature: .1, maxTokens: 500, schema: CONV_CHECK_SCHEMA});
+    j = parseLooseJson(r.text);
+  } catch (e) { reportError("conversa", "correção da fala: " + e.message); }
+  if (token !== conv.token) return;
+  turn.check = convCheckResult(turn.de, j, level);
+  convCheckMark(turn, bubble);
+}
+/* O sinal fica dentro do balão, embaixo da frase; com erro ou dica, ele abre e fecha a correção. */
+function convCheckMark(turn, bubble) {
+  const c = turn.check;
+  if (!bubble || !c) return;
+  bubble.querySelector(".cv-check")?.remove();
+  bubble.querySelector(".cv-fix")?.remove();
+  const n = c.errors.length, opens = c.state === "erro" || c.state === "estilo";
+  const label = {checking: "Conferindo…", ok: "Certo", erro: n === 1 ? "1 erro" : n + " erros", estilo: "Certo, com uma dica", fail: "Não conferida"}[c.state];
+  const mark = h(opens ? "button" : "span", {class: "cv-check " + c.state, type: opens ? "button" : null, "aria-expanded": opens ? "false" : null,
+    title: c.state === "fail" ? "A correção desta fala não saiu; o resumo no fim continua valendo." : opens ? "Ver a correção" : null},
+    c.state === "ok" || c.state === "estilo" ? icon("check", 14) : c.state === "erro" ? h("i", {class: "cv-dot"}) : null, h("span", {text: label}),
+    opens ? icon("chevron", 14) : null);
+  if (opens) mark.addEventListener("click", () => {
+    const open = bubble.querySelector(".cv-fix");
+    if (open) open.remove();
+    else { const fix = convFixNode(turn); bubble.append(fix); convRevealAboveInput(fix); }
+    mark.setAttribute("aria-expanded", String(!open));
+  });
+  bubble.append(mark);
+}
+/* A frase corrigida com as palavras trocadas marcadas, os erros explicados (com “Criar cartão”) e as dicas de estilo. */
+/* A caixa de digitar fica presa embaixo da tela: rola só o necessário para a correção aberta aparecer acima dela. */
+function convRevealAboveInput(el) {
+  const box = document.querySelector("#convRoom .conv-input"), r = el.getBoundingClientRect();
+  const limit = box && !box.hidden ? box.getBoundingClientRect().top - 16 : window.innerHeight - 16;
+  if (r.bottom > limit) window.scrollBy({top: r.bottom - limit, behavior: "smooth"});
+}
+function convFixNode(turn) {
+  const c = turn.check, speakBtn = text => h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir", onclick: () => convSpeak(text)}, icon("volume", 16));
+  return h("div", {class: "cv-fix"},
+    c.fixed ? h("div", {class: "cv-fixed"}, h("p", {lang: "de"}, convDiffNodes(c.fixed, turn.de)), speakBtn(c.fixed)) : null,
+    c.errors.length ? h("ul", {class: "cv-list"}, ...c.errors.map(e => h("li", null,
+      h("p", {class: "cv-pair"}, h("s", {lang: "de", text: e.errado}), h("span", {class: "cv-arrow", "aria-hidden": "true"}, icon("chevron", 13)), h("b", {lang: "de", text: e.certo})),
+      e.explicacao ? h("p", {class: "cv-why", text: e.explicacao}) : null,
+      convCardButton({erro: {...e, frase: turn.de}})))) : null,
+    c.style.length ? h("ul", {class: "cv-list cv-style"}, ...c.style.map(s => h("li", null,
+      h("p", {class: "cv-pair"}, h("span", {lang: "de", text: s.disse}), h("span", {class: "cv-arrow", "aria-hidden": "true"}, icon("chevron", 13)), h("b", {lang: "de", text: s.natural}), speakBtn(s.natural)),
+      s.explicacao ? h("p", {class: "cv-why", text: s.explicacao}) : null))) : null);
+}
+function convDiffNodes(fixed, said) {
+  const out = [];
+  for (const [op, word] of wordDiff(fixed, said).ops) {
+    if (op === "del") continue;
+    if (out.length) out.push(" ");
+    out.push(op === "eq" ? word : h("mark", {text: word}));
+  }
+  return out;
+}
 
 // ---------- Voz ----------
 async function convSpeak(text, slow = false) {
@@ -206,7 +298,7 @@ function renderConvSetup() {
   fill($("convSetup"),
     h("div", {class: "panel"},
       h("p", {text: "Seu nível agora: " + level + ". A parceira fala nesse nível e usa, de preferência, as palavras das frases que você já aprendeu. Conforme você avança no treino, a conversa sobe junto."}),
-      h("p", {class: "muted small-text", text: "Fale (F) ou escreva. Ela corrige do jeito natural, repetindo certo o que você disse, sem interromper. No fim, você vê os erros mais importantes explicados em português."}),
+      h("p", {class: "muted small-text", text: "Fale (F) ou escreva. Ela responde repetindo certo o que você disse, sem interromper. Cada fala sua ganha um sinal (Certo ou o número de erros; toque para ver a correção) e, no fim, você vê o resumo dos erros em português."}),
       convModelLine(),
       last ? h("p", {class: "muted small-text", text: data.sessions.length + (data.sessions.length === 1 ? " conversa feita" : " conversas feitas") + " · última em " + new Date(last.at).toLocaleDateString("pt-BR") + "."}) : null),
     f432SetupNode(),
@@ -280,6 +372,7 @@ function openConversaTopic(topic) {
   $("convShowText").checked = settings.convShowText !== false;
   $("convAutoSend").checked = !!settings.convAutoSend;
   $("convHandsFree").checked = !!settings.convHandsFree;
+  $("convCheck").value = convCheckLevel();
   conv.handsFreePaused = false; conv.emptyListens = 0;
   $("convHuh").title = "Envia: “" + (convSie(topic) ? CONV_HUH_SIE : CONV_HUH) + "” (ela repete mais fácil)";
   $("convRoom").classList.remove("finished");
@@ -331,11 +424,11 @@ function convSend(textArg) {
   if (!text) { $("convText").focus(); return; }
   $("convText").value = "";
   $("convHelp").hidden = true;
-  const turn = {who: "me", de: text};
+  const turn = {who: "me", de: text}, bubble = convBubble(turn);
   conv.turns.push(turn);
-  $("convChat").append(convBubble(turn));
+  $("convChat").append(bubble);
   convScroll();
-  partnerTurn(text);
+  partnerTurn(text).then(() => convCheckTurn(turn, bubble));
 }
 async function convMic() {
   if (conv.clip) { conv.clip.stop(); return; }
@@ -614,6 +707,7 @@ function bindConversa() {
     if (!e.target.checked && conv.clip) { conv.handsFreePaused = true; conv.clip.stop(); }
     if (e.target.checked && conv.topic && !conv.busy && !conv.finished) { conv.handsFreePaused = false; convListen(); }
   });
+  $("convCheck").addEventListener("change", e => { settings.convCheck = e.target.value; saveSettings(); });
   $("convVoice").addEventListener("change", e => { settings.convVoice = e.target.value; saveSettings(); });
   all("#convUmlauts [data-char]").forEach(b => b.addEventListener("click", () => {
     const t = $("convText"), i = t.selectionStart ?? t.value.length;

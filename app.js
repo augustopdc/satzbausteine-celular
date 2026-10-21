@@ -100,7 +100,7 @@ let progress = emptyProgress();
 let settings = {newLimit: 6, reviewLimit: "", newOrder: "priority", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
   welcomeDismissed: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
   presentNew: true, levelGate: true, nwChapter: 7, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
-  convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false};
+  convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado"};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
   done: 0, failed: 0, fresh: 0, grades: {}, startedAt: 0, shownAt: 0, undo: [], extraNew: 0, extraReviews: 0, extraReviewsDay: "", speech: "idle", dictation: false, diktat: null};
 let templateCard = null, templateVariation = 0, activationCards = [], activationRound = 0;
