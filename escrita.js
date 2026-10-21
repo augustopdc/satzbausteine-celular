@@ -89,6 +89,12 @@ function escritaDiaryPrompt(nw = escritaNw(), day = dateKey()) {
   const p = open[n % open.length] || ESCRITA_DIARIO[0];
   return {de: p[1], pt: p[2]};
 }
+/* Tarefa do diário de hoje (também aberta pelo roteiro da tela Hoje). */
+function escritaDiarySpec() {
+  const diary = escritaDiaryPrompt();
+  return {kind: "diario", ref: "diario|" + dateKey(), title: "Diário · " + formatDate(dateKey(), {day: "numeric", month: "short"}),
+    de: diary.de, pt: "", ptText: diary.pt, pontos: [], pontosPt: [], palavras: [0, 0], formato: "diario", reg: "", nivel: escritaLevel(), minFrases: 3};
+}
 function escritaLevel() { return typeof convLevel === "function" ? convLevel() : "A1"; }
 
 // ---------- Conferência por regra ----------
@@ -328,8 +334,7 @@ function escritaHome(box) {
         h("p", {class: "muted small-text", text: "Três frases sobre o seu dia: 3 minutos, até no plantão."}),
         h("p", {class: "es-prompt", lang: "de", text: diary.de}),
         h("p", {class: "muted small-text", text: diary.pt}),
-        h("button", {class: "primary", type: "button", onclick: () => escritaOpen("editor", {spec: {kind: "diario", ref: "diario|" + dateKey(), title: "Diário · " + formatDate(dateKey(), {day: "numeric", month: "short"}),
-          de: diary.de, pt: "", ptText: diary.pt, pontos: [], pontosPt: [], palavras: [0, 0], formato: "diario", reg: "", nivel: escritaLevel(), minFrases: 3}})}, "Escrever")),
+        h("button", {class: "primary", type: "button", onclick: () => escritaOpen("editor", {spec: escritaDiarySpec()})}, "Escrever")),
       escritaBookCard()),
     stats.count ? h("section", {class: "panel es-stats"},
       h("h2", {text: "Sua evolução"}),

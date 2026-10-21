@@ -69,7 +69,13 @@
   <main id="main">
 
   <section id="view-home" class="view">
-   <header class="page-head"><p id="homeGreeting" class="eyebrow"></p><h1 id="homeHeadline">Treino de frases</h1></header>
+   <header class="page-head home-head">
+    <div class="home-hello"><p id="homeGreeting" class="eyebrow"></p><h1 id="homeHeadline">Bom dia.</h1><p id="homeSub" class="lede"></p></div>
+    <div class="home-day">
+     <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
+     <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
+    </div>
+   </header>
    <div id="welcome" class="panel welcome" hidden>
     <div><h2>Como funciona</h2>
      <ol class="steps"><li><b>Leia a situação</b><span>Em português, com o registro indicado (du, Sie…).</span></li><li><b>Fale em alemão</b><span>Em voz alta, antes de revelar a resposta.</span></li><li><b>Revele e avalie</b><span>Uma alternativa natural e correta também vale.</span></li></ol></div>
@@ -79,26 +85,27 @@
    <div id="backupReminder" class="notice warn" hidden><span id="backupReminderText"></span><button id="reminderExport" class="small" type="button">Exportar agora</button><button id="reminderExtChoose" class="small" type="button" hidden>Escolher pasta</button></div>
    <div id="hero" class="panel hero">
     <div class="hero-main">
-     <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
-     <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
-     <div class="hero-count"><strong id="heroTotal">0</strong><span>cartões<br>para hoje</span></div>
-     <ul class="hero-split"><li><i class="dot due"></i><b id="heroDue">0</b> revisões</li><li><i class="dot new"></i><b id="heroNew">0</b> novas</li><li><i class="dot listen"></i><b id="heroListen">0</b> em escuta</li></ul>
-     <p id="heroEta" class="muted"></p>
+     <div class="hero-top">
+      <div id="heroRing" class="ring" role="img" aria-label="Meta de hoje"></div>
+      <div class="hero-next">
+       <p class="eyebrow">Próximo passo</p>
+       <h2 id="heroNext"></h2>
+       <ul class="hero-split"><li><i class="dot due"></i><b id="heroDue">0</b> revisões</li><li><i class="dot new"></i><b id="heroNew">0</b> novas</li><li><i class="dot listen"></i><b id="heroListen">0</b> em escuta</li></ul>
+       <p id="heroEta" class="muted"></p>
+      </div>
+     </div>
+     <div class="hero-actions"><button id="homeNext" class="primary lg" type="button" hidden></button><button id="homeProduction" class="primary lg" type="button">Treinar produção</button><button id="homeListening" class="lg" type="button">Treinar escuta</button></div>
      <p id="heroShiftNote" class="shift-note" hidden></p>
      <div id="heroFolga" class="row" hidden><button id="heroScene" class="small" type="button">Praticar uma cena</button><button id="heroExam" class="small" type="button">Fazer um Modo Prova</button></div>
-     <p id="heroPlan" class="hero-plan"></p>
      <p id="heroGoal" class="hero-plan goal"></p>
     </div>
-    <div class="hero-actions"><button id="homeProduction" class="primary lg" type="button">Treinar produção</button><button id="homeListening" class="lg" type="button">Treinar escuta</button></div>
+    <div class="hero-route"><h3>Roteiro de hoje</h3><ol id="homeRoute" class="route"></ol></div>
    </div>
-   <div id="homeMetrics" class="stats"></div>
+   <div id="homeMetrics" class="home-tiles"></div>
+   <section class="panel"><div class="row between"><h2>Seus dias de estudo</h2><div class="heat-legend"><span>Menos</span><i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i><span>Mais</span><i class="hm hm-plantao"></i><span>Plantão</span></div></div><p id="heatmapInfo" class="muted"></p><div id="heatmap" class="heatmap"></div></section>
    <div class="grid two">
-    <section class="panel"><h2>Atividade</h2><p id="heatmapInfo" class="muted"></p><div id="heatmap" class="heatmap"></div><div class="heat-legend"><span>Menos</span><i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i><span>Mais</span></div></section>
     <section class="panel"><h2>Revisões previstas</h2><p class="muted">Próximos 7 dias, somando produção e escuta.</p><div id="forecast" class="bars"></div></section>
-   </div>
-   <div class="grid two">
-    <section class="panel"><h2>Aprendidas por camada</h2><div id="layerMetrics"></div></section>
-    <section class="panel"><h2>Aprendidas por prioridade</h2><div id="priorityMetrics"></div></section>
+    <section class="panel"><h2>Aprendidas</h2><p id="homeLearned" class="muted"></p><div id="layerMetrics"></div><div id="priorityMetrics" class="spaced"></div></section>
    </div>
   </section>
 
@@ -514,6 +521,7 @@
 <script src="escrita-data.js"></script>
 <script src="escrita.js"></script>
 <script src="navegacao.js"></script>
+<script src="hoje.js"></script>
 <script src="app.js"></script>
 <script src="celular.js"></script>
 <script src="nuvem.js"></script>

@@ -656,34 +656,13 @@ function statTile(iconName, label, value, sub, tone) {
     h("div", null, h("span", {class: "stat-label", text: label}), h("b", {text: value}), sub ? h("small", {text: sub}) : null));
 }
 function renderHome() {
-  const load = todayLoad(), {dueProd, dueListen, fresh} = load;
-  const total = dueProd + dueListen + fresh;
-  const now = new Date(), hour = now.getHours();
-  $("homeGreeting").textContent = (hour < 5 ? "Boa noite" : hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite") + " · " + now.toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "long"});
-  $("homeHeadline").textContent = total ? (total === 1 ? "1 cartão para hoje" : total + " cartões para hoje")
-    : load.held ? (load.plan.type === "plantao" ? "Meta do plantão cumprida" : "Meta de hoje cumprida") : "Tudo em dia por hoje";
+  const load = todayLoad(), {dueProd, fresh} = load;
   renderShiftToday(load);
-  $("heroTotal").textContent = total;
-  $("heroDue").textContent = dueProd;
-  $("heroNew").textContent = fresh;
-  $("heroListen").textContent = dueListen;
-  $("heroEta").textContent = total ? "Cerca de " + Math.max(1, Math.ceil(total * averageSeconds() / 60)) + " min de treino"
-    : restrictedToday(load.plan) ? "Nada mais para hoje. Descanse." : "Aproveite para praticar um molde ou uma ativação.";
-  const plan = planSettings(), toMove = daysUntil(plan.move);
-  $("heroPlan").textContent = toMove > 0 ? "Faltam " + toMove.toLocaleString("pt-BR") + " dias para a mudança" + (daysUntil(plan.b2) > 0 ? " · B2 em " + daysUntil(plan.b2) + " dias" : "") : "";
+  renderHoje(load);
   const goal = nextCando();
   $("heroGoal").textContent = goal ? "Próxima meta: " + goal.text.toLowerCase() + " (" + Math.round(goal.pct * 100) + "%)" : "";
-  $("hero").classList.toggle("done", !total);
-  $("homeProduction").textContent = dueProd + fresh ? "Treinar produção" : "Estudar mais novas";
-  $("homeListening").textContent = dueListen ? "Treinar escuta (" + dueListen + ")" : "Treinar escuta";
-  const learned = cards.filter(studied).length, acc = accuracy30(), todayStats = (progress.dayStats || {})[dateKey()] || {};
-  const best = bestStreak(), st = streak();
-  $("homeMetrics").replaceChildren(
-    statTile("flame", "Sequência", st + (st === 1 ? " dia" : " dias"), best > st ? "Recorde: " + best + " dias" : st ? "Seu recorde" : "Estude hoje para começar", "warm"),
-    statTile("book", "Aprendidas", learned.toLocaleString("pt-BR"), cards.length ? (learned / cards.length * 100).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "% do catálogo" : ""),
-    statTile("today", "Hoje", (progress.days[dateKey()] || 0) + " atividades", todayStats.ms ? formatDuration(todayStats.ms / 1000) + " de treino" : "Nenhuma sessão ainda"),
-    statTile("target", "Acerto em 30 dias", acc.pct == null ? "—" : acc.pct + "%", acc.reviews ? acc.reviews + " avaliações" : "Sem avaliações ainda")
-  );
+  const st = streak(), learned = cards.filter(studied).length;
+  $("homeLearned").textContent = learned.toLocaleString("pt-BR") + (learned === 1 ? " frase" : " frases") + (cards.length ? " · " + (learned / cards.length * 100).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "% do catálogo" : "");
   for (const [target, key] of [["layerMetrics", "Schicht"], ["priorityMetrics", "Prio"]]) {
     const rows = [];
     for (let n = 1; n <= 3; n++) {
@@ -786,7 +765,7 @@ function progressRow(label, done, total) {
     h("div", {class: "track", role: "img", "aria-label": Math.round(total ? done / total * 100 : 0) + "%"}, bar));
 }
 function renderHeatmap() {
-  const box = $("heatmap"), weeks = 20, today = new Date();
+  const box = $("heatmap"), weeks = 26, today = new Date();
   today.setHours(12, 0, 0, 0);
   const start = new Date(today);
   start.setDate(start.getDate() - today.getDay() - (weeks - 1) * 7);
@@ -804,7 +783,7 @@ function renderHeatmap() {
     const shift = v < 0 ? "normal" : dayType(dateKey(d));
     const label = v < 0 ? "" : (v || "Nenhuma") + " atividade" + (v === 1 ? "" : "s") + " · " + d.toLocaleDateString("pt-BR", {weekday: "short", day: "numeric", month: "short"})
       + (shift !== "normal" ? " · " + SHIFT_LABELS[shift].toLowerCase() : "");
-    return h("span", {class: "hm l" + level, title: label || null});
+    return h("span", {class: "hm l" + level + (v === 0 && (shift === "plantao" || shift === "pos") ? " hm-plantao" : ""), title: label || null});
   }));
   const active = cells.filter(([, v]) => v > 0).length;
   $("heatmapInfo").textContent = active ? active + (active === 1 ? " dia" : " dias") + " com estudo nas últimas " + weeks + " semanas" : "Seus dias de estudo aparecerão aqui.";
