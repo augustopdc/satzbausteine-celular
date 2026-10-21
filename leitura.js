@@ -212,7 +212,7 @@ function renderBook() {
   ptMode.addEventListener("change", () => { reading.ptMode = ptMode.value; saveReadingState({ptMode: reading.ptMode}); renderBook(); });
   const togglePick = () => { reading.picking = !reading.picking; if (!reading.picking) reading.pick = []; renderBook(); };
   const phone = rdPhone();
-  const practiceBtn = h("button", {class: "small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, phone ? "🎯 Praticar o capítulo" : "🎯 Praticar");
+  const practiceBtn = h("button", {class: "small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, iconText("target", phone ? "Praticar o capítulo" : "Praticar"));
   const savedBtn = h("button", {id: "rdSavedBtn", class: "quiet small", type: "button", title: "Palavras e expressões guardadas deste livro", onclick: () => renderSavedWords()}, "★ (" + savedWordsOf(book.id).length + ")");
   // Ajustes de exibição (“Aa”): ficam num menu para a barra caber numa linha só. No celular, praticar e guardados também.
   const look = h("div", {id: "rdLook", class: "rd-look panel", hidden: !reading.lookOpen},
@@ -221,7 +221,7 @@ function renderBook() {
       h("div", {class: "reader-controls"},
         h("button", {class: "icon-btn", type: "button", title: "Letra menor", "aria-label": "Letra menor", onclick: () => setReaderLook(-.08, 0)}, "A−"),
         h("button", {class: "icon-btn", type: "button", title: "Letra maior", "aria-label": "Letra maior", onclick: () => setReaderLook(.08, 0)}, "A+"),
-        h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, "↕"))),
+        h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, icon("lineHeight", 18)))),
     h("label", {class: "inline-check", title: "Tela limpa: a consulta abre num balão ao lado da palavra, sem o painel lateral"},
       h("input", {id: "rdFlow", type: "checkbox", checked: reading.flow, onchange: e => { reading.flow = e.target.checked; saveReadingState({flow: reading.flow}); renderBook(); }}), phone ? "Leitura contínua (balão em vez da gaveta)" : "Leitura contínua (sem painel lateral)"),
     h("label", {class: "inline-check", title: "Toca a frase quando você escolhe outra frase"}, h("input", {type: "checkbox", checked: reading.clickPlays, onchange: e => { reading.clickPlays = e.target.checked; saveReadingState({clickPlays: reading.clickPlays}); }}), "Tocar a frase ao clicar"),
@@ -234,9 +234,9 @@ function renderBook() {
       onclick: e => { e.stopPropagation(); rdToggleLook(); }}, "Aa"),
     look);
   const player = h("div", {class: "reader-controls rd-player"},
-    h("button", {class: "icon-btn", type: "button", title: "Frase anterior (←)", "aria-label": "Frase anterior", onclick: () => stepSentence(-1)}, "⏮"),
-    h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, "▶ Ler ouvindo"),
-    h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, "⏭"),
+    h("button", {class: "icon-btn", type: "button", title: "Frase anterior (←)", "aria-label": "Frase anterior", onclick: () => stepSentence(-1)}, icon("skipBack", 16)),
+    h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, iconText("play", "Ler ouvindo")),
+    h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, icon("skipFwd", 16)),
     h("button", {class: "icon-btn", type: "button", title: "Repetir a frase (R)", "aria-label": "Repetir a frase", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, "↻"),
     speed);
   const pickChip = reading.picking ? h("button", {class: "quiet small on", type: "button", title: "Parar de marcar a expressão", onclick: togglePick}, phone ? "✓ ✕" : "✓ Marcando expressão ✕") : null;
@@ -299,8 +299,8 @@ function renderBook() {
 function rdChapterChips(summary, summaryOpen) {
   const chips = [
     summary ? h("button", {id: "rdSummaryBtn", class: "chip small" + (summaryOpen ? " on" : ""), type: "button", "aria-expanded": String(summaryOpen), title: "Resumo do capítulo, para ler antes",
-      onclick: () => { reading.summaryOpen = summaryOpen ? null : reading.ch; renderBook(); }}, "📖 Resumo") : null,
-    !reading.cycle && hasSync() && typeof rdCycleStart === "function" ? h("button", {class: "chip small", type: "button", title: "Ouvir o capítulo sem texto, ler com apoio e ouvir de novo", onclick: rdCycleStart}, "🔁 Ouvir → ler → ouvir") : null,
+      onclick: () => { reading.summaryOpen = summaryOpen ? null : reading.ch; renderBook(); }}, iconText("bookOpen", "Resumo", 15)) : null,
+    !reading.cycle && hasSync() && typeof rdCycleStart === "function" ? h("button", {class: "chip small", type: "button", title: "Ouvir o capítulo sem texto, ler com apoio e ouvir de novo", onclick: rdCycleStart}, iconText("repeat", "Ouvir → ler → ouvir", 15)) : null,
     typeof rdDifficultyNode === "function" ? rdDifficultyNode(true) : null].filter(Boolean);
   return chips.length ? h("div", {class: "rd-chips"}, ...chips) : null;
 }
@@ -596,7 +596,7 @@ function renderDetail() {
         typeof passageButton === "function" ? passageButton(i) : null),
       topics.length ? h("div", {class: "rd-grammar"}, h("span", {class: "muted small-text", text: "Gramática nesta frase:"}),
         ...topics.map(id => { const t = GRAMMAR_BY_ID.get(id); return h("div", {class: "rd-topic"},
-          h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, "📘 " + t.title), h("p", {class: "muted small-text", text: t.short})); }))
+          h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", t.title, 15)), h("p", {class: "muted small-text", text: t.short})); }))
         : h("p", {class: "muted small-text", text: note ? "" : "Sem ponto de gramática destacado nesta frase."})));
 }
 async function copySentence(text) {
@@ -720,7 +720,7 @@ function updateReaderControls() {
   const btn = $("rdPlay");
   if (!btn) return;
   const on = reading.follow && reading.audio && !reading.audio.paused;
-  btn.textContent = on ? "⏸ Pausar" : "▶ Ler ouvindo";
+  fill(btn, iconText(on ? "pause" : "play", on ? "Pausar" : "Ler ouvindo"));
   btn.disabled = !hasSync();
 }
 function markChapterRead() {

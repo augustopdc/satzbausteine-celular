@@ -200,7 +200,7 @@ function rdCycleBanner() {
   return h("div", {class: "panel rd-cycle"},
     h("b", {text: title}), h("p", {class: "muted small-text", text: text}),
     h("div", {class: "row"},
-      listening ? h("button", {class: "small", type: "button", onclick: () => { toggleFollow(); renderBook(); }}, on ? "⏸ Pausar" : "▶ Continuar") : null,
+      listening ? h("button", {class: "small", type: "button", onclick: () => { toggleFollow(); renderBook(); }}, iconText(on ? "pause" : "play", on ? "Pausar" : "Continuar")) : null,
       h("button", {class: "primary small", type: "button", onclick: rdCycleNext}, c.step === 1 ? "Ir para a leitura →" : c.step === 2 ? "Ouvir de novo sem texto →" : "Terminar"),
       h("button", {class: "quiet small", type: "button", onclick: rdCycleStop}, "Sair do ciclo")));
 }

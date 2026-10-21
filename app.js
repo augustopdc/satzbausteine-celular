@@ -159,8 +159,25 @@ const ICONS = {
   download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
   text: '<path d="M4 6h16M4 12h16M4 18h10"/>',
-  alert: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>'
+  alert: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  pause: '<rect x="6.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/>',
+  skipBack: '<path d="M18 5.5v13L9 12z" fill="currentColor"/><path d="M6 5v14"/>',
+  skipFwd: '<path d="M6 5.5v13L15 12z" fill="currentColor"/><path d="M18 5v14"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6l-3.9.9.9-3.9z"/>',
+  notebook: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v18M12.5 8h3M12.5 12h3"/>',
+  bookOpen: '<path d="M12 7v13"/><path d="M3 5.5a1 1 0 0 1 1-1h5a3 3 0 0 1 3 3 3 3 0 0 1 3-3h5a1 1 0 0 1 1 1V17a1 1 0 0 1-1 1h-6a2 2 0 0 0-2 2 2 2 0 0 0-2-2H4a1 1 0 0 1-1-1z"/>',
+  phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+  pin: '<path d="M9 3h6l-1 6 3 3H7l3-3z"/><path d="M12 12v9"/>',
+  repeat: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"/><path d="M20 4v4.5h-4.5"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"/><path d="M4 20v-4.5h4.5"/>',
+  puzzle: '<path d="M10 4h4v2.5a1.5 1.5 0 0 0 3 0V4h3v6h-2.5a1.5 1.5 0 0 0 0 3H20v7h-6v-2.5a1.5 1.5 0 0 0-3 0V20H4v-7h2.5a1.5 1.5 0 0 0 0-3H4V4z"/>',
+  speech: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M17 6.5a4 4 0 0 1 0 5M19.5 4a7.5 7.5 0 0 1 0 10"/>',
+  chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2.5 21.5z"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  lineHeight: '<path d="M11 6h9M11 12h9M11 18h9"/><path d="M5.5 4v16M3 6.5 5.5 4 8 6.5M3 17.5 5.5 20 8 17.5"/>'
 };
+/* Ícone + texto como filhos de h(): h("button", null, iconText("play", "Tocar")). */
+function iconText(name, text, size = 16) { return [icon(name, size), text]; }
 function icon(name, size = 20) {
   const tpl = document.createElement("template");
   tpl.innerHTML = `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -171,13 +188,18 @@ function icon(name, size = 20) {
 function toast(message, kind = "info", timeout) {
   const box = $("toasts");
   if (!box || !message) return;
-  const item = h("div", {class: "toast " + kind, role: kind === "error" ? "alert" : "status"});
-  const dismiss = () => { item.classList.remove("in"); setTimeout(() => item.remove(), 220); };
-  item.append(h("span", {class: "toast-text", text: message}), h("button", {class: "toast-x", "aria-label": "Fechar aviso", onclick: dismiss}, "×"));
+  const wait = timeout ?? (kind === "error" ? 9000 : 4500);
+  const same = [...box.children].find(t => t.dataset.msg === message);
+  if (same) { clearTimeout(same.timer); same.timer = setTimeout(same.dismiss, wait); return; }
+  const item = h("div", {class: "toast " + kind, role: kind === "error" ? "alert" : "status", dataset: {msg: message}});
+  const dismiss = () => { clearTimeout(item.timer); item.classList.remove("in"); setTimeout(() => item.remove(), 300); };
+  item.dismiss = dismiss;
+  item.append(h("span", {class: "toast-ico"}, icon(kind === "error" ? "alert" : kind === "success" ? "check" : "info", 15)),
+    h("span", {class: "toast-text", text: message}), h("button", {class: "toast-x", "aria-label": "Fechar aviso", onclick: dismiss}, "×"));
   box.append(item);
   requestAnimationFrame(() => item.classList.add("in"));
-  setTimeout(dismiss, timeout ?? (kind === "error" ? 9000 : 4500));
-  while (box.children.length > 4) box.firstChild.remove();
+  item.timer = setTimeout(dismiss, wait);
+  while (box.children.length > 2) box.firstChild.remove();
 }
 function setStatus(message, kind) {
   const status = $("status");
@@ -547,8 +569,8 @@ function showView(view) {
   if (view === "conversa") renderConversa();
   if (view === "minhas") renderMinhas();
   if (view === "pron") renderPron();
-  if (view === "reading") renderReading();
   if (view === "escrita") renderEscrita();
+  if (view === "reading") renderReading();
   else if (typeof rdApplyFocus === "function") rdApplyFocus();
   if (view === "grammar") renderGrammar();
   if (view === "catalog") renderCatalog();
@@ -1987,7 +2009,7 @@ function speak(text, slow = false) {
   utterance.rate = (Number(settings.rate) || .9) * (slow ? .7 : 1);
   const voice = voices.find(v => v.voiceURI === settings.voice);
   if (voice) utterance.voice = voice;
-  else if (!voices.length) setStatus("Sem voz alemã instalada. Veja Configurações → Áudio.", "error");
+  else if (!voices.length && !speak.warned) { speak.warned = true; setStatus("Esta frase não tem áudio gravado e o Windows não tem voz alemã. Veja Configurações → Áudio."); }
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }

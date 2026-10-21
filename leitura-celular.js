@@ -30,7 +30,7 @@ function rdSendButton(b) {
       toast("Livro enviado para o celular. Abra o app no iPhone → Leitura → Baixar.", "success");
     } catch (e) { status.textContent = "Não consegui enviar: " + cleanIpcError(e, "erro"); }
     btn.disabled = false;
-  }}, sent ? "📱 Enviar de novo" : "📱 Enviar para o celular");
+  }}, iconText("phone", sent ? "Enviar de novo" : "Enviar para o celular"));
   return h("div", {class: "book-status"}, btn, status);
 }
 function rdOnSendProgress(d) {
@@ -157,7 +157,7 @@ function rdWebRender() {
   fill(box, typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
     rdWeb.error ? h("p", {class: "notice warn", text: "Não consegui ver a lista de livros no GitHub: " + rdWeb.error}) : null,
     rows.length ? h("div", {class: "book-grid"}, ...rows)
-      : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “📱 Enviar para o celular” no livro."}),
+      : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “Enviar para o celular” no livro."}),
     h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC; aqui aparecem as que já foram feitas."}));
 }
 if (window.satzDesktop && window.satzDesktop.onCloudBookProgress) window.satzDesktop.onCloudBookProgress(rdOnSendProgress);

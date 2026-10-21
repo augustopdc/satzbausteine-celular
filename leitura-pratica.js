@@ -123,8 +123,8 @@ function renderSavedWords() {
   reading.view = "words";
   const all = savedWordsOf(reading.book.id), list = all.filter(v => v.t !== "p"), spots = all.filter(v => v.t === "p");
   readingShell("Guardados deste livro",
-    h("p", {class: "muted", text: all.length ? "Palavras (☆ no painel), expressões (marque várias palavras) e trechos para estudar depois (📌). Revise, ouça a frase onde apareceram ou transforme a frase em cartão."
-      : "Nada guardado neste livro ainda. Na leitura, toque numa palavra e depois na estrela (☆); marque várias palavras para uma expressão; ou use 📌 para guardar um trecho."}),
+    h("p", {class: "muted", text: all.length ? "Palavras (☆ no painel), expressões (marque várias palavras) e trechos marcados em “Estudar depois”. Revise, ouça a frase onde apareceram ou transforme a frase em cartão."
+      : "Nada guardado neste livro ainda. Na leitura, toque numa palavra e depois na estrela (☆); marque várias palavras para uma expressão; ou use “Estudar depois” para guardar um trecho."}),
     list.length ? h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => startWordReview(list)}, "Revisar palavras e expressões (" + list.length + ")"),
       h("button", {class: "quiet", type: "button", onclick: () => copyWords(list)}, "Copiar a lista")) : null,
     spots.length ? h("h2", {text: "Trechos para estudar (" + spots.length + ")"}) : null,
@@ -194,13 +194,14 @@ function markWord(text, word) {
 
 // ---------- Tela: praticar o capítulo ----------
 const RD_PRACTICE = [
-  ["vocab", "📖 Vocabulário do capítulo", "As palavras que aparecem pela primeira vez neste capítulo, com o significado. Bom para ver antes de ler."],
-  ["volta", "🔁 Tradução de volta", "Você vê a frase em português e diz ou escreve em alemão. Depois compara com o livro, palavra por palavra."],
-  ["ditado", "✍️ Ditado com o audiolivro", "Ouça a frase do narrador e escreva. O app mostra cada erro de grafia (maiúscula, trema, ß…)."],
-  ["lacuna", "🧩 Complete a palavra", "A frase aparece com uma palavra faltando e a tradução de ajuda. Escreva a palavra que falta."],
-  ["sombra", "🗣️ Repetir junto (shadowing)", "Ouça a frase do narrador e repita em voz alta, no mesmo ritmo. O app transcreve e compara palavra por palavra."],
-  ["conversa", "💬 Conversar sobre o capítulo", "A parceira de conversa (IA do computador) faz perguntas sobre o que você leu, no seu nível."]
+  ["vocab", "Vocabulário do capítulo", "As palavras que aparecem pela primeira vez neste capítulo, com o significado. Bom para ver antes de ler."],
+  ["volta", "Tradução de volta", "Você vê a frase em português e diz ou escreve em alemão. Depois compara com o livro, palavra por palavra."],
+  ["ditado", "Ditado com o audiolivro", "Ouça a frase do narrador e escreva. O app mostra cada erro de grafia (maiúscula, trema, ß…)."],
+  ["lacuna", "Complete a palavra", "A frase aparece com uma palavra faltando e a tradução de ajuda. Escreva a palavra que falta."],
+  ["sombra", "Repetir junto (shadowing)", "Ouça a frase do narrador e repita em voz alta, no mesmo ritmo. O app transcreve e compara palavra por palavra."],
+  ["conversa", "Conversar sobre o capítulo", "A parceira de conversa (IA do computador) faz perguntas sobre o que você leu, no seu nível."]
 ];
+const RD_PRACTICE_ICONS = {vocab: "bookOpen", volta: "repeat", ditado: "pen", lacuna: "puzzle", sombra: "speech", conversa: "chat"};
 function practiceAvailable(kind) {
   const b = reading.book, notes = b.notes || {};
   if (kind === "vocab") return notes.w ? "" : "Precisa das anotações do livro (dicionário de palavras).";
@@ -219,7 +220,7 @@ function renderBookPractice(kind) {
       h("div", {class: "rd-menu"}, ...RD_PRACTICE.map(([k, title, desc]) => {
         const why = practiceAvailable(k), n = ["volta", "ditado", "lacuna", "sombra"].includes(k) ? practicePool(k, reading.order, reading.starts, reading.book.notes, reading.ch).length : null;
         return h("button", {class: "rd-menu-item", type: "button", disabled: !!why || n === 0, onclick: () => startPractice(k)},
-          h("b", {text: title}), h("span", {class: "muted small-text", text: why || (n === 0 ? "Sem frases adequadas neste capítulo." : desc)}));
+          h("b", {class: "ico-inline"}, icon(RD_PRACTICE_ICONS[k], 18), title), h("span", {class: "muted small-text", text: why || (n === 0 ? "Sem frases adequadas neste capítulo." : desc)}));
       })));
     return;
   }
@@ -260,7 +261,7 @@ function showPracticeItem() {
   const it = bp.items[bp.i];
   if (!it) { finishPractice(); return; }
   bp.answered = false;
-  const title = RD_PRACTICE.find(p => p[0] === bp.kind)[1].replace(/^\S+\s/, "") + " · " + (bp.i + 1) + " de " + bp.items.length;
+  const title = RD_PRACTICE.find(p => p[0] === bp.kind)[1] + " · " + (bp.i + 1) + " de " + bp.items.length;
   const input = bp.kind === "sombra" ? null : h(bp.kind === "lacuna" ? "input" : "textarea", {id: "bpInput", lang: "de", rows: "2", spellcheck: "false", autocomplete: "off",
     placeholder: bp.kind === "volta" ? "Escreva (ou fale) a frase em alemão" : bp.kind === "ditado" ? "Escreva o que você ouviu" : "A palavra que falta"});
   const result = h("div", {id: "bpResult", class: "bp-result", hidden: true});
@@ -602,7 +603,7 @@ function occurrenceBlock(i, k, word, compact) {
   const sep = sepParticle(s.text, k, reading.book.notes && reading.book.notes.w);
   const sepBtn = sep ? h("button", {class: "quiet small", type: "button", title: "Juntar as partes e explicar como expressão",
     onclick: () => { reading.pick = [k, sep.k].sort((a, b) => a - b); reading.word = ""; reading.wk = -1; highlightSentence(i); renderDetail(); refreshReaderPop(); requestExpr(i, reading.pick); }},
-    "🔗 " + word + " … " + sep.particle + (sep.verb ? " → " + sep.verb : "")) : null;
+    iconText("link", word + " … " + sep.particle + (sep.verb ? " → " + sep.verb : ""), 15)) : null;
   if (!occ) return h("div", {class: "rd-occ"},
     h("p", {class: "muted small-text", text: pending || (llmReady() && !reading.glossError) ? "Analisando o sentido nesta frase… (pode continuar lendo)" : llmReady() ? "A IA não respondeu agora. " : "Sem a IA do computador: veja o dicionário do livro abaixo."}),
     sepBtn);
@@ -673,7 +674,7 @@ function passageButton(i) {
     d.items[k] = on ? {deleted: true, updatedAt: now} : {t: "p", b: reading.book.id, w: "", s: s.text, sid: s.id, pt: note && note.pt || "", at: now, updatedAt: now, ok: 0};
     saveProgress(); updateSavedCount(); renderDetail(); refreshReaderPop();
     if (!on) toast("Trecho guardado para estudar depois.", "success");
-  }}, on ? "✓ Estudar depois" : "📌 Estudar depois");
+  }}, iconText(on ? "check" : "pin", "Estudar depois"));
 }
 function updateSavedCount() { const btn = $("rdSavedBtn"); if (btn && reading.book) btn.textContent = "★ (" + savedWordsOf(reading.book.id).length + ")"; }
 /* Conteúdo do balão do modo contínuo: o essencial e atalhos; o resto abre no painel. */

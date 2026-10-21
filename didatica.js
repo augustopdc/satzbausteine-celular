@@ -268,7 +268,7 @@ function grammarChips(card) {
     "nebensatz", "v2", "trennbar", "perfekt", "praeteritum", "modal", "imperativ", "reflexiv", "dativ", "akkusativ", "genitiv", "praep", "wfragen",
     "komparativ", "adjektiv", "possessiv", "konnektoren", "passiv", "konjunktiv", "genero", "negacao", "falsos", "sie"];
   const ids = topicsFor(card).sort((a, b) => priority.indexOf(a) - priority.indexOf(b)).slice(0, 2);
-  return ids.map(id => h("button", {class: "chip chip-grammar", type: "button", onclick: () => openGrammarDialog(id)}, "📘 " + GRAMMAR_BY_ID.get(id).title));
+  return ids.map(id => h("button", {class: "chip chip-grammar", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 15)));
 }
 function grammarTopicContent(t, withExamples = true) {
   const examples = withExamples ? topicCards(t.id).slice(0, 6) : [];
@@ -362,7 +362,7 @@ function renderDiagnosis() {
       h("div", {class: "track"}, bar),
       h("div", {class: "row diag-actions"},
         list.length ? h("button", {class: "small", type: "button", onclick: () => { showView("practice"); setSessionMode("production"); startSession({custom: list.slice(0, 20).map(c => c.id), label: "Erros de " + r.label.toLowerCase()}); }}, "Treinar " + Math.min(20, list.length) + " frases") : null,
-        ...r.topics.slice(0, 3).map(tid => h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(tid)}, "📘 " + GRAMMAR_BY_ID.get(tid).title))));
+        ...r.topics.slice(0, 3).map(tid => h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(tid)}, iconText("book", GRAMMAR_BY_ID.get(tid).title, 15)))));
   });
   fill(box, h("p", {class: "muted small-text", text: total + " erros marcados até agora."}), ...rows);
 }

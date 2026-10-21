@@ -315,7 +315,7 @@ function escritaHome(box) {
   fill(box,
     h("div", {class: "es-grid"},
       h("section", {class: "panel es-card"},
-        h("h2", {text: "✍️ Tarefa da prova"}),
+        h("h2", {class: "ico-inline"}, icon("pen"), "Tarefa da prova"),
         h("p", {class: "muted small-text", text: "Mensagem ou e-mail com 3 pontos obrigatórios, no formato da prova Goethe. Liberadas até o seu capítulo do Nicos Weg (" + nwChapterLabel(escritaNw()) + ")."}),
         select,
         tasks.locked ? h("p", {class: "muted small-text", text: "Mais " + tasks.locked + " tarefas aparecem conforme você avança (Meu plano → Estou no capítulo)."}) : null,
@@ -324,7 +324,7 @@ function escritaHome(box) {
           escritaOpen("editor", {spec: {kind: "prova", ref: task.id, title: task.tema, ...escritaTaskSpec(task), ptText: task.pt, pontosPt: task.pontos.map(p => p[1])}});
         }}, "Começar")),
       h("section", {class: "panel es-card"},
-        h("h2", {text: "📓 Diário de hoje"}),
+        h("h2", {class: "ico-inline"}, icon("notebook"), "Diário de hoje"),
         h("p", {class: "muted small-text", text: "Três frases sobre o seu dia: 3 minutos, até no plantão."}),
         h("p", {class: "es-prompt", lang: "de", text: diary.de}),
         h("p", {class: "muted small-text", text: diary.pt}),
@@ -348,7 +348,7 @@ function escritaHome(box) {
 }
 /* Resumo do capítulo: livros com resumo anotado; o capítulo sugerido é o último lido. */
 function escritaBookCard() {
-  const card = h("section", {class: "panel es-card"}, h("h2", {text: "📖 Resumo do capítulo"}),
+  const card = h("section", {class: "panel es-card"}, h("h2", {class: "ico-inline"}, icon("bookOpen"), "Resumo do capítulo"),
     h("p", {class: "muted small-text", text: "Depois de ler um capítulo, resuma com as suas palavras e compare com o resumo de referência."}));
   if (!escrita.books) {
     card.append(h("p", {class: "muted small-text", text: "Procurando livros…"}));
@@ -510,7 +510,7 @@ function escritaTextView(box) {
     input.setAttribute("autocorrect", "off");
     input.value = t.v2 || t.v1;
     fill(box, head, escritaTaskBox(spec),
-      h("p", null, fb.erros.length ? h("b", {text: fb.erros.length + (fb.erros.length === 1 ? " erro marcado" : " erros marcados")}) : h("b", {text: "Nenhum erro encontrado. 🎉"}),
+      h("p", null, fb.erros.length ? h("b", {text: fb.erros.length + (fb.erros.length === 1 ? " erro marcado" : " erros marcados")}) : h("b", {text: "Nenhum erro encontrado."}),
         h("span", {class: "muted", text: " · " + n + " palavras" + (rate != null && fb.erros.length ? " · " + String(rate).replace(".", ",") + " erros a cada 100 palavras" : "")})),
       marked.node,
       fb.erros.length ? h("ol", {class: "es-types"}, ...fb.erros.map((e, i) => h("li", {value: String(i + 1)}, h("b", {text: ESCRITA_TIPOS[e.tipo]}),
@@ -532,7 +532,7 @@ function escritaTextView(box) {
   const stateLabel = {ok: ["✓ você corrigiu", "ok"], mudou: ["~ você mudou: confira", "warn"], igual: ["✗ ficou igual", "no"]};
   const canSpeak = typeof convSpeak === "function" && escritaCanCorrect();
   fill(box, head, escritaTaskBox(spec),
-    fb.elogio ? h("p", {class: "es-praise", text: "👏 " + fb.elogio}) : null,
+    fb.elogio ? h("p", {class: "es-praise ico-inline"}, icon("check", 18), fb.elogio) : null,
     h("p", null, h("b", {text: fb.erros.length + (fb.erros.length === 1 ? " erro" : " erros")}),
       h("span", {class: "muted", text: " · " + n + " palavras" + (rate != null ? " · " + String(rate).replace(".", ",") + " a cada 100 palavras" : "")}),
       t.v2 && fb.erros.length ? h("span", {class: "es-fixed", text: " · você corrigiu " + fixed + " de " + fb.erros.length + " sozinho"}) : null),

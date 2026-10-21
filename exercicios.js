@@ -439,7 +439,7 @@ function exGrade(ok, mine) {
     h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? "Isso!" : item.kind === "build" ? "A frase é:" : "A certa é:"}),
     !ok ? h("p", {class: "ex-right", lang: "de", text: item.correct || item.card.frase}) : null,
     item.kind === "form" && !ok ? h("p", {class: "small-text"}, h("s", {lang: "de", text: item.wrong})) : null,
-    t ? h("p", {class: "muted small-text"}, t.short + " ", h("button", {class: "quiet small", type: "button", onclick: () => openGrammarDialog(t.id)}, "📘 " + t.title)) : null,
+    t ? h("p", {class: "muted small-text"}, t.short + " ", h("button", {class: "quiet small", type: "button", onclick: () => openGrammarDialog(t.id)}, iconText("book", t.title, 15))) : null,
     h("div", {class: "row center"},
       allowOwn ? h("button", {class: "small", type: "button", onclick: e => { e.currentTarget.remove(); ex.score++; gramRecord(topics, true); gramUndoMiss(topics); saveProgress(); }}, "A minha ordem também está certa") : null,
       h("button", {class: "primary", type: "button", onclick: nextExercise}, ex.i + 1 < ex.items.length ? "Próxima" : "Ver resultado", h("kbd", null, "Espaço"))));
