@@ -123,6 +123,7 @@ function rdTick() {
   if (!d.c && d.ms >= RD_DAY_MIN) { d.c = 1; progress.days[day] = Number(progress.days[day] || 0) + 1; saveProgress(); return; }
   if (d.ms % 60000 < RD_TICK) saveProgress();
 }
+/* Diário: total da semana em destaque, barra grossa e uma coluna por dia (altura = minutos); hoje fica marcado na cor do app. */
 function rdDiaryNode() {
   const w = rdWeek(), min = Math.round(w.ms / 60000), pct = Math.min(100, w.ms / (w.goal * 60000) * 100);
   const bar = h("span"); setWidth(bar, pct);
@@ -130,13 +131,21 @@ function rdDiaryNode() {
   goal.value = String(w.goal);
   goal.addEventListener("change", () => { settings.readingGoal = Number(goal.value); saveSettings(); renderLibrary(); });
   const names = ["S", "T", "Q", "Q", "S", "S", "D"], today = dateKey();
+  // A coluna cheia vale a meta do dia (meta da semana ÷ 7) ou o maior dia, o que for maior.
+  const top = Math.max(w.goal / 7, ...w.per.map(x => x.ms / 60000), 1);
+  const days = w.active === 1 ? "1 dia" : w.active + " dias";
   return h("section", {class: "panel rd-diary"},
-    h("div", {class: "row between"}, h("h2", {text: "Diário de leitura"}), goal),
-    h("p", null, h("b", {text: "Esta semana: " + min + " de " + w.goal + " min"}), h("span", {class: "muted", text: " · leu em " + w.active + (w.active === 1 ? " dia" : " dias") + (pct >= 100 ? " · meta cumprida ✓" : "")})),
-    h("div", {class: "track"}, bar),
-    h("div", {class: "rd-week"}, ...w.per.map((x, i) => h("div", {class: "rd-week-day" + (x.day === today ? " today" : "") + (x.ms >= 60000 ? " on" : ""), title: x.day + ": " + Math.round(x.ms / 60000) + " min"},
-      h("b", {text: names[i]}), h("span", {text: x.ms >= 60000 ? Math.round(x.ms / 60000) + "′" : "·"})))),
-    h("p", {class: "muted small-text", text: "Conta o tempo com o livro aberto e você lendo ou ouvindo (pausas longas não contam). Cinco minutos no dia já contam para a sequência de estudo. O resumo vai no Pacote para a aula."}));
+    h("div", {class: "rd-diary-head"}, h("h2", {text: "Diário de leitura"}), goal),
+    h("p", {class: "rd-diary-total"}, h("b", {text: String(min)}), h("span", {text: " de " + w.goal + " min nesta semana"})),
+    h("div", {class: "track rd-diary-track" + (pct >= 100 ? " done" : "")}, bar),
+    h("p", {class: "small-text rd-diary-sub", text: pct >= 100 ? "Meta cumprida. Você leu em " + days + "." : w.active ? "Você leu em " + days + ". Faltam " + Math.max(1, w.goal - min) + " min." : "Ainda sem leitura nesta semana."}),
+    h("div", {class: "rd-week"}, ...w.per.map((x, i) => {
+      const m = Math.round(x.ms / 60000), col = h("i");
+      if (m) col.style.height = Math.max(8, Math.min(100, m / top * 100)) + "%";
+      return h("div", {class: "rd-week-day" + (x.day === today ? " today" : x.day > today ? " future" : "") + (x.ms >= 60000 ? " on" : ""), title: x.day + ": " + m + " min"},
+        h("span", {class: "rd-week-col"}, col), h("b", {text: names[i]}), h("small", {text: m ? m + " min" : ""}));
+    })),
+    h("p", {class: "muted small-text rd-diary-note", text: "Conta o tempo com o livro aberto e você lendo ou ouvindo; pausas longas não contam. Cinco minutos no dia já valem para a sequência de estudo, e o resumo vai no Pacote para a aula."}));
 }
 function rdDiarySummary(days, now = Date.now()) {
   const since = now - days * DAY_MS, log = readingLog().days;

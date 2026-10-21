@@ -163,6 +163,7 @@ function rdWebRender() {
   if (!box || reading.book || currentView !== "reading") return;
   const local = rdLocalList(), books = (rdWeb.index || {books: []}).books || [];
   const ids = [...new Set([...books.map(b => b.id), ...Object.keys(local)])];
+  rdAssignCovers(ids.map(id => rdWebBook(id).b));
   const items = ids.map(id => {
     const {remote, mine, busy, outdated, b} = rdWebBook(id);
     return rdShelfItem(b, {cloud: !mine,
@@ -171,13 +172,11 @@ function rdWebRender() {
       alert: busy ? "Baixando… " + rdWeb.done + " de " + rdWeb.total : !mine ? "Toque para baixar" : outdated ? "Versão nova no PC" : null});
   });
   const recent = ids.filter(id => local[id] && bookPosition(id)).sort((x, y) => (bookPosition(y).at || 0) - (bookPosition(x).at || 0))[0];
-  fill(box,
+  fill(box, rdLibraryLayout(
     recent && rdWebBook(recent).b.chapters ? rdContinueNode(rdWebBook(recent).b, () => openBook(recent)) : null,
     rdWeb.error ? h("p", {class: "notice warn", text: "Não consegui ver a lista de livros no GitHub: " + rdWeb.error}) : null,
-    h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"})),
     items.length ? rdShelf(items)
       : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “Enviar para o celular” no livro."}),
-    typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
-    h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC."}));
+    h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC."})));
 }
 if (window.satzDesktop && window.satzDesktop.onCloudBookProgress) window.satzDesktop.onCloudBookProgress(rdOnSendProgress);

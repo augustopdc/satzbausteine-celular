@@ -51,56 +51,100 @@ function syncStatusNode(b) {
     h("button", {class: "primary small", type: "button", onclick: () => alignBook(b.id)}, "Sincronizar áudio"));
 }
 // ---------- Estante (PC e celular) ----------
-const RD_COVER_COLORS = [["#1f4f48", "#e6f1ee"], ["#6b2737", "#f7e9ec"], ["#26406e", "#e7edf8"], ["#6a5420", "#f7f0de"], ["#3d4f2b", "#edf2e4"], ["#4b3160", "#f1eaf6"]];
+const RD_COVER_COLORS = [["#1f4f48", "#e6f1ee"], ["#6b2737", "#f7e9ec"], ["#26406e", "#e7edf8"], ["#8a5a17", "#fbf1df"],
+  ["#3d4f2b", "#edf2e4"], ["#4b3160", "#f1eaf6"], ["#9c4a2f", "#fbebe4"], ["#2d5566", "#e5f0f4"]];
 function rdAuthor(b) { return b.author && b.author !== "Unbekannt" ? b.author : ""; }
-/* Capa do EPUB ou, sem ela, uma capa gerada com o título (cor pelo título, sempre a mesma). */
+function rdHash(s) { let x = 0; for (const ch of String(s)) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return x; }
+/* Cor de cada capa gerada: vem do título, mas dois livros da mesma estante nunca ficam com a mesma cor. */
+const rdCoverColor = new Map();
+function rdAssignCovers(books) {
+  const used = new Set();
+  for (const b of books) {
+    if (b.cover) continue;
+    let k = rdHash(b.title) % RD_COVER_COLORS.length;
+    for (let n = 0; n < RD_COVER_COLORS.length && used.has(k); n++) k = (k + 1) % RD_COVER_COLORS.length;
+    used.add(k);
+    rdCoverColor.set(b.id, k);
+  }
+}
+/* Capa do EPUB ou, sem ela, uma capa gerada: cor própria, moldura, título e a inicial grande da palavra principal. */
 function rdCoverNode(b) {
   if (b.cover) return h("div", {class: "cover"}, h("img", {src: rdImageUrl(b, b.cover) + (window.satzDesktop && b.coverAt ? "?v=" + b.coverAt : ""), alt: "", loading: "lazy"}));
-  let hash = 0;
-  for (const ch of String(b.title)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  const [bg, fg] = RD_COVER_COLORS[hash % RD_COVER_COLORS.length];
-  const el = h("div", {class: "cover cover-gen"}, h("span", {class: "cover-title", lang: "de", text: b.title}), rdAuthor(b) ? h("span", {class: "cover-author", text: rdAuthor(b)}) : null);
+  const [bg, fg] = RD_COVER_COLORS[rdCoverColor.has(b.id) ? rdCoverColor.get(b.id) : rdHash(b.title) % RD_COVER_COLORS.length];
+  const main = String(b.title).split(/\s+/).find(w => !/^(der|die|das|den|dem|des|ein|eine|einer|the|a|an)$/i.test(w)) || String(b.title);
+  const el = h("div", {class: "cover cover-gen"},
+    h("span", {class: "cover-mark", "aria-hidden": "true", lang: "de", text: main.charAt(0)}),
+    h("span", {class: "cover-title", lang: "de", text: b.title}),
+    rdAuthor(b) ? h("span", {class: "cover-author", text: rdAuthor(b)}) : null);
   el.style.setProperty("--cv-bg", bg);
   el.style.setProperty("--cv-fg", fg);
   return el;
 }
-/* Um livro na prateleira: capa (abre), título, capítulo onde parou, engrenagem com os ajustes e, se faltar algo, um aviso curto. */
+function rdBookPct(b, pos) { return pos && b.chapters ? Math.round((pos.ch + 1) / b.chapters * 100) : 0; }
+/* Um livro na prateleira: capa (abre), título, capítulo onde parou com a barra grossa, engrenagem com os ajustes e, se faltar algo, um aviso curto. */
 function rdShelfItem(b, o) {
-  const pos = bookPosition(b.id), bar = h("i");
-  if (pos && b.chapters) setWidth(bar, (pos.ch + 1) / b.chapters * 100);
+  const pos = bookPosition(b.id), pct = rdBookPct(b, pos), bar = h("i");
+  setWidth(bar, pct);
   return h("div", {class: "shelf-item" + (o.cloud ? " cloud" : "")},
     h("button", {class: "shelf-book", type: "button", "aria-label": (o.cloud ? "Baixar " : "Abrir ") + b.title, onclick: o.open},
       rdCoverNode(b), o.cloud ? h("span", {class: "shelf-cloud"}, icon("download", 16)) : null),
     h("div", {class: "shelf-info"},
       h("div", {class: "shelf-title-row"}, h("b", {lang: "de", text: b.title}),
         h("button", {class: "icon-btn quiet shelf-gear", type: "button", title: "Ajustes do livro", "aria-label": "Ajustes de " + b.title, onclick: o.gear}, icon("settings", 17))),
-      h("span", {class: "shelf-meta", text: pos ? "Capítulo " + (pos.ch + 1) + (b.chapters ? " de " + b.chapters : "") : rdAuthor(b) || "Ainda não começou"}),
-      pos && b.chapters ? h("span", {class: "shelf-bar"}, bar) : null,
+      pos && b.chapters
+        ? h("div", {class: "shelf-progress"},
+          h("span", {class: "shelf-meta"}, h("b", {text: "Cap. " + (pos.ch + 1)}), " de " + b.chapters),
+          h("span", {class: "shelf-pct", text: pct + "%"}),
+          h("span", {class: "shelf-bar"}, bar))
+        : h("span", {class: "shelf-meta", text: rdAuthor(b) || "Ainda não começou"}),
       o.alert ? h("button", {class: "shelf-alert", type: "button", onclick: o.gear}, o.alert) : null));
 }
+/* Lugar de importar um livro, com o formato de uma capa: ocupa o primeiro espaço vazio da prateleira. */
+function rdAddTile(onclick) {
+  return h("div", {class: "shelf-item shelf-add"},
+    h("button", {class: "shelf-book", type: "button", title: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados.", onclick},
+      h("div", {class: "cover cover-add"}, icon("plus", 26), h("span", {text: "Importar livro"}))),
+    h("div", {class: "shelf-info"}, h("span", {class: "shelf-meta", text: "EPUB com o audiolivro"})));
+}
 /* A prateleira vai até o fim da linha: completa a última fileira com espaços vazios (só a tábua), recalculando ao mudar a largura. */
-function rdShelf(items) {
-  const shelf = h("div", {class: "shelf"}, items);
+function rdShelf(items, addTile) {
+  const shelf = h("div", {class: "shelf"}, items, addTile || null);
+  const n = items.length + (addTile ? 1 : 0);
   const fillRow = () => {
     shelf.querySelectorAll(".shelf-ghost").forEach(g => g.remove());
-    const cols = getComputedStyle(shelf).gridTemplateColumns.split(" ").filter(Boolean).length, n = items.length;
+    const cols = getComputedStyle(shelf).gridTemplateColumns.split(" ").filter(Boolean).length;
     for (let i = 0; cols > 1 && i < (cols - n % cols) % cols; i++)
       shelf.append(h("div", {class: "shelf-item shelf-ghost", "aria-hidden": "true"}, h("div", {class: "shelf-book"}, h("div", {class: "cover"}))));
   };
   if (typeof ResizeObserver === "function") { let w = 0; new ResizeObserver(([e]) => { if (Math.abs(e.contentRect.width - w) > 1) { w = e.contentRect.width; fillRow(); } }).observe(shelf); }
   return shelf;
 }
+/* Livro em destaque: capa, título, barra grossa com a porcentagem do livro e, ao lado, capítulo, minutos da semana e palavras guardadas. */
 function rdContinueNode(b, open) {
-  const pos = bookPosition(b.id), bar = h("i");
-  setWidth(bar, (pos.ch + 1) / b.chapters * 100);
+  const pos = bookPosition(b.id), pct = rdBookPct(b, pos), bar = h("i");
+  setWidth(bar, pct);
+  const week = typeof rdWeek === "function" ? Math.round(rdWeek().ms / 60000) : null;
+  const saved = typeof savedWordsOf === "function" ? savedWordsOf(b.id).length : null;
+  const stat = (label, value, unit) => h("div", {class: "rd-stat"}, h("dt", {text: label}), h("dd", null, h("b", {text: String(value)}), unit ? h("small", {text: unit}) : null));
   return h("section", {class: "panel rd-continue"},
     h("button", {class: "shelf-book", type: "button", "aria-label": "Continuar " + b.title, onclick: open}, rdCoverNode(b)),
     h("div", {class: "rd-continue-text"},
+      h("p", {class: "label", text: "Continuar de onde parou"}),
       h("h2", {lang: "de", text: b.title}),
       rdAuthor(b) ? h("p", {class: "muted", text: rdAuthor(b)}) : null,
-      h("span", {class: "shelf-bar"}, bar),
-      h("p", {class: "muted small-text", text: "Capítulo " + (pos.ch + 1) + " de " + b.chapters}),
-      h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: open}, iconText("play", "Continuar lendo")))));
+      h("div", {class: "rd-continue-progress"}, h("span", {class: "shelf-bar"}, bar), h("span", {class: "rd-continue-pct", text: pct + "% do livro"})),
+      h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: open}, iconText("play", "Continuar lendo")))),
+    h("dl", {class: "rd-continue-stats"},
+      stat("Capítulo", pos.ch + 1, " de " + b.chapters),
+      week != null ? stat("Nesta semana", week, " min") : null,
+      saved != null ? stat("Guardadas", saved, saved === 1 ? " palavra" : " palavras") : null));
+}
+/* Estante: o livro em destaque em cima; embaixo, a prateleira e, ao lado dela (telas largas), o diário de leitura. */
+function rdLibraryLayout(hero, before, shelf, after) {
+  return [hero, before,
+    h("div", {class: "rd-lib"},
+      h("div", {class: "rd-lib-main"}, h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"})), shelf),
+      h("div", {class: "rd-lib-side"}, typeof rdDiaryNode === "function" ? rdDiaryNode() : null, after))];
 }
 /* Janela de ajustes do livro. render(id) devolve [título, conteúdo]; é refeita a cada renderização da estante. */
 function rdBookDialog(id, render) {
@@ -163,13 +207,11 @@ async function renderLibrary() {
   try { reading.books = await window.satzDesktop.listBooks(); }
   catch (e) { reportError("livros", e.message, e.stack); reading.books = []; }
   const recent = reading.books.map(b => [b, bookPosition(b.id)]).filter(([, p]) => p).sort((x, y) => (y[1].at || 0) - (x[1].at || 0))[0];
-  fill(box,
+  rdAssignCovers(reading.books);
+  fill(box, rdLibraryLayout(
     recent ? rdContinueNode(recent[0], () => openBook(recent[0].id)) : null,
-    h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"}),
-      h("button", {class: "small", type: "button", title: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados.", onclick: importBook}, iconText("plus", "Importar livro"))),
-    reading.books.length ? rdShelf(reading.books.map(b => rdShelfItem(b, {open: () => openBook(b.id), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})))
-      : h("p", {class: "empty", text: "Nenhum livro ainda. Importe um EPUB com o audiolivro: o app sincroniza o áudio com o texto e você lê ouvindo, frase por frase."}),
-    typeof rdDiaryNode === "function" ? rdDiaryNode() : null);
+    reading.books.length ? null : h("p", {class: "empty", text: "Nenhum livro ainda. Importe um EPUB com o audiolivro: o app sincroniza o áudio com o texto e você lê ouvindo, frase por frase."}),
+    rdShelf(reading.books.map(b => rdShelfItem(b, {open: () => openBook(b.id), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})), rdAddTile(importBook))));
   rdBookDialogRefresh();
 }
 async function importBook() {
@@ -302,7 +344,7 @@ function renderBook() {
   ptMode.addEventListener("change", () => { reading.ptMode = ptMode.value; saveReadingState({ptMode: reading.ptMode}); renderBook(); });
   const togglePick = () => { reading.picking = !reading.picking; if (!reading.picking) reading.pick = []; renderBook(); };
   const phone = rdPhone();
-  const practiceBtn = h("button", {class: "small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, iconText("target", phone ? "Praticar o capítulo" : "Praticar"));
+  const practiceBtn = h("button", {class: phone ? "small" : "quiet small", type: "button", title: "Vocabulário, tradução de volta, ditado, lacunas e conversa sobre este capítulo", onclick: () => renderBookPractice()}, iconText("target", phone ? "Praticar o capítulo" : "Praticar"));
   const savedBtn = h("button", {id: "rdSavedBtn", class: "quiet small", type: "button", title: "Palavras e expressões guardadas deste livro", onclick: () => renderSavedWords()}, "★ (" + savedWordsOf(book.id).length + ")");
   // Ajustes de exibição (“Aa”): ficam num menu para a barra caber numa linha só. No celular, praticar e guardados também.
   const look = h("div", {id: "rdLook", class: "rd-look panel", hidden: !reading.lookOpen},
@@ -322,7 +364,7 @@ function renderBook() {
     phone ? h("div", {class: "row rd-look-more"}, practiceBtn, savedBtn)
       : h("p", {class: "muted small-text", text: "Teclado: Espaço lê ouvindo · ← → frase · R repete · D devagar · T tradução · F tela cheia"}));
   const lookWrap = h("div", {class: "rd-look-wrap"},
-    h("button", {id: "rdLookBtn", class: "icon-btn" + (reading.lookOpen ? " on" : ""), type: "button", title: "Tradução, tamanho da letra, leitura contínua", "aria-label": "Ajustes de exibição", "aria-expanded": String(!!reading.lookOpen),
+    h("button", {id: "rdLookBtn", class: "icon-btn" + (phone ? "" : " quiet") + (reading.lookOpen ? " on" : ""), type: "button", title: "Tradução, tamanho da letra, leitura contínua", "aria-label": "Ajustes de exibição", "aria-expanded": String(!!reading.lookOpen),
       onclick: e => { e.stopPropagation(); rdToggleLook(); }}, "Aa"),
     look);
   const player = h("div", {class: "reader-controls rd-player"},
@@ -337,11 +379,11 @@ function renderBook() {
       h("button", {class: "icon-btn quiet", type: "button", title: "Voltar à lista de livros", "aria-label": "Voltar à lista de livros", onclick: closeBook}, "←"),
       chapterSelect, pickChip, lookWrap)
     : h("div", {class: "reader-bar"},
-      h("button", {class: "quiet small", type: "button", title: "Voltar à estante", onclick: closeBook}, iconText("back", "Estante")),
-      chapterSelect, player, pickChip,
+      h("div", {class: "rd-nav"}, h("button", {class: "quiet small", type: "button", title: "Voltar à estante", onclick: closeBook}, iconText("back", "Estante")), chapterSelect),
+      player, pickChip,
       h("span", {class: "rd-progress", "aria-hidden": "true"}, h("i", {id: "rdProgress"})),
-      h("div", {class: "reader-controls rd-bar-end"}, practiceBtn, savedBtn, lookWrap,
-        h("button", {id: "rdFocusBtn", class: "icon-btn", type: "button", title: reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)", "aria-label": "Tela cheia de leitura",
+      h("div", {class: "reader-controls rd-bar-end rd-tools"}, practiceBtn, savedBtn, lookWrap,
+        h("button", {id: "rdFocusBtn", class: "icon-btn quiet", type: "button", title: reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)", "aria-label": "Tela cheia de leitura",
           onclick: () => rdSetFocus(!reading.focus)}, icon(reading.focus ? "minimize" : "maximize", 17))));
   const warn = !book.audio ? "Este livro não tem áudio. Adicione o MP3 na lista de livros para ouvir frase por frase."
     : !book.sync ? (book.status && book.status.sync.state === "running" ? "Sincronizando o áudio (" + book.status.sync.pct + "%). Quando terminar, as frases ficam clicáveis para ouvir." : "O áudio ainda não foi sincronizado. Volte à lista de livros e toque em “Sincronizar áudio”.") : "";
@@ -720,7 +762,7 @@ function renderDetail() {
   const picked = (reading.pick || []).length, full = rdPanelFull();
   const tip = !full ? (note && note.g) || (topics[0] ? GRAMMAR_BY_ID.get(topics[0]).short : "") : "";
   const listen = [
-    h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i)}, icon("volume", 16), "Ouvir"),
+    h("button", {class: full ? "small" : "small rd-act-main", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i)}, icon("volume", 16), "Ouvir"),
     h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i, true)}, icon("slow", 16), "Devagar")];
   const toCard = h("button", {class: full ? "quiet small" : "small", type: "button", title: "Cria um rascunho de cartão em Minhas frases", onclick: e => {
     e.currentTarget.disabled = true;
@@ -730,15 +772,19 @@ function renderDetail() {
   const copyBtn = h("button", {class: "quiet small", type: "button", onclick: () => copySentence(s.text)}, "Copiar");
   fill(box, rdSheetHead(),
     picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null,
+    // Painel simples: o que a frase diz e o que fazer com ela vêm primeiro; a gramática fica num bloco à parte, mais discreto.
     !full ? h("section", {class: "rd-sentence"},
+      h("p", {class: "label rd-sec-label", text: "Nesta frase"}),
       note && note.pt ? (reading.ptMode === "pedir"
         ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
         : h("p", {class: "rd-translation", text: note.pt})) : null,
-      tip ? h("div", {class: "rd-tip"}, h("p", {class: "rd-tip-text", text: tip}),
-        topics.length ? h("div", {class: "rd-tip-topics"}, ...topics.slice(0, 2).map(id => h("button", {class: "chip small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 14)))) : null) : null,
       h("div", {class: "row rd-acts"}, ...listen, toCard,
         h("details", {class: "rd-acts-more"}, h("summary", {class: "icon-btn", title: "Mais ações", "aria-label": "Mais ações"}, "⋯"),
           h("div", {class: "rd-acts-menu panel"}, copyBtn, typeof passageButton === "function" ? passageButton(i) : null)))) : null,
+    !full && tip ? h("section", {class: "rd-gram"},
+      h("p", {class: "label rd-sec-label", text: "Gramática"}),
+      h("div", {class: "rd-tip"}, h("p", {class: "rd-tip-text", text: tip}),
+        topics.length ? h("div", {class: "rd-tip-topics"}, ...topics.slice(0, 2).map(id => h("button", {class: "rd-topic-link", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 14)))) : null)) : null,
     !full ? null : h("section", {class: "rd-sentence"},
       h("p", {class: "rd-sent-de", lang: "de", text: s.text}),
       note && note.pt ? (reading.ptMode === "pedir"
