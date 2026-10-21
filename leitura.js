@@ -721,10 +721,17 @@ function rdTipWords(i, tip) {
   for (let k = 0; k < words.length; k++) { const sep = sepParticle(s.text, k, notesW); if (sep) { ks.add(k); ks.add(sep.k); break; } }
   return ks;
 }
+/* Marca-texto nas palavras da dica: a caneta passa palavra por palavra (--tip-d), só quando a marca muda; clicar noutra palavra da mesma frase não repete. */
+let rdTipLast = "";
 function rdMarkTip(i, ks) {
-  for (const el of all("#rdText .rd-w.tip")) el.classList.remove("tip");
+  const key = i + ":" + [...ks].sort((x, y) => x - y).join(","), marked = all("#rdText .rd-w.tip");
+  if (key === rdTipLast && marked.length === ks.size) return;
+  rdTipLast = key;
+  for (const el of marked) el.classList.remove("tip");
   const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]');
-  if (el) for (const w of el.querySelectorAll(".rd-w")) if (ks.has(Number(w.dataset.k))) w.classList.add("tip");
+  if (!el) return;
+  let n = 0;
+  for (const w of el.querySelectorAll(".rd-w")) if (ks.has(Number(w.dataset.k))) { w.style.setProperty("--tip-d", (120 + n++ * 110) + "ms"); w.classList.add("tip"); }
 }
 function wordDetail(word, i = reading.sel, wk = reading.wk, inner = false) {
   bookWordStats();

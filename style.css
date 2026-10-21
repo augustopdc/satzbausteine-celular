@@ -1383,7 +1383,21 @@ html.wco .reader-detail { top: calc(var(--rdbar, 60px) + 14px + var(--tb)); max-
 .rd-tip-text { margin: 0; font-size: .92rem; line-height: 1.45; color: var(--ink); }
 .rd-tip-topics { display: flex; flex-wrap: wrap; gap: .35rem; }
 .rd-tip-topics .chip { min-height: 30px; font-size: .8rem; background: var(--surface); border-color: var(--warn-line); color: var(--ink-2); }
-#rdText .rd-w.tip { text-decoration: underline; text-decoration-color: var(--warn); text-decoration-thickness: 3px; text-underline-offset: 6px; }
+/* Palavras citadas pela dica: segunda passada de marca-texto (faixa mais forte na metade de baixo, pontas afinadas como a ponta
+   chanfrada da caneta), desenhada da esquerda para a direita. Passar o mouse na Gramática do painel deixa a faixa cheia. */
+:root { --tip-ink: rgba(236, 160, 40, .5); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --tip-ink: rgba(240, 179, 90, .42); } }
+:root[data-theme="dark"] { --tip-ink: rgba(240, 179, 90, .42); }
+#rdText .rd-w.tip { border-radius: 3px 5px 4px 2px;
+  background-image: linear-gradient(100deg, transparent 0, var(--tip-ink) .18em, var(--tip-ink) calc(100% - .14em), transparent 100%);
+  background-repeat: no-repeat; background-position: 0 92%; background-size: 100% 44%;
+  transition: background-size .3s var(--ease), background-position .3s var(--ease); }
+@media (prefers-reduced-motion: no-preference) {
+  #rdText .rd-w.tip { animation: tip-pen .34s cubic-bezier(.45, .05, .3, 1) var(--tip-d, 0ms) both; }
+}
+@keyframes tip-pen { from { background-size: 0% 44%; } }
+.reader:has(.rd-gram:hover) #rdText .rd-w.tip { background-size: 100% 88%; background-position: 0 70%; }
+.reader:has(#rdText .rd-w.tip:hover) .rd-gram .rd-tip { border-left-color: #f2a528; }
 .rd-acts { position: relative; align-items: center; }
 .rd-acts-more { position: relative; }
 .rd-acts-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-height: 34px; border-radius: 50%; color: var(--ink-2); font-weight: 700; }
