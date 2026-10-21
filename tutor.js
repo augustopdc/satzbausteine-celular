@@ -67,7 +67,7 @@ function tutorCounts(d) {
   return [n(d.studyDays, "dia de estudo", "dias de estudo"), n(d.reviews, "revisão", "revisões"), n(d.convSessions, "conversa com a IA", "conversas com a IA")].join(", ");
 }
 function tutorText(d, points) {
-  const lines = ["Satzbausteine · pacote para a aula", "Período: " + formatDate(dateKey(new Date(d.since))) + " a " + formatDate(dateKey()) + " · nível atual " + d.level,
+  const lines = ["Satz · pacote para a aula", "Período: " + formatDate(dateKey(new Date(d.since))) + " a " + formatDate(dateKey()) + " · nível atual " + d.level,
     tutorCounts(d) + ".", ""];
   if (d.stuck.length) { lines.push("Frases que mais travaram no treino:"); d.stuck.forEach(x => lines.push("- " + x.card.frase + " (" + x.card.traducao + ") · errei " + x.n + "×")); lines.push(""); }
   if (d.convErrors.length) { lines.push("Erros nas conversas (corrigidos pela IA; conferir):"); d.convErrors.forEach(e => lines.push("- " + e.errado + " → " + e.certo + (e.explicacao ? " · " + e.explicacao : ""))); lines.push(""); }
