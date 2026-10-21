@@ -160,6 +160,7 @@ const ICONS = {
   stop: '<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>',
   text: '<path d="M4 6h16M4 12h16M4 18h10"/>',
   alert: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
+  chevron: '<path d="m9 18 6-6-6-6"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   pause: '<rect x="6.5" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="14" y="5" width="3.5" height="14" rx="1" fill="currentColor" stroke="none"/>',
   skipBack: '<path d="M18 5.5v13L9 12z" fill="currentColor"/><path d="M6 5v14"/>',
@@ -549,7 +550,7 @@ async function importTSV(files) {
 }
 
 // ---------- Navegação ----------
-const VIEWS = ["home", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
+const VIEWS = ["home", "hub", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
 function showView(view) {
   if (!VIEWS.includes(view)) return;
   if (session.active && view !== "practice") endSession();
@@ -560,9 +561,10 @@ function showView(view) {
   if (currentView === "conversa" && view !== "conversa") convLeave();
   if (currentView !== view) stopAudio();
   currentView = view;
-  all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; });
-  all(".nav button").forEach(b => { if (b.dataset.view === view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
+  all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; e.classList.remove("vt"); });
+  updateNav(view);
   if (view === "home") renderHome();
+  if (view === "hub") renderHub();
   if (view === "practice") renderPracticeSetup();
   if (view === "plan") { renderPlan(); tutorRender(); }
   if (view === "scenes") renderScenes();
@@ -771,6 +773,8 @@ function updateNavBadges(pending, st) {
   const badge = $("navDue");
   badge.textContent = pending > 99 ? "99+" : pending;
   badge.hidden = !pending;
+  const hubBadge = $("navDueHub");
+  if (hubBadge) { hubBadge.textContent = badge.textContent; hubBadge.hidden = !pending; }
   $("streakMini").textContent = st + (st === 1 ? " dia" : " dias");
 }
 function progressRow(label, done, total) {
@@ -2404,7 +2408,7 @@ function refreshAll() {
 
 // ---------- Eventos ----------
 function bindEvents() {
-  all(".nav button").forEach(b => b.addEventListener("click", () => showView(b.dataset.view)));
+  initNav();
   $("themeToggle").addEventListener("click", cycleTheme);
   $("tsvInput").addEventListener("change", async e => { await importTSV(Array.from(e.target.files)); e.target.value = ""; });
   $("homeProduction").addEventListener("click", () => { showView("practice"); setSessionMode("production"); startSession(); });

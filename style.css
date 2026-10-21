@@ -134,6 +134,28 @@ input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 34px
 .nav button[aria-current="page"] { background: var(--surface); color: var(--ink); font-weight: 650; box-shadow: 0 1px 2px rgba(18, 26, 25, .08); }
 .nav button[aria-current="page"] svg { color: var(--accent); }
 .nav svg { width: 20px; height: 20px; flex: none; }
+/* Menu em 5 lugares: o lugar atual abre as telas dele logo abaixo, deslizando. */
+.nav-hub.on:not([aria-current]) { color: var(--ink); font-weight: 650; }
+.nav-hub.on svg { color: var(--accent); }
+.nav-sub { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--ease); }
+.nav-sub.open { grid-template-rows: 1fr; }
+.nav-sub > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 2px; visibility: hidden; transition: visibility 0s .45s, padding .45s var(--ease); }
+.nav-sub.open > div { visibility: visible; transition-delay: 0s; padding: 2px 0 8px; }
+.nav-sub button { min-height: 36px; padding: .4rem .75rem .4rem 1.6rem; font-size: .93rem; }
+.nav-sub button svg { width: 18px; height: 18px; }
+/* Página de lista de um lugar (celular) e “Voltar” no topo das telas. */
+.hub-list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; }
+.hub-row { width: 100%; justify-content: flex-start; gap: .9rem; border: 0; border-radius: 0; background: transparent; padding: .75rem 1rem; min-height: 66px; text-align: left; font-weight: 500; }
+.hub-row + .hub-row { border-top: 1px solid var(--line); }
+.hub-row:hover { background: var(--surface-2); }
+.hub-ico { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-strong); flex: none; }
+.hub-ico svg { width: 20px; height: 20px; }
+.hub-text { flex: 1; display: grid; gap: .1rem; min-width: 0; }
+.hub-text b { font-weight: 600; }
+.hub-text span { font-size: .85rem; color: var(--ink-3); line-height: 1.35; }
+.hub-row > svg:last-child { color: var(--ink-3); flex: none; }
+.hub-badge { background: var(--accent); color: var(--accent-ink); font-size: .72rem; font-weight: 700; border-radius: 99px; padding: .1rem .5rem; }
+.hub-back { display: none; }
 .ico-inline { display: inline-flex; align-items: center; gap: .45rem; }
 .ico-inline > svg { flex: none; color: var(--accent); }
 h2.ico-inline > svg { width: 20px; height: 20px; }
@@ -158,6 +180,8 @@ main { width: 100%; max-width: 1060px; margin: 0 auto; padding: 1.8rem 2.2rem 2r
   .nav-label { display: block; height: 1px; margin: .6rem .5rem; background: var(--line); font-size: 0; }
   .nav button { justify-content: center; padding: .55rem; }
   .nav-badge { position: absolute; top: 2px; right: 2px; font-size: .62rem; padding: .05rem .3rem; min-width: 1.1rem; }
+  .nav button .nav-badge:not([hidden]) { display: block; }
+  .nav-sub button { justify-content: center; padding: .45rem; }
   .sidebar-foot { flex-direction: column; padding: .6rem 0 0; }
   .streak { padding: 0; }
   main, .footer { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -286,7 +310,7 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 1.8rem 2rem; box-shadow: var(--shadow);
   min-height: 250px; display: flex; flex-direction: column; gap: 1.1rem; outline: none;
 }
-.flash.enter { animation: cardIn .3s cubic-bezier(.2, .7, .3, 1); }
+.flash.enter { animation: cardIn .42s var(--ease); }
 @keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(.99); } to { opacity: 1; transform: none; } }
 .flash-meta { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
 .reg { display: inline-flex; align-items: baseline; gap: .3em; font-size: .78rem; font-weight: 700; padding: .22rem .65rem; border-radius: 99px; background: var(--surface-3); color: var(--ink-2); white-space: nowrap; }
@@ -519,7 +543,20 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   .nav button { display: none; flex: 1; flex-direction: column; justify-content: center; gap: .1rem; min-height: 50px; padding: .25rem .1rem; font-size: .68rem; font-weight: 600; border-radius: 10px; }
   .nav button[data-short] { display: flex; }
   .nav button span { display: none; }
+  .nav button .nav-badge:not([hidden]) { display: inline-block; }
   .nav button[data-short]::after { content: attr(data-short); }
+  .nav-sub { display: none; }
+  .nav-hub.on { color: var(--accent-strong); }
+  .nav button[aria-current="page"] { box-shadow: none; }
+  .hub-back:not([hidden]) {
+    display: flex; position: sticky; top: 0; z-index: 30; padding: calc(.3rem + env(safe-area-inset-top)) .35rem .3rem;
+    background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(16px) saturate(1.4);
+  }
+  .hub-back button { color: var(--accent-strong); font-weight: 500; font-size: 1rem; min-height: 40px; padding: 0 .55rem 0 .2rem; gap: .05rem; }
+  .hub-back button:hover { background: transparent; }
+  .hub-back svg { width: 24px; height: 24px; }
+  body.focus .hub-back, body.book-open .hub-back { display: none !important; }
+  #view-hub .page-head h1 { font-size: 2.1rem; }
   .nav button[aria-current="page"] { background: transparent; color: var(--accent-strong); }
   .nav svg { width: 23px; height: 23px; }
   .nav-badge { position: absolute; top: 2px; left: 52%; right: auto; font-size: .62rem; padding: .05rem .3rem; min-width: 1.1rem; }
@@ -1021,7 +1058,7 @@ body.book-open #view-reading > .page-head { display: none; }
   .reader-detail.rd-sheet {
     position: fixed; left: 0; right: 0; top: auto; bottom: var(--rdplayer); z-index: 35; max-height: 50vh; overflow: auto;
     border-radius: 14px 14px 0 0; border-bottom: 0; padding: 0 1.1rem 1rem; gap: .7rem; box-shadow: 0 -8px 30px rgba(0, 0, 0, .14);
-    overscroll-behavior: contain;
+    overscroll-behavior: contain; transition: max-height .4s var(--ease);
   }
   .reader-detail.rd-sheet.full { max-height: calc(100vh - var(--rdplayer) - 3.5rem); }
   .reader-detail.rd-sheet[hidden] { display: none; }
@@ -1093,3 +1130,32 @@ body.book-open #view-reading > .page-head { display: none; }
   .es-grid { grid-template-columns: 1fr; }
   .es-text { padding: .7rem .8rem; font-size: 1.05rem; }
 }
+
+/* Transições no ritmo da Apple. O menu (ou a barra de abas) fica parado; só o conteúdo anda.
+   push: a tela nova entra pela direita e a anterior recua; pop: o contrário; fade: o PC e a troca de abas. */
+.sidebar { view-transition-name: nav; }
+.view.vt:not([hidden]) { animation: none; }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-nav="push"]::view-transition-old(root), html[data-nav="push"]::view-transition-new(root),
+  html[data-nav="pop"]::view-transition-old(root), html[data-nav="pop"]::view-transition-new(root) {
+    mix-blend-mode: normal; animation-duration: .5s; animation-timing-function: var(--ease); animation-fill-mode: both;
+  }
+  html[data-nav="push"]::view-transition-old(root) { animation-name: vt-out-left; }
+  html[data-nav="push"]::view-transition-new(root) { animation-name: vt-in-right; box-shadow: -10px 0 30px rgba(0, 0, 0, .14); }
+  html[data-nav="pop"]::view-transition-old(root) { animation-name: vt-out-right; z-index: 1; box-shadow: -10px 0 30px rgba(0, 0, 0, .14); }
+  html[data-nav="pop"]::view-transition-new(root) { animation-name: vt-in-left; }
+  html[data-nav="fade"]::view-transition-old(root) { animation: vt-fade-out .18s ease both; }
+  html[data-nav="fade"]::view-transition-new(root) { animation: vt-fade-up .4s var(--ease) both; }
+  .grammar-dialog[open] { animation: dlg-in .4s var(--ease); }
+  .grammar-dialog[open]::backdrop { animation: vt-fade-in .3s ease; }
+  .reader-detail.rd-sheet:not([hidden]) { animation: sheet-up .45s var(--ease); }
+}
+@keyframes vt-in-right { from { transform: translateX(100%); } }
+@keyframes vt-out-left { to { transform: translateX(-28%); filter: brightness(.94); } }
+@keyframes vt-out-right { to { transform: translateX(100%); } }
+@keyframes vt-in-left { from { transform: translateX(-28%); filter: brightness(.94); } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-up { from { opacity: 0; transform: translateY(8px); } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes dlg-in { from { opacity: 0; transform: translateY(14px) scale(.97); } }
+@keyframes sheet-up { from { transform: translateY(100%); } }
