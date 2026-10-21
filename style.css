@@ -1355,10 +1355,38 @@ html.wco .titlebar {
 html.wco .titlebar button { -webkit-app-region: no-drag; app-region: no-drag; width: 36px; height: 28px; min-height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); }
 html.wco .titlebar svg { width: 18px; height: 18px; flex: none; }
 html.wco .titlebar button:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
-html.wco .sidebar { top: var(--tb); height: calc(100vh - var(--tb)); }
 html.wco .focus-bar, html.wco .reader-bar { top: var(--tb); }
 html.wco .reader-detail { top: calc(var(--rdbar, 60px) + 14px + var(--tb)); max-height: calc(100vh - var(--rdbar, 60px) - 30px - var(--tb)); }
 @media (min-width: 601px) {
+  html.wco .sidebar { top: var(--tb); height: calc(100vh - var(--tb)); }
   html.wco .main-col { min-height: calc(100vh - var(--tb) - .5rem); }
   html.wco body.focus .main-col, html.wco body.reading-focus .main-col { min-height: calc(100vh - var(--tb)); }
 }
+
+/* Painel simples da leitura: palavra (cor do gênero), sentido, uma linha; tradução; dica em âmbar ligada ao texto; três ações. */
+.rd-word-simple { display: grid; gap: .3rem; }
+.rd-word-top { display: flex; align-items: center; gap: .5rem; }
+.rd-word-top .rd-word-form { flex: 1; min-width: 0; font-family: var(--font-de); font-size: 1.7rem; font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; }
+.rd-word-acts { display: flex; gap: .35rem; }
+.rd-word-simple > .rd-meaning { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.rd-word-sum { margin: 0; font-size: .88rem; color: var(--ink-2); }
+.rd-known { margin: 0; font-size: .8rem; color: var(--good); }
+.rd-more { margin-top: .15rem; }
+.rd-more > summary { cursor: pointer; list-style: none; font-size: .84rem; font-weight: 600; color: var(--ink-3); padding: .25rem 0; }
+.rd-more > summary::-webkit-details-marker { display: none; }
+.rd-more > summary::before { content: "▸"; display: inline-block; width: 1em; transition: transform .25s var(--ease); }
+.rd-more[open] > summary::before { transform: rotate(90deg); }
+.rd-more > .rd-word { margin-top: .35rem; padding-top: .6rem; border-top: 1px dashed var(--line); }
+.rd-word-simple + .rd-sentence { border-top: 1px solid var(--line); padding-top: 1rem; }
+.rd-sentence .rd-translation { font-size: 1rem; line-height: 1.5; }
+.rd-tip { display: grid; gap: .5rem; padding: .7rem .85rem; border-radius: var(--radius); background: var(--warn-soft); border: 1px solid var(--warn-line); }
+.rd-tip-text { margin: 0; font-size: .92rem; line-height: 1.45; color: var(--ink); }
+.rd-tip-topics { display: flex; flex-wrap: wrap; gap: .35rem; }
+.rd-tip-topics .chip { min-height: 30px; font-size: .8rem; background: var(--surface); border-color: var(--warn-line); color: var(--ink-2); }
+#rdText .rd-w.tip { text-decoration: underline; text-decoration-color: var(--warn); text-decoration-thickness: 3px; text-underline-offset: 6px; }
+.rd-acts { position: relative; align-items: center; }
+.rd-acts-more { position: relative; }
+.rd-acts-more > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; min-height: 34px; border-radius: 50%; color: var(--ink-2); font-weight: 700; }
+.rd-acts-more > summary::-webkit-details-marker { display: none; }
+.rd-acts-menu { position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 5; display: grid; gap: .2rem; padding: .4rem; margin: 0; min-width: 190px; box-shadow: var(--shadow-lg); }
+.rd-acts-menu button { justify-content: flex-start; }

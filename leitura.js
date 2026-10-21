@@ -314,6 +314,8 @@ function renderBook() {
         h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, icon("lineHeight", 18)))),
     h("label", {class: "inline-check", title: "Tela limpa: a consulta abre num balão ao lado da palavra, sem o painel lateral"},
       h("input", {id: "rdFlow", type: "checkbox", checked: reading.flow, onchange: e => { reading.flow = e.target.checked; saveReadingState({flow: reading.flow}); renderBook(); }}), phone ? "Leitura contínua (balão em vez da gaveta)" : "Leitura contínua (sem painel lateral)"),
+    h("label", {class: "inline-check", title: "Mostra tudo aberto no painel: dicionário, exemplos, análise completa e todas as notas de gramática"},
+      h("input", {type: "checkbox", checked: rdPanelFull(), onchange: e => { saveReadingState({panelFull: e.target.checked}); renderDetail(); }}), "Painel completo (tudo aberto)"),
     h("label", {class: "inline-check", title: "Toca a frase quando você escolhe outra frase"}, h("input", {type: "checkbox", checked: reading.clickPlays, onchange: e => { reading.clickPlays = e.target.checked; saveReadingState({clickPlays: reading.clickPlays}); }}), "Tocar a frase ao clicar"),
     h("button", {id: "rdPickBtn", class: "quiet small" + (reading.picking ? " on" : ""), type: "button", title: "Toque em várias palavras da mesma frase para explicar a expressão (ou use Ctrl + clique)",
       onclick: togglePick}, reading.picking ? "✓ Marcando expressão" : phone ? "Marcar expressão" : "Marcar expressão (ou Ctrl + clique)"),
@@ -635,7 +637,54 @@ function catalogWithWord(word) {
   }
   return (reading.catalogWords.get(normWord(word)) || []).slice(0, 3);
 }
-function wordDetail(word, i = reading.sel, wk = reading.wk) {
+function rdPanelFull() { return !!readingState().panelFull; }
+/* Resumo da palavra numa linha, sem repetir: forma de dicionário, classe, gênero (na cor dele), plural, função e caso juntos. */
+function wordSummary(occ, word) {
+  if (!occ) return [];
+  const parts = [];
+  if (occ.lema && normWord(occ.lema) !== normWord(word)) parts.push(h("span", null, "de ", h("b", {lang: "de", text: occ.lema})));
+  if (occ.classe) parts.push(occ.classe);
+  if (occ.gen) parts.push(h("b", {class: "g-" + occ.gen, lang: "de", text: occ.gen}));
+  if (occ.pl) parts.push(h("span", null, "plural ", h("span", {lang: "de", text: occ.pl})));
+  const fn = occ.fn ? occ.fn + (occ.caso ? " (" + occ.caso + ")" : "") : occ.caso || "";
+  if (fn) parts.push(fn);
+  return parts;
+}
+/* Painel simples (padrão): a palavra, o sentido nesta frase e uma linha; o resto fica fechado em “Mais sobre…”. */
+function wordCard(word, i, wk) {
+  const s = reading.order[i], occ = typeof occurrence === "function" ? occurrence(i, wk) : null;
+  const entry = typeof bookWordEntry === "function" ? bookWordEntry(word) : null;
+  const pending = typeof rdPending !== "undefined" && rdPending.has("o|" + s.id + "|" + wk);
+  // Palavra que já apareceu em 2+ frases estudadas do catálogo: só o sentido, sem a análise toda.
+  const known = catalogWithWord(word).filter(studied).length >= 2;
+  const parts = known ? [] : wordSummary(occ, word);
+  const meaning = occ ? occ.pt : entry && entry[2] ? entry[2] : "";
+  return h("section", {class: "rd-word rd-word-simple"},
+    h("div", {class: "rd-word-top"},
+      h("b", {class: "rd-word-form" + (occ && occ.gen ? " g-" + occ.gen : ""), lang: "de", text: word}),
+      h("div", {class: "rd-word-acts"},
+        h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(word)}, icon("volume", 18)),
+        typeof saveWordButton === "function" ? saveWordButton(word) : null)),
+    meaning ? h("p", {class: "rd-meaning", text: meaning}) : h("p", {class: "muted small-text", text: pending ? "Analisando o sentido nesta frase…" : "Sem o sentido desta palavra ainda."}),
+    parts.length ? h("p", {class: "rd-word-sum"}, parts.flatMap((p, n) => n ? [", ", p] : [p])) : null,
+    known ? h("p", {class: "rd-known", text: "Você já estudou esta palavra nos cartões."}) : null,
+    h("details", {class: "rd-more"}, h("summary", null, "Mais sobre “", h("span", {lang: "de", text: word}), "”"), wordDetail(word, i, wk, true)));
+}
+/* Palavras da frase que a dica cita: verbo separável (as duas partes) e trechos entre aspas que existem na frase. */
+function rdTipWords(i, tip) {
+  const s = reading.order[i], {words} = sentenceTokens(s.text), ks = new Set(), low = words.map(w => String(w).toLocaleLowerCase("de"));
+  for (const m of String(tip || "").matchAll(/["“„'‘]([^"”“'’]{1,40})["”“'’]/g))
+    for (const piece of m[1].split(/\s+|…|\.\.\./)) { const k = low.indexOf(piece.toLocaleLowerCase("de")); if (piece && k >= 0) ks.add(k); }
+  const notesW = reading.book.notes && reading.book.notes.w;
+  for (let k = 0; k < words.length; k++) { const sep = sepParticle(s.text, k, notesW); if (sep) { ks.add(k); ks.add(sep.k); break; } }
+  return ks;
+}
+function rdMarkTip(i, ks) {
+  for (const el of all("#rdText .rd-w.tip")) el.classList.remove("tip");
+  const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]');
+  if (el) for (const w of el.querySelectorAll(".rd-w")) if (ks.has(Number(w.dataset.k))) w.classList.add("tip");
+}
+function wordDetail(word, i = reading.sel, wk = reading.wk, inner = false) {
   bookWordStats();
   const notes = reading.book.notes && reading.book.notes.w, k = normWord(word);
   const entry = notes && (notes[word] || notes[word.toLocaleLowerCase("de")] || notes[k]);
@@ -643,7 +692,7 @@ function wordDetail(word, i = reading.sel, wk = reading.wk) {
   const artText = arts ? [...arts.entries()].sort((a, b) => b[1] - a[1]).map(([a, n]) => a + " " + word + (n > 1 ? " (" + n + "×)" : "")).join(" · ") : "";
   const examples = catalogWithWord(word);
   return h("section", {class: "rd-word"},
-    h("div", {class: "row between"}, h("b", {class: "rd-word-form", lang: "de", text: word}),
+    inner ? null : h("div", {class: "row between"}, h("b", {class: "rd-word-form", lang: "de", text: word}),
       h("div", {class: "row"}, h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(word)}, icon("volume", 18)),
         typeof saveWordButton === "function" ? saveWordButton(word) : null)),
     typeof occurrenceBlock === "function" ? occurrenceBlock(i, wk, word) : null,
@@ -668,29 +717,40 @@ function renderDetail() {
   if (!box || reading.sel < 0) return;
   const i = reading.sel, s = reading.order[i], note = reading.book.notes && reading.book.notes.s && reading.book.notes.s[s.id];
   const topics = note && Array.isArray(note.t) && note.t.length ? note.t.filter(id => GRAMMAR_BY_ID.has(id)) : bookGrammar(i);
-  const picked = (reading.pick || []).length;
+  const picked = (reading.pick || []).length, full = rdPanelFull();
+  const tip = !full ? (note && note.g) || (topics[0] ? GRAMMAR_BY_ID.get(topics[0]).short : "") : "";
+  const listen = [
+    h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i)}, icon("volume", 16), "Ouvir"),
+    h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i, true)}, icon("slow", 16), "Devagar")];
+  const toCard = h("button", {class: full ? "quiet small" : "small", type: "button", title: "Cria um rascunho de cartão em Minhas frases", onclick: e => {
+    e.currentTarget.disabled = true;
+    addMineDrafts(s.text, convAvailable(), "livro");
+    toast("Rascunho criado em Minhas frases: confira e salve lá.", "success");
+  }}, full ? "Virar cartão" : iconText("plus", "Virar cartão"));
+  const copyBtn = h("button", {class: "quiet small", type: "button", onclick: () => copySentence(s.text)}, "Copiar");
   fill(box, rdSheetHead(),
-    picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? wordDetail(reading.word, i, reading.wk) : null,
-    h("section", {class: "rd-sentence"},
+    picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null,
+    !full ? h("section", {class: "rd-sentence"},
+      note && note.pt ? (reading.ptMode === "pedir"
+        ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
+        : h("p", {class: "rd-translation", text: note.pt})) : null,
+      tip ? h("div", {class: "rd-tip"}, h("p", {class: "rd-tip-text", text: tip}),
+        topics.length ? h("div", {class: "rd-tip-topics"}, ...topics.slice(0, 2).map(id => h("button", {class: "chip small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 14)))) : null) : null,
+      h("div", {class: "row rd-acts"}, ...listen, toCard,
+        h("details", {class: "rd-acts-more"}, h("summary", {class: "icon-btn", title: "Mais ações", "aria-label": "Mais ações"}, "⋯"),
+          h("div", {class: "rd-acts-menu panel"}, copyBtn, typeof passageButton === "function" ? passageButton(i) : null)))) : null,
+    !full ? null : h("section", {class: "rd-sentence"},
       h("p", {class: "rd-sent-de", lang: "de", text: s.text}),
       note && note.pt ? (reading.ptMode === "pedir"
         ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
         : h("p", {class: "rd-translation", text: note.pt})) : null,
       note && note.g ? h("p", {class: "small-text", text: note.g}) : null,
-      h("div", {class: "row"},
-        h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i)}, icon("volume", 16), "Ouvir"),
-        h("button", {class: "small", type: "button", disabled: reading.starts[i] == null, onclick: () => playSentence(i, true)}, icon("slow", 16), "Devagar"),
-        h("button", {class: "quiet small", type: "button", onclick: () => copySentence(s.text)}, "Copiar"),
-        h("button", {class: "quiet small", type: "button", title: "Cria um rascunho de cartão em Minhas frases", onclick: e => {
-          e.currentTarget.disabled = true;
-          addMineDrafts(s.text, convAvailable(), "livro");
-          toast("Rascunho criado em Minhas frases: confira e salve lá.", "success");
-        }}, "Virar cartão"),
-        typeof passageButton === "function" ? passageButton(i) : null),
+      h("div", {class: "row"}, ...listen, copyBtn, toCard, typeof passageButton === "function" ? passageButton(i) : null),
       topics.length ? h("div", {class: "rd-grammar"}, h("span", {class: "muted small-text", text: "Gramática nesta frase:"}),
         ...topics.map(id => { const t = GRAMMAR_BY_ID.get(id); return h("div", {class: "rd-topic"},
           h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", t.title, 15)), h("p", {class: "muted small-text", text: t.short})); }))
         : h("p", {class: "muted small-text", text: note ? "" : "Sem ponto de gramática destacado nesta frase."})));
+  rdMarkTip(i, tip ? rdTipWords(i, tip) : new Set());
 }
 async function copySentence(text) {
   try { await navigator.clipboard.writeText(text); setStatus("Frase copiada.", "success"); }
