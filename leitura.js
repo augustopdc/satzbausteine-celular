@@ -50,18 +50,107 @@ function syncStatusNode(b) {
     h("span", {class: "muted small-text", text: "O áudio ainda não está ligado ao texto. A sincronização roda neste computador e leva de 10 a 30 minutos por hora de áudio, conforme o uso do PC."}),
     h("button", {class: "primary small", type: "button", onclick: () => alignBook(b.id)}, "Sincronizar áudio"));
 }
-function bookCard(b) {
-  const pos = bookPosition(b.id);
-  return h("article", {class: "book-card"},
-    h("div", {class: "book-top"}, h("h3", {lang: "de", text: b.title}), h("span", {class: "muted small-text", text: b.author && b.author !== "Unbekannt" ? b.author : ""})),
-    h("p", {class: "muted small-text", text: b.chapters + " capítulos · " + (b.words || 0).toLocaleString("pt-BR") + " palavras" + (pos ? " · parou no capítulo " + (pos.ch + 1) : "")}),
-    syncStatusNode(b),
-    annotStatusNode(b),
-    typeof rdBookCardDifficulty === "function" ? rdBookCardDifficulty(b) : null,
-    typeof rdSendButton === "function" ? rdSendButton(b) : null,
-    h("div", {class: "row"},
-      h("button", {class: "primary", type: "button", onclick: () => openBook(b.id)}, pos ? "Continuar lendo" : "Abrir"),
-      h("button", {class: "quiet small", type: "button", onclick: () => deleteBook(b.id)}, "Remover")));
+// ---------- Estante (PC e celular) ----------
+const RD_COVER_COLORS = [["#1f4f48", "#e6f1ee"], ["#6b2737", "#f7e9ec"], ["#26406e", "#e7edf8"], ["#6a5420", "#f7f0de"], ["#3d4f2b", "#edf2e4"], ["#4b3160", "#f1eaf6"]];
+function rdAuthor(b) { return b.author && b.author !== "Unbekannt" ? b.author : ""; }
+/* Capa do EPUB ou, sem ela, uma capa gerada com o título (cor pelo título, sempre a mesma). */
+function rdCoverNode(b) {
+  if (b.cover) return h("div", {class: "cover"}, h("img", {src: rdImageUrl(b, b.cover) + (window.satzDesktop && b.coverAt ? "?v=" + b.coverAt : ""), alt: "", loading: "lazy"}));
+  let hash = 0;
+  for (const ch of String(b.title)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const [bg, fg] = RD_COVER_COLORS[hash % RD_COVER_COLORS.length];
+  const el = h("div", {class: "cover cover-gen"}, h("span", {class: "cover-title", lang: "de", text: b.title}), rdAuthor(b) ? h("span", {class: "cover-author", text: rdAuthor(b)}) : null);
+  el.style.setProperty("--cv-bg", bg);
+  el.style.setProperty("--cv-fg", fg);
+  return el;
+}
+/* Um livro na prateleira: capa (abre), título, capítulo onde parou, engrenagem com os ajustes e, se faltar algo, um aviso curto. */
+function rdShelfItem(b, o) {
+  const pos = bookPosition(b.id), bar = h("i");
+  if (pos && b.chapters) setWidth(bar, (pos.ch + 1) / b.chapters * 100);
+  return h("div", {class: "shelf-item" + (o.cloud ? " cloud" : "")},
+    h("button", {class: "shelf-book", type: "button", "aria-label": (o.cloud ? "Baixar " : "Abrir ") + b.title, onclick: o.open},
+      rdCoverNode(b), o.cloud ? h("span", {class: "shelf-cloud"}, icon("download", 16)) : null),
+    h("div", {class: "shelf-info"},
+      h("div", {class: "shelf-title-row"}, h("b", {lang: "de", text: b.title}),
+        h("button", {class: "icon-btn quiet shelf-gear", type: "button", title: "Ajustes do livro", "aria-label": "Ajustes de " + b.title, onclick: o.gear}, icon("settings", 17))),
+      h("span", {class: "shelf-meta", text: pos ? "Capítulo " + (pos.ch + 1) + (b.chapters ? " de " + b.chapters : "") : rdAuthor(b) || "Ainda não começou"}),
+      pos && b.chapters ? h("span", {class: "shelf-bar"}, bar) : null,
+      o.alert ? h("button", {class: "shelf-alert", type: "button", onclick: o.gear}, o.alert) : null));
+}
+/* A prateleira vai até o fim da linha: completa a última fileira com espaços vazios (só a tábua), recalculando ao mudar a largura. */
+function rdShelf(items) {
+  const shelf = h("div", {class: "shelf"}, items);
+  const fillRow = () => {
+    shelf.querySelectorAll(".shelf-ghost").forEach(g => g.remove());
+    const cols = getComputedStyle(shelf).gridTemplateColumns.split(" ").filter(Boolean).length, n = items.length;
+    for (let i = 0; cols > 1 && i < (cols - n % cols) % cols; i++)
+      shelf.append(h("div", {class: "shelf-item shelf-ghost", "aria-hidden": "true"}, h("div", {class: "shelf-book"}, h("div", {class: "cover"}))));
+  };
+  if (typeof ResizeObserver === "function") { let w = 0; new ResizeObserver(([e]) => { if (Math.abs(e.contentRect.width - w) > 1) { w = e.contentRect.width; fillRow(); } }).observe(shelf); }
+  return shelf;
+}
+function rdContinueNode(b, open) {
+  const pos = bookPosition(b.id), bar = h("i");
+  setWidth(bar, (pos.ch + 1) / b.chapters * 100);
+  return h("section", {class: "panel rd-continue"},
+    h("button", {class: "shelf-book", type: "button", "aria-label": "Continuar " + b.title, onclick: open}, rdCoverNode(b)),
+    h("div", {class: "rd-continue-text"},
+      h("p", {class: "eyebrow", text: "Continuar lendo"}),
+      h("h2", {lang: "de", text: b.title}),
+      rdAuthor(b) ? h("p", {class: "muted", text: rdAuthor(b)}) : null,
+      h("span", {class: "shelf-bar"}, bar),
+      h("p", {class: "muted small-text", text: "Capítulo " + (pos.ch + 1) + " de " + b.chapters}),
+      h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: open}, iconText("play", "Continuar lendo")))));
+}
+/* Janela de ajustes do livro. render(id) devolve [título, conteúdo]; é refeita a cada renderização da estante. */
+function rdBookDialog(id, render) {
+  let dlg = $("rdBookDialog");
+  if (!dlg) {
+    dlg = h("dialog", {id: "rdBookDialog", class: "grammar-dialog book-dialog", "aria-labelledby": "rdBookDialogTitle"});
+    dlg.addEventListener("close", () => { reading.dialog = null; });
+    document.body.append(dlg);
+  }
+  reading.dialog = {id, render};
+  rdBookDialogRefresh();
+  if (reading.dialog && !dlg.open) dlg.showModal();
+}
+function rdBookDialogRefresh() {
+  const dlg = $("rdBookDialog");
+  if (!dlg || !reading.dialog) return;
+  const out = reading.dialog.render(reading.dialog.id);
+  if (!out) { if (dlg.open) dlg.close(); reading.dialog = null; return; }
+  fill(dlg, h("div", {class: "dialog-head"}, h("h2", {id: "rdBookDialogTitle", lang: "de", text: out[0]}),
+    h("button", {class: "icon-btn quiet", type: "button", "aria-label": "Fechar", onclick: () => dlg.close()}, "×")),
+    h("div", {class: "book-dialog-body"}, out[1]));
+}
+function rdShelfAlert(b) {
+  if (!b.audio) return "Sem áudio";
+  if (b.audio.fixing) return "Corrigindo o áudio…";
+  if (b.audio.vbr) return "O áudio precisa de correção";
+  if (b.sync.state === "running") return "Sincronizando… " + (b.sync.pct || 0) + "%";
+  if (b.sync.state !== "done") return "Áudio não sincronizado";
+  if (!b.annotated) return "Sem traduções";
+  return null;
+}
+function rdBookSettings(id) {
+  const b = reading.books.find(x => x.id === id);
+  if (!b) return null;
+  return [b.title, [
+    h("div", {class: "bd-cover"}, rdCoverNode(b), h("button", {class: "small", type: "button", onclick: () => rdPickCover(b.id)}, b.cover ? "Trocar a capa" : "Buscar a capa")),
+    h("div", {class: "bd-info"},
+      h("p", {class: "muted small-text", text: [rdAuthor(b), b.chapters + " capítulos", (b.words || 0).toLocaleString("pt-BR") + " palavras"].filter(Boolean).join(" · ")}),
+      h("h3", {text: "Áudio"}), syncStatusNode(b),
+      h("h3", {text: "Traduções e gramática"}), annotStatusNode(b),
+      typeof rdBookCardDifficulty === "function" ? rdBookCardDifficulty(b) : null,
+      typeof rdSendButton === "function" ? [h("h3", {text: "Celular"}), rdSendButton(b)] : null,
+      h("div", {class: "bd-foot"}, h("button", {class: "quiet small danger-text", type: "button", onclick: () => { $("rdBookDialog").close(); deleteBook(b.id); }}, "Remover o livro")))]];
+}
+async function rdPickCover(id) {
+  try {
+    const b = await window.satzDesktop.setBookCover(id);
+    if (b) { setStatus("Capa atualizada.", "success"); await renderLibrary(); }
+  } catch (e) { setStatus(cleanIpcError(e, "Não consegui trocar a capa."), "error"); }
 }
 async function renderLibrary() {
   const box = $("readingLibrary");
@@ -74,13 +163,15 @@ async function renderLibrary() {
   }
   try { reading.books = await window.satzDesktop.listBooks(); }
   catch (e) { reportError("livros", e.message, e.stack); reading.books = []; }
+  const recent = reading.books.map(b => [b, bookPosition(b.id)]).filter(([, p]) => p).sort((x, y) => (y[1].at || 0) - (x[1].at || 0))[0];
   fill(box,
-    typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
-    h("div", {class: "row spaced-bottom"},
-      h("button", {class: "primary", type: "button", onclick: importBook}, "Importar livro (EPUB + áudio)"),
-      h("span", {class: "muted small-text", text: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados."})),
-    reading.books.length ? h("div", {class: "book-grid"}, ...reading.books.map(bookCard))
-      : h("p", {class: "empty", text: "Nenhum livro ainda. Importe um EPUB com o audiolivro: o app sincroniza o áudio com o texto e você lê ouvindo, frase por frase."}));
+    recent ? rdContinueNode(recent[0], () => openBook(recent[0].id)) : null,
+    h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"}),
+      h("button", {class: "small", type: "button", title: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados.", onclick: importBook}, iconText("plus", "Importar livro"))),
+    reading.books.length ? rdShelf(reading.books.map(b => rdShelfItem(b, {open: () => openBook(b.id), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})))
+      : h("p", {class: "empty", text: "Nenhum livro ainda. Importe um EPUB com o audiolivro: o app sincroniza o áudio com o texto e você lê ouvindo, frase por frase."}),
+    typeof rdDiaryNode === "function" ? rdDiaryNode() : null);
+  rdBookDialogRefresh();
 }
 async function importBook() {
   try {

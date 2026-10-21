@@ -97,7 +97,7 @@ async function rdWebDownload(entry) {
     // O texto vai por último: livro sem texto guardado conta como não baixado.
     await cache.put(rdLocalUrl(entry.id, "livro.json"), new Response(JSON.stringify(meta), {headers: {"Content-Type": "application/json"}}));
     const list = rdLocalList();
-    list[entry.id] = {title: meta.title, sentAt: meta.sentAt, size: entry.size, at: Date.now()};
+    list[entry.id] = {title: meta.title, sentAt: meta.sentAt, size: entry.size, at: Date.now(), cover: meta.cover && (meta.images || []).includes(meta.cover) ? meta.cover : null};
     safeWrite(RD_LOCAL_KEY, list);
     toast("“" + meta.title + "” está no celular e funciona sem internet.", "success");
   } catch (e) { setStatus("Não consegui baixar o livro: " + e.message, "error"); }
@@ -136,28 +136,48 @@ async function rdWebLibrary(box) {
   if (!rdWeb.index || navigator.onLine) await rdWebIndex();
   rdWebRender();
 }
+function rdWebBook(id) {
+  const remote = ((rdWeb.index || {books: []}).books || []).find(b => b.id === id), mine = rdLocalList()[id];
+  if (!remote && !mine) return null;
+  return {remote, mine, busy: rdWeb.busy === id, outdated: !!(remote && mine && remote.sentAt > mine.sentAt),
+    b: {id, title: (remote || mine).title, author: remote ? remote.author : "", chapters: remote ? remote.chapters : 0, cover: mine && mine.cover}};
+}
+function rdWebBookSettings(id) {
+  const x = rdWebBook(id);
+  if (!x) return null;
+  const {remote, mine, busy, outdated, b} = x;
+  return [b.title, [
+    h("div", {class: "bd-cover"}, rdCoverNode(b)),
+    h("div", {class: "bd-info"},
+      remote ? h("p", {class: "muted small-text", text: [rdAuthor(b), remote.chapters + " capítulos", (remote.words || 0).toLocaleString("pt-BR") + " palavras", rdMB(remote.size)].filter(Boolean).join(" · ")}) : null,
+      busy ? h("p", {class: "small-text", text: "Baixando… " + rdWeb.done + " de " + rdWeb.total + " partes. Deixe o app aberto."})
+        : h("p", {class: "small-text", text: mine ? "Guardado neste aparelho" + (outdated ? ". Há uma versão mais nova no PC." : ".") : "Ainda não está neste aparelho."}),
+      h("div", {class: "row"},
+        mine && !busy ? h("button", {class: "primary", type: "button", onclick: () => { $("rdBookDialog").close(); openBook(id); }}, bookPosition(id) ? "Continuar lendo" : "Abrir") : null,
+        remote && (!mine || outdated) && !busy ? h("button", {class: mine ? "small" : "primary", type: "button", disabled: !!rdWeb.busy || !navigator.onLine, onclick: () => rdWebDownload(remote)}, mine ? "Atualizar" : "Baixar para o celular") : null),
+      mine && !busy ? h("div", {class: "bd-foot"}, h("button", {class: "quiet small danger-text", type: "button", onclick: () => rdWebRemove(id)}, "Tirar do celular")) : null)]];
+}
 function rdWebRender() {
+  rdBookDialogRefresh();
   const box = $("readingLibrary");
   if (!box || reading.book || currentView !== "reading") return;
   const local = rdLocalList(), books = (rdWeb.index || {books: []}).books || [];
-  const ids = new Set([...books.map(b => b.id), ...Object.keys(local)]);
-  const rows = [...ids].map(id => {
-    const remote = books.find(b => b.id === id), mine = local[id], busy = rdWeb.busy === id;
-    const title = (remote || mine).title, outdated = remote && mine && remote.sentAt > mine.sentAt;
-    return h("article", {class: "book-card"},
-      h("div", {class: "book-top"}, h("h3", {lang: "de", text: title}), remote && remote.author && remote.author !== "Unbekannt" ? h("span", {class: "muted small-text", text: remote.author}) : null),
-      remote ? h("p", {class: "muted small-text", text: remote.chapters + " capítulos · " + (remote.words || 0).toLocaleString("pt-BR") + " palavras · " + rdMB(remote.size)}) : null,
-      busy ? h("p", {class: "small-text", text: "Baixando… " + rdWeb.done + " de " + rdWeb.total + " partes. Deixe o app aberto."})
-        : mine ? h("p", {class: "small-text", text: "✓ No celular" + (outdated ? " · há uma versão mais nova no PC" : "")}) : null,
-      h("div", {class: "row"},
-        mine && !busy ? h("button", {class: "primary", type: "button", onclick: () => openBook(id)}, bookPosition(id) ? "Continuar lendo" : "Abrir") : null,
-        remote && (!mine || outdated) && !busy ? h("button", {class: mine ? "small" : "primary", type: "button", disabled: !!rdWeb.busy || !navigator.onLine, onclick: () => rdWebDownload(remote)}, mine ? "Atualizar" : "Baixar para o celular") : null,
-        mine && !busy ? h("button", {class: "quiet small", type: "button", onclick: () => rdWebRemove(id)}, "Tirar do celular") : null));
+  const ids = [...new Set([...books.map(b => b.id), ...Object.keys(local)])];
+  const items = ids.map(id => {
+    const {remote, mine, busy, outdated, b} = rdWebBook(id);
+    return rdShelfItem(b, {cloud: !mine,
+      open: () => mine && !busy ? openBook(id) : remote && !rdWeb.busy && navigator.onLine ? rdWebDownload(remote) : rdBookDialog(id, rdWebBookSettings),
+      gear: () => rdBookDialog(id, rdWebBookSettings),
+      alert: busy ? "Baixando… " + rdWeb.done + " de " + rdWeb.total : !mine ? "Toque para baixar" : outdated ? "Versão nova no PC" : null});
   });
-  fill(box, typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
+  const recent = ids.filter(id => local[id] && bookPosition(id)).sort((x, y) => (bookPosition(y).at || 0) - (bookPosition(x).at || 0))[0];
+  fill(box,
+    recent && rdWebBook(recent).b.chapters ? rdContinueNode(rdWebBook(recent).b, () => openBook(recent)) : null,
     rdWeb.error ? h("p", {class: "notice warn", text: "Não consegui ver a lista de livros no GitHub: " + rdWeb.error}) : null,
-    rows.length ? h("div", {class: "book-grid"}, ...rows)
+    h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"})),
+    items.length ? rdShelf(items)
       : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “Enviar para o celular” no livro."}),
-    h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC; aqui aparecem as que já foram feitas."}));
+    typeof rdDiaryNode === "function" ? rdDiaryNode() : null,
+    h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC."}));
 }
 if (window.satzDesktop && window.satzDesktop.onCloudBookProgress) window.satzDesktop.onCloudBookProgress(rdOnSendProgress);
