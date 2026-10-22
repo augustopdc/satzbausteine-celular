@@ -68,34 +68,42 @@ function rdBridgeNotes(i) {
 }
 const RD_BRIDGE_TIP = {neben: "a conjunção manda o verbo para o fim", klammer: "o verbo se divide: a 2ª parte fecha a frase", trennbar: "verbo separável: o prefixo vai para o fim"};
 /* Na frase escolhida: as duas partes ganham a mesma cor e, se estiverem na mesma linha, um arco que se desenha entre elas. */
-function rdDrawBridges(i) {
+function rdDrawBridges(i, animate = true) {
   const text = $("rdText");
   if (!text) return;
-  // O texto muda de altura depois do clique (a tradução da frase anterior se fecha, a letra carrega): redesenha o arco.
+  // O arco fica preso à primeira palavra da ponte, então acompanha o texto quando ele sobe ou desce (a tradução da frase
+  // anterior se fechando) sem precisar ser redesenhado. Só a largura do texto (janela, letra) pede um novo desenho.
   if (!text.vbWatch && typeof ResizeObserver === "function") {
-    text.vbWatch = new ResizeObserver(() => requestAnimationFrame(() => { if (reading.sel >= 0 && document.contains(text)) rdDrawBridges(reading.sel); }));
+    text.vbW = text.clientWidth;
+    text.vbWatch = new ResizeObserver(() => {
+      if (Math.abs(text.clientWidth - text.vbW) < 1) return;
+      text.vbW = text.clientWidth;
+      requestAnimationFrame(() => { if (reading.sel >= 0 && document.contains(text)) rdDrawBridges(reading.sel, false); });
+    });
     text.vbWatch.observe(text);
   }
-  text.querySelectorAll(".rd-bridges").forEach(x => x.remove());
+  text.querySelectorAll(".rd-bridge").forEach(x => x.remove());
   for (const w of text.querySelectorAll(".rd-w.vb")) { w.classList.remove("vb", "vb-1", "vb-2", "vb-3"); w.removeAttribute("title"); }
   if (i < 0 || readingState().bridges === false || !reading.book) return;
   const el = text.querySelector('.rd-s[data-i="' + i + '"]');
   if (!el) return;
   const ws = [...el.querySelectorAll(".rd-w")], bridges = rdVerbBridges(reading.order[i].text, reading.book.notes && reading.book.notes.w);
-  if (!bridges.length) return;
-  const box = text.getBoundingClientRect(), svg = svgEl("svg", {class: "rd-bridges", width: box.width, height: box.height, "aria-hidden": "true"});
   bridges.forEach((b, n) => {
     const A = ws[b.a], B = ws[b.b];
     if (!A || !B) return;
     for (const w of [A, B]) { w.classList.add("vb", "vb-" + (n + 1)); w.title = RD_BRIDGE_TIP[b.kind]; }
     const ra = A.getClientRects()[0], rb = B.getClientRects()[0];
     if (!ra || !rb || Math.abs(ra.top - rb.top) > 4) return;
-    const x1 = ra.left + ra.width / 2 - box.left, x2 = rb.left + rb.width / 2 - box.left, y = ra.top - box.top + 1, lift = Math.min(7, 3 + (x2 - x1) * .02);
-    svg.append(svgEl("path", {class: "vb-arc vb-" + (n + 1), d: "M" + x1.toFixed(1) + " " + y.toFixed(1) + " C" + x1.toFixed(1) + " " + (y - lift).toFixed(1) + " " + x2.toFixed(1) + " " + (y - lift).toFixed(1) + " " + x2.toFixed(1) + " " + y.toFixed(1), pathLength: "100"}));
+    const w = rb.left + rb.width / 2 - (ra.left + ra.width / 2), lift = Math.min(7, 3 + w * .02);
+    const svg = svgEl("svg", {class: "rd-bridge" + (animate ? "" : " still"), width: (w + 4).toFixed(1), height: (lift + 4).toFixed(1), "aria-hidden": "true"});
+    svg.style.left = (ra.width / 2 - 2).toFixed(1) + "px";
+    svg.style.top = (-lift - 3).toFixed(1) + "px";
+    const y = lift + 3, d = "M2 " + y.toFixed(1) + " C2 " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + y.toFixed(1);
+    svg.append(svgEl("path", {class: "vb-arc vb-" + (n + 1), d, pathLength: "100"}));
+    A.append(svg);
   });
-  if (svg.childNodes.length) text.append(svg);
 }
-window.addEventListener("resize", () => { if (reading.book && reading.sel >= 0 && currentView === "reading") rdDrawBridges(reading.sel); });
+window.addEventListener("resize", () => { if (reading.book && reading.sel >= 0 && currentView === "reading") rdDrawBridges(reading.sel, false); });
 
 // ---------- Gênero e palavras novas no texto ----------
 function rdDecorateText(text) {

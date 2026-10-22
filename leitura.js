@@ -691,6 +691,7 @@ function setReaderLook(dfs, dlh) {
   if (dlh) { const steps = [1.6, 1.85, 2.15]; reading.lh = steps[(steps.indexOf(reading.lh) + 1) % steps.length]; }
   saveReadingState({fs: reading.fs, lh: reading.lh});
   applyReaderLook($("rdText"));
+  if (typeof rdDrawBridges === "function") rdDrawBridges(reading.sel, false);
   hideReaderPop();
 }
 function applyReaderLook(text) {

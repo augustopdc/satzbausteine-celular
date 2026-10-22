@@ -1676,10 +1676,11 @@ p.titled { margin: 0; font-weight: 600; }
 /* Ponte do verbo: as duas partes na mesma cor e um arco que se desenha entre elas. */
 #rdText .rd-w.vb { font-weight: 650; }
 #rdText .rd-w.vb-1 { color: var(--vb-1); } #rdText .rd-w.vb-2 { color: var(--vb-2); } #rdText .rd-w.vb-3 { color: var(--vb-3); }
-.rd-bridges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+#rdText .rd-w.vb { position: relative; }
+.rd-bridge { position: absolute; pointer-events: none; overflow: visible; }
 .vb-arc { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
 .vb-arc.vb-1 { stroke: var(--vb-1); } .vb-arc.vb-2 { stroke: var(--vb-2); } .vb-arc.vb-3 { stroke: var(--vb-3); }
-@media (prefers-reduced-motion: no-preference) { .vb-arc { animation: vb-draw .55s .1s cubic-bezier(.22, 1, .36, 1) both; } }
+@media (prefers-reduced-motion: no-preference) { .rd-bridge:not(.still) .vb-arc { animation: vb-draw .55s .1s cubic-bezier(.22, 1, .36, 1) both; } }
 @keyframes vb-draw { from { stroke-dashoffset: 100; } }
 /* Gênero (sublinhado nas três cores) e palavras ainda não estudadas (pontilhado leve). */
 #rdText .rd-w.gn { text-decoration: underline 2px; text-underline-offset: 5px; text-decoration-skip-ink: none; }
