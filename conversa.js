@@ -51,7 +51,10 @@ function sanitizeConversa(src) {
       secs: Math.max(0, Math.round(Number(s.secs) || 0)),
       errors: (Array.isArray(s.errors) ? s.errors : []).filter(e => e && e.certo).slice(0, 8).map(e => ({errado: str(e.errado, 300), certo: str(e.certo, 300), explicacao: str(e.explicacao, 500)})),
       // Anamnese da FSP: quantos fatos do caso foram descobertos.
-      ...(s.fsp && Number(s.fsp.total) > 0 ? {fsp: {found: Math.max(0, Math.min(Number(s.fsp.total), Math.round(Number(s.fsp.found) || 0))), total: Math.round(Number(s.fsp.total))}} : {})}))
+      ...(s.fsp && Number(s.fsp.total) > 0 ? {fsp: {found: Math.max(0, Math.min(Number(s.fsp.total), Math.round(Number(s.fsp.found) || 0))), total: Math.round(Number(s.fsp.total))}} : {}),
+      // Jogo “Was habe ich?” e missões (missoes.js).
+      ...(s.game && s.game.id ? {game: {id: str(s.game.id, 40), solved: !!s.game.solved, questions: Math.max(0, Math.round(Number(s.game.questions) || 0)), tries: Math.max(0, Math.min(3, Math.round(Number(s.game.tries) || 0)))}} : {}),
+      ...(s.mission && Number(s.mission.total) > 0 ? {mission: {done: Math.max(0, Math.min(Number(s.mission.total), Math.round(Number(s.mission.done) || 0))), total: Math.round(Number(s.mission.total))}} : {})}))
     .sort((a, b) => a.at - b.at).slice(-300);
   return out;
 }
@@ -76,9 +79,11 @@ function convName(topic = conv.topic) { return topic && topic.role ? topic.roleP
 function convSie(topic = conv.topic) { return !!(topic && topic.role && topic.sie !== false); }
 function convSystemPrompt({name, level, topic, known}) {
   if (topic.patient && typeof fspPatientPrompt === "function") return fspPatientPrompt(topic, level);
+  if (topic.game && typeof wasPrompt === "function") return wasPrompt(topic, level);
   const lines = [`You are ${name}, a friendly German conversation partner for Luiz, a Brazilian doctor who is learning German (level ${level}).`];
   if (topic.role) lines.push(`Role-play: you are ${topic.role}. Situation: ${topic.setting} Stay in your role and use "${convSie(topic) ? "Sie" : "du"}".`);
   else lines.push(`Topic: ${topic.de}. Use "du".`);
+  if (topic.mission && typeof missionPromptLines === "function") lines.push(...missionPromptLines(topic));
   if (topic.book) lines.push(`Luiz is reading the German book "${topic.book.title}" and has just read the chapter "${topic.book.chapter}". Talk with him about it: ask simple questions about what happens, the characters, what he thinks and feels about it and what he would do, one question at a time. If he does not remember, help with a small hint. Chapter text, for reference only (do not read it out or quote long parts):`,
     topic.book.text);
   if (topic.script && topic.script.length) lines.push("This is a variation of a scene Luiz has already practised. Original script, for reference only (do NOT repeat it word for word):",
@@ -305,6 +310,7 @@ function renderConvSetup() {
       convModelLine(),
       last ? h("p", {class: "muted small-text", text: data.sessions.length + (data.sessions.length === 1 ? " conversa feita" : " conversas feitas") + " · última em " + new Date(last.at).toLocaleDateString("pt-BR") + "."}) : null),
     f432SetupNode(),
+    typeof missionSetupNode === "function" ? missionSetupNode() : null,
     typeof fspSetupNode === "function" ? fspSetupNode() : null,
     ...groups.map(([g, list]) => h("section", {class: "scene-group"},
       h("h2", {text: g === "Situações" ? "Situações (ela faz o outro papel)" : g}),
@@ -369,7 +375,10 @@ function openConversaTopic(topic) {
   $("convTitle").textContent = topic.pt;
   fill($("convMeta"), h("span", {class: "tag", text: "Nível " + level}), h("span", {class: "tag", text: convSie(topic) ? "Sie · formal" : "du · informal"}),
     h("span", {class: "tag", text: "Com: " + convName(topic)}));
-  $("convSetting").textContent = topic.patient ? "Você é o médico: cumprimente, apresente-se e faça a anamnese completa (queixa atual, vegetativa, antecedentes, medicamentos, alergias, hábitos, família, social). O paciente só conta o que você perguntar. Quando acabar, toque em “Terminar e ver erros”."
+  if (typeof missionReset === "function") missionReset(topic);
+  $("convSetting").textContent = topic.game ? "Você é o médico: o paciente não sabe o que tem. Pergunte, descubra os sintomas e dê o diagnóstico."
+    : topic.mission ? "Situação: " + convName(topic).toLowerCase() + " faz o outro papel. Fique atento: no meio aparece um imprevisto."
+    : topic.patient ? "Você é o médico: cumprimente, apresente-se e faça a anamnese completa (queixa atual, vegetativa, antecedentes, medicamentos, alergias, hábitos, família, social). O paciente só conta o que você perguntar. Quando acabar, toque em “Terminar e ver erros”."
     : topic.script ? "Improviso da cena: a mesma situação, mas com detalhes diferentes. Ouça bem e se adapte."
     : topic.role ? "Situação: você é o cliente/paciente; " + convName(topic).toLowerCase() + " faz o outro papel." : "";
   $("convShowText").checked = settings.convShowText !== false;
@@ -411,6 +420,7 @@ async function partnerTurn(userText) {
     convSetBusy(false, "");
     $("convChat").append(convBubble(turn));
     convScroll();
+    if (typeof missionRender === "function") missionRender();
     const speaking = convSpeak(text);
     $("convStatus").textContent = speechAvailable() ? "Sua vez: fale (F) ou escreva e aperte Enter." : "Sua vez: escreva e aperte Enter.";
     if (settings.convHandsFree) speaking.then(convWaitAudio).then(() => { if (token === conv.token) convListen(); });
@@ -431,6 +441,7 @@ function convSend(textArg) {
   conv.turns.push(turn);
   $("convChat").append(bubble);
   convScroll();
+  if (typeof missionAfterTurn === "function") missionAfterTurn(turn);
   partnerTurn(text).then(() => convCheckTurn(turn, bubble));
 }
 async function convMic() {
@@ -633,7 +644,7 @@ async function convFinish() {
   const {errors, style, frases, elogio} = convFeedback(j);
   const words = mine.reduce((n, t) => n + t.de.split(/\s+/).filter(Boolean).length, 0), secs = Math.round((Date.now() - conv.startedAt) / 1000);
   const data = convData();
-  data.sessions.push({at: Date.now(), topic: conv.topic.id, turns: mine.length, words, secs, errors});
+  data.sessions.push({at: Date.now(), topic: conv.topic.id, turns: mine.length, words, secs, errors, ...(typeof missionSessionExtra === "function" ? missionSessionExtra() : {})});
   data.sessions = data.sessions.slice(-300);
   progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1;
   saveProgress();
@@ -647,6 +658,7 @@ function renderConvSummary({errors, style = [], frases, elogio, words, turns, se
   fill($("convSummary"),
     h("h3", {text: "Resumo da conversa"}),
     h("p", {class: "muted", text: turns + (turns === 1 ? " fala sua" : " falas suas") + " · " + words + " palavras · " + formatDuration(secs)}),
+    typeof missionSummaryNode === "function" ? missionSummaryNode() : null,
     elogio ? h("p", {text: elogio}) : null,
     !ok ? h("p", {class: "notice warn", text: "O resumo não saiu no formato esperado. A conversa foi registrada mesmo assim."}) : null,
     h("h4", {text: errors.length ? "Os erros mais importantes" : "Nenhum erro importante encontrado"}),
@@ -697,6 +709,7 @@ function convReset() {
   if (conv.clip) { conv.clip.stop(); conv.clip = null; }
   stopAudio();
   conv.topic = null; conv.turns = []; conv.messages = []; conv.busy = false; conv.finished = false;
+  if (typeof missionReset === "function") missionReset(null);
   renderConvSetup();
   window.scrollTo({top: 0});
 }

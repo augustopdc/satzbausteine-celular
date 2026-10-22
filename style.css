@@ -1559,3 +1559,25 @@ button.cv-check[aria-expanded="true"] > svg:last-child { transform: rotate(90deg
 .hint-hidden.shown span { filter: none; user-select: auto; }
 .hint-more { align-items: center; gap: .7rem; margin-top: .85rem; }
 .hint-foot { margin: .85rem 0 0; }
+
+/* Conversa: painel do jogo “Was habe ich?” e da missão (fica entre o cabeçalho e o chat). */
+.conv-mission { max-width: 780px; margin: 0 auto 1rem; display: grid; gap: .7rem; }
+.mis-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: .1rem 1rem; }
+.mis-head .label { margin: 0; grid-column: 1; }
+.mis-goal { grid-column: 1; margin: 0; font-weight: 650; }
+.mis-stat { grid-column: 2; grid-row: 1 / span 2; margin: 0; color: var(--ink-2); font-size: .88rem; text-align: right; }
+.mis-stat b { font-size: 1.5rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mis-list { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.mis-item { min-height: 32px; padding: .25rem .7rem .25rem .4rem; gap: .45rem; border-radius: 99px; background: var(--surface); font-size: .86rem; font-weight: 500; color: var(--ink-2); }
+.mis-box { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line-strong); }
+.mis-item.on { border-color: color-mix(in srgb, var(--good) 45%, transparent); color: var(--ink); background: color-mix(in srgb, var(--good) 10%, var(--surface)); }
+.mis-item.on .mis-box { border-color: var(--good); background: var(--good); color: #fff; }
+@media (prefers-reduced-motion: no-preference) { .mis-item.on .mis-box { animation: mis-pop .35s var(--ease); } }
+@keyframes mis-pop { 40% { transform: scale(1.25); } }
+.mis-done { margin: 0; color: var(--good); font-weight: 600; font-size: .9rem; }
+.mis-guess { align-items: center; gap: .5rem; }
+.mis-guess input { flex: 1; min-width: 200px; }
+.mis-result { margin: 0; padding: .6rem .8rem; border-radius: var(--radius); background: var(--warn-soft); }
+.mis-result.ok { background: color-mix(in srgb, var(--good) 12%, var(--surface)); }
+.mis-result p { margin: 0 0 .5rem; }
+.tag.ok { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
