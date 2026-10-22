@@ -10,22 +10,35 @@
 const RD_SUBORD = new Set(["dass", "daß", "weil", "als", "wenn", "ob", "obwohl", "obgleich", "damit", "bevor", "nachdem", "sobald", "falls", "indem", "sodass", "solange", "ehe"]);
 // Verbos que abrem a “ponte” na oração principal: auxiliares, modais e lassen (habe … gesehen, kann … kommen, ließ … duften).
 const RD_BRIDGE_LEMMA = new Set(["haben", "sein", "werden", "können", "müssen", "wollen", "sollen", "dürfen", "mögen", "möchten", "lassen"]);
+function rdNonFinite(word, notesW) {
+  const low = word.toLocaleLowerCase("de"), e = notesW && notesW[low], lemma = e && e[0] ? String(e[0]).toLocaleLowerCase("de").replace(/^sich\s+/, "") : "";
+  if (lemma && low === lemma) return true;
+  if (/^ge\p{L}{3,}(t|en)$/u.test(low) || /iert$/.test(low)) return true;
+  return /^(be|er|ver|zer|ent|emp|miss|über|unter|hinter)\p{L}+(t|en)$/u.test(low) && !/(te|test|ten|tet)$/.test(low);
+}
 function rdIsAux(word, notesW) {
   const low = word.toLocaleLowerCase("de"), e = notesW && notesW[low];
-  return e && e[0] ? RD_BRIDGE_LEMMA.has(String(e[0]).toLocaleLowerCase("de").replace(/^sichs+/, "")) : RD_AUX.has(low);
+  return e && e[0] ? RD_BRIDGE_LEMMA.has(String(e[0]).toLocaleLowerCase("de").replace(/^sich\s+/, "")) : RD_AUX.has(low);
 }
 const RD_AUX = new Set(["habe", "hast", "hat", "haben", "habt", "hatte", "hattest", "hatten", "hattet", "bin", "bist", "ist", "sind", "seid", "war", "warst", "waren", "wart",
   "werde", "wirst", "wird", "werden", "werdet", "wurde", "wurden", "kann", "kannst", "können", "könnt", "konnte", "konnten", "muss", "musst", "müssen", "musste", "mussten",
   "will", "willst", "wollen", "wollte", "wollten", "soll", "sollst", "sollen", "sollte", "sollten", "darf", "darfst", "dürfen", "durfte", "möchte", "möchtest", "möchten", "würde", "würden"]);
 function rdIsVerb(word, k, notesW) {
   const low = word.toLocaleLowerCase("de"), e = notesW && notesW[low];
+  // Com maiúscula no meio da frase é substantivo (das Essen, mit Grüßen), mesmo que o dicionário diga “verbo”.
+  if (k > 0 && /^\p{Lu}/u.test(word)) return false;
   if (e && e[1]) return e[1] === "verbo";
   return RD_AUX.has(low) && (k === 0 || !/^\p{Lu}/u.test(word));
 }
 /* Pares de palavras ligadas na frase: [conjunção, verbo no fim] na subordinada, [verbo conjugado, particípio/infinitivo]
    na principal e [verbo, prefixo] no separável. Só quando há pelo menos uma palavra entre as duas partes. Máximo de 3. */
 function rdVerbBridges(text, notesW) {
-  const {words, ends} = sentenceTokens(text), out = [];
+  const {words, ends: punct} = sentenceTokens(text), out = [];
+  // “und/oder/aber/sondern/denn” seguido de verbo começa outra oração (sujeito subentendido): “… bewegen und halten …”.
+  // Também “und ich lernte”: conjunção + pronome + verbo.
+  const coord = j => /^(und|oder|aber|sondern|denn)$/i.test(words[j] || "");
+  const pron = j => /^(ich|du|er|sie|es|wir|ihr|man)$/i.test(words[j] || "");
+  const ends = punct.map((x, k) => x || (coord(k + 1) && (rdIsVerb(words[k + 2] || "", k + 2, notesW) || (pron(k + 2) && rdIsVerb(words[k + 3] || "", k + 3, notesW)))));
   let s = 0;
   for (let k = 0; k < words.length; k++) {
     if (!ends[k]) continue;
@@ -35,18 +48,34 @@ function rdVerbBridges(text, notesW) {
     if (e - s >= 2) {
       const last = verbs[verbs.length - 1];
       if (RD_SUBORD.has(first) && verbs.length && last - lead >= 2) out.push({a: lead, b: last, kind: "neben"});
-      else if (verbs.length >= 2 && last - verbs[0] >= 2 && rdIsAux(words[verbs[0]], notesW)) out.push({a: verbs[0], b: last, kind: "klammer"});
+      else if (verbs.length >= 2 && rdIsAux(words[verbs[0]], notesW)) {
+        // A 2ª parte é um infinitivo ou particípio (finden, gesehen), nunca outro verbo conjugado (lernte).
+        const tail = verbs.slice(1).filter(j => rdNonFinite(words[j], notesW)).pop();
+        if (tail != null && tail - verbs[0] >= 2) out.push({a: verbs[0], b: tail, kind: "klammer"});
+      }
       else if (verbs.length === 1) { const sep = sepParticle(text, verbs[0], notesW); if (sep && sep.k <= e && sep.k - verbs[0] >= 2) out.push({a: verbs[0], b: sep.k, kind: "trennbar"}); }
     }
     s = k + 1;
   }
   return out.slice(0, 3);
 }
+/* Linha do painel que explica as cores da frase escolhida. */
+function rdBridgeNotes(i) {
+  if (i < 0 || readingState().bridges === false || !reading.book) return [];
+  const {words} = sentenceTokens(reading.order[i].text);
+  return rdVerbBridges(reading.order[i].text, reading.book.notes && reading.book.notes.w).map((b, n) => h("p", {class: "rd-bridge-note"},
+    h("b", {class: "vb-" + (n + 1), lang: "de", text: words[b.a]}), " … ", h("b", {class: "vb-" + (n + 1), lang: "de", text: words[b.b]}), ": " + RD_BRIDGE_TIP[b.kind] + "."));
+}
 const RD_BRIDGE_TIP = {neben: "a conjunção manda o verbo para o fim", klammer: "o verbo se divide: a 2ª parte fecha a frase", trennbar: "verbo separável: o prefixo vai para o fim"};
 /* Na frase escolhida: as duas partes ganham a mesma cor e, se estiverem na mesma linha, um arco que se desenha entre elas. */
 function rdDrawBridges(i) {
   const text = $("rdText");
   if (!text) return;
+  // O texto muda de altura depois do clique (a tradução da frase anterior se fecha, a letra carrega): redesenha o arco.
+  if (!text.vbWatch && typeof ResizeObserver === "function") {
+    text.vbWatch = new ResizeObserver(() => requestAnimationFrame(() => { if (reading.sel >= 0 && document.contains(text)) rdDrawBridges(reading.sel); }));
+    text.vbWatch.observe(text);
+  }
   text.querySelectorAll(".rd-bridges").forEach(x => x.remove());
   for (const w of text.querySelectorAll(".rd-w.vb")) { w.classList.remove("vb", "vb-1", "vb-2", "vb-3"); w.removeAttribute("title"); }
   if (i < 0 || readingState().bridges === false || !reading.book) return;

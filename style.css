@@ -1735,3 +1735,7 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 .rd-look { width: min(330px, calc(100vw - 2rem)); overflow-x: hidden; }
 .rd-look-row select { min-width: 0; flex: 1 1 auto; max-width: 200px; }
 .rd-look .inline-check { white-space: normal; align-items: flex-start; }
+/* Painel: explicação das cores da ponte do verbo. */
+.rd-bridge-note { margin: 0 0 .5rem; font-size: .88rem; color: var(--ink-2); }
+.rd-bridge-note b { font-family: var(--font-de); font-weight: 650; }
+.rd-bridge-note .vb-1 { color: var(--vb-1); } .rd-bridge-note .vb-2 { color: var(--vb-2); } .rd-bridge-note .vb-3 { color: var(--vb-3); }
