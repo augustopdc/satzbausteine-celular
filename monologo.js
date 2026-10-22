@@ -41,8 +41,7 @@ function f432SetupNode() {
   mode.addEventListener("change", () => { settings.f432Mode = mode.value; saveSettings(); });
   const hist = f432Data().sessions.slice(-8);
   return h("section", {class: "panel f432-setup"},
-    h("h2", {text: "Monólogo 4/3/2"}),
-    h("p", {class: "muted small-text", text: "Conte a mesma coisa três vezes, cada vez com menos tempo. Como o conteúdo já está pronto na cabeça, cada rodada sai mais solta: é um dos exercícios mais eficazes para ganhar fluência. O app mede palavras por minuto e pausas; no fim, a IA mostra os erros."}),
+    ...titled("h2", "Monólogo 4/3/2", "Conte a mesma coisa três vezes, cada vez com menos tempo. Como o conteúdo já está pronto na cabeça, cada rodada sai mais solta. O app mede palavras por minuto e pausas; no fim, a IA mostra os erros."),
     h("div", {class: "row"}, select, mode, h("button", {class: "primary", type: "button", disabled: !speechAvailable(), onclick: () => f432Start(select.value)}, "Começar")),
     !speechAvailable() ? h("p", {class: "muted small-text", text: "Precisa do microfone e da conferência de fala (Whisper)."}) : null,
     hist.length ? h("div", {class: "f432-hist"}, h("span", {class: "muted small-text", text: "Última rodada de cada treino (palavras por minuto):"}),

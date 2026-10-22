@@ -338,7 +338,7 @@ function escritaHome(box) {
       escritaBookCard()),
     stats.count ? h("section", {class: "panel es-stats"},
       h("h2", {text: "Sua evolução"}),
-      h("p", null, h("b", {text: String(stats.rate).replace(".", ",")}), " erros a cada 100 palavras", h("span", {class: "muted", text: " (média dos últimos " + stats.count + (stats.count === 1 ? " texto)" : " textos)")})),
+      h("p", null, h("b", {text: String(stats.rate).replace(".", ",")}), " erros a cada 100 palavras", h("span", {class: "muted", text: stats.count === 1 ? " (no seu primeiro texto corrigido)" : " (média dos últimos " + stats.count + " textos)"})),
       stats.tipos.length ? h("p", null, h("span", {class: "muted", text: "Seus erros mais comuns: "}), stats.tipos.map(([k, n]) => ESCRITA_TIPOS[k] + " (" + n + ")").join(" · ")) : null) : null,
     h("section", {class: "panel"},
       h("h2", {text: "Seus textos"}),

@@ -36,25 +36,32 @@ function renderScenes() {
   // Cenas do Nicos Weg primeiro, na ordem dos capítulos; depois as demais por nível.
   const chapter = Number.isFinite(Number(settings.nwChapter)) ? Number(settings.nwChapter) : 18;
   const course = (from, to) => SCENES.filter(s => sceneChapter(s) !== null && sceneChapter(s) >= from && sceneChapter(s) < to).sort((a, b) => sceneChapter(a) - sceneChapter(b));
-  const where = " (você está em " + nwChapterLabel(chapter) + ")";
-  const groups = [["Curso Nicos Weg A1 · uma cena por capítulo" + where, course(0, NW_A2_BASE)],
-    ["Curso Nicos Weg A2 · uma cena por capítulo" + where, course(NW_A2_BASE, 99)],
+  const where = "Uma cena por capítulo do curso; você está em " + nwChapterLabel(chapter) + ". As dos capítulos seguintes ficam mais claras, mas já podem ser feitas.";
+  const groups = [["Nicos Weg A1", course(0, NW_A2_BASE), where],
+    ["Nicos Weg A2", course(NW_A2_BASE, 99), where],
     ...LEVELS.map(level => ["Nível " + level, SCENES.filter(s => s.level === level && sceneChapter(s) === null)])].filter(([, list]) => list.length);
-  $("sceneList").replaceChildren(...groups.map(([title, list]) => h("section", {class: "scene-group"},
-    h("h2", {text: title}),
+  // Selo só na exceção: a próxima cena sugerida (a primeira ainda não feita até o seu capítulo).
+  const suggested = [...course(0, 99), ...SCENES.filter(s => sceneChapter(s) === null)].find(s => !sceneStats(s.id) && (sceneChapter(s) === null || sceneChapter(s) <= chapter));
+  $("sceneList").replaceChildren(...groups.map(([title, list, explain]) => h("section", {class: "scene-group"},
+    ...(explain ? titled("h2", title, explain) : [h("h2", {text: title})]),
     h("div", {class: "scene-grid"}, ...list.map(s => {
       const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
-      const sc = sceneChapter(s);
-      return h("article", {class: "scene-card" + (sc !== null && sc > chapter ? " later" : "")},
-        h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2 · cap. " + s.nw2 : "Cap. " + s.nw) + " · " + s.theme : s.theme}), st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : h("span", {class: "status s-new", text: "Nova"})),
+      const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
+      const card = h("article", {class: "scene-card scene-pick" + (sc !== null && sc > chapter ? " later" : "") + (s === suggested ? " suggested" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
+        h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.theme}),
+          st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
         h("h3", {text: s.title}),
         h("p", {class: "muted small-text", text: s.setting}),
-        h("p", {class: "small-text", text: s.lines.length + " falas · " + mine + " suas · com " + s.other.name}),
-        h("div", {class: "row"},
-          h("button", {class: "primary small", type: "button", onclick: () => openScene(s.id, false)}, "Praticar"),
-          h("button", {class: "small", type: "button", onclick: () => openScene(s.id, true), title: "Você faz o papel da outra pessoa"}, "Trocar papéis"),
-          h("button", {class: "quiet small", type: "button", onclick: () => openScene(s.id, false, true)}, "Só ouvir")));
+        h("p", {class: "scene-meta small-text", text: "Com " + s.other.name + ", " + mine + " de " + s.lines.length + " falas são suas"}));
+      card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+      return card;
     })))));
+}
+function sceneSheet(s, mine) {
+  actionSheet({title: s.title, sub: s.setting, actions: [
+    {label: "Praticar", note: "Você faz as " + mine + " falas suas", icon: "speech", primary: true, onclick: () => openScene(s.id, false)},
+    {label: "Trocar papéis", note: "Você faz o papel de " + s.other.name, icon: "repeat", onclick: () => openScene(s.id, true)},
+    {label: "Só ouvir", note: "A cena inteira, sem falar", icon: "volume", onclick: () => openScene(s.id, false, true)}]});
 }
 function openScene(id, swap, listenOnly = false) {
   const data = SCENES.find(s => s.id === id);

@@ -222,8 +222,7 @@ function renderFspSummary(caso, ev, fb, {words, turns, secs, ok}) {
 function fspSetupNode() {
   const sessions = convData().sessions.filter(s => s.fsp);
   return h("section", {class: "scene-group"},
-    h("h2", {text: "FSP · paciente simulado (você é o médico)"}),
-    h("p", {class: "muted small-text", text: "Faça a anamnese completa, como na prova: o paciente só conta o que você perguntar. No fim, você vê o que descobriu, o que faltou (com perguntas-modelo) e os erros de alemão. O paciente fala no seu nível."}),
+    ...titled("h2", "FSP: paciente simulado", "Você é o médico e faz a anamnese completa, como na prova: o paciente só conta o que você perguntar. No fim, você vê o que descobriu, o que faltou (com perguntas-modelo) e os erros de alemão. O paciente fala no seu nível."),
     h("div", {class: "scene-grid"}, ...FSP_CASOS.map(c => {
       const mine = sessions.filter(s => s.topic === "fsp-" + c.id), best = mine.reduce((m, s) => Math.max(m, s.fsp.found / Math.max(1, s.fsp.total)), 0);
       return h("article", {class: "scene-card"},

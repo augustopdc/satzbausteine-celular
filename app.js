@@ -771,7 +771,11 @@ function progressRow(label, done, total) {
     h("div", {class: "track", role: "img", "aria-label": Math.round(total ? done / total * 100 : 0) + "%"}, bar));
 }
 function renderHeatmap() {
-  const box = $("heatmap"), weeks = 26, today = new Date();
+  // Começa com 8 semanas e cresce com o histórico (até 26): um muro de dias vazios no começo só desanima.
+  const first = Object.keys(progress.days).filter(k => Number(progress.days[k]) > 0).sort()[0];
+  const since = first ? Math.ceil((Date.now() - new Date(first + "T12:00:00").getTime()) / (7 * 86400000)) : 0;
+  const box = $("heatmap"), weeks = Math.min(26, Math.max(8, since + 2)), today = new Date();
+  box.style.setProperty("--hm", weeks <= 10 ? "26px" : weeks <= 16 ? "21px" : "18px");
   today.setHours(12, 0, 0, 0);
   const start = new Date(today);
   start.setDate(start.getDate() - today.getDay() - (weeks - 1) * 7);
@@ -925,8 +929,13 @@ function themeChips(kind, onChange) {
   const chip = (value, label) => h("button", {class: "chip" + (FEATURED_THEMES.includes(value) ? " chip-featured" : ""), "aria-pressed": String(current === value), onclick: () => {
     filters[kind].Thema = value; syncFilterSelects(kind); onChange();
   }}, label);
-  return [chip("", "Todos"), ...themes.map(t => chip(t, tagLabel("Thema", t)))];
+  // Só os 5 primeiros (os em destaque vêm antes) e o escolhido; o resto atrás de “Mais temas”.
+  const shown = themeChipsOpen[kind] ? themes : themes.filter((t, i) => i < 5 || t === current), hidden = themes.length - shown.length;
+  return [chip("", "Todos"), ...shown.map(t => chip(t, tagLabel("Thema", t))),
+    hidden > 0 ? h("button", {class: "chip chip-more", type: "button", onclick: () => { themeChipsOpen[kind] = true; onChange(); }}, "Mais " + hidden + " temas")
+      : themeChipsOpen[kind] ? h("button", {class: "chip chip-more", type: "button", onclick: () => { themeChipsOpen[kind] = false; onChange(); }}, "Menos temas") : null].filter(Boolean);
 }
+const themeChipsOpen = {};
 
 // ---------- Treino: fila ----------
 function sortNew(a, b) {
@@ -947,6 +956,7 @@ function setSessionMode(mode) {
   $("modeDictation").setAttribute("aria-pressed", String(dictation));
   $("typingTitle").textContent = "Responder digitando";
   $("typingHint").textContent = "Compara sua resposta palavra por palavra. Aceita ae/oe/ue/ss no lugar de ä/ö/ü/ß.";
+  $("typingRow").title = $("typingHint").textContent;
   if (currentView === "practice") renderPracticeSetup();
 }
 function buildSessionQueue() {
@@ -2638,7 +2648,7 @@ async function init() {
     window.speechSynthesis.addEventListener?.("voiceschanged", renderVoices);
     setTimeout(renderVoices, 600);
   }
-  $("appVersion").textContent = "Versão " + APP_VERSION;
+  $("appVersion").textContent = APP_VERSION;
   if (window.satzDesktop) {
     try { desktopInfo = await window.satzDesktop.info(); } catch (e) { desktopInfo = null; }
     if (desktopInfo && desktopInfo.sync && desktopInfo.sync.dir) await syncNow(true);

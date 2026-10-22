@@ -294,8 +294,8 @@ function convModelLine() {
   if (!convAvailable()) return h("p", {class: "notice warn", text: "A conversa precisa do aplicativo do Windows (com a parceira instalada)."});
   if (!s) return h("p", {class: "muted small-text", text: "Verificando a parceira de conversa…"});
   if (!s.installed) return h("p", {class: "notice warn", text: "A parceira de conversa não está instalada: falta o modelo em resources\\llm (llama.cpp + arquivo .gguf)."});
-  if (s.loading) return h("p", {class: "muted small-text", text: "Carregando a parceira na placa de vídeo… (uns 15 segundos; pode ir escolhendo o tema)"});
-  return h("p", {class: "muted small-text", text: "Parceira pronta · roda neste computador, sem internet e sem limite."});
+  if (s.loading) return h("p", {class: "muted small-text", text: "Preparando a parceira de conversa… pode ir escolhendo o tema."});
+  return h("p", {class: "muted small-text", text: "Parceira pronta, sem limite de conversa."});
 }
 function renderConvSetup() {
   $("convRoom").hidden = true;
@@ -305,8 +305,7 @@ function renderConvSetup() {
   const groups = ["Temas", "Situações", "Livre"].map(g => [g, CONV_TOPICS.filter(t => t.group === g)]);
   fill($("convSetup"),
     h("div", {class: "panel"},
-      h("p", {text: "Seu nível agora: " + level + ". A parceira fala nesse nível e usa, de preferência, as palavras das frases que você já aprendeu. Conforme você avança no treino, a conversa sobe junto."}),
-      h("p", {class: "muted small-text", text: "Fale (F) ou escreva. Ela responde repetindo certo o que você disse, sem interromper. Cada fala sua ganha um sinal (Certo ou o número de erros; toque para ver a correção) e, no fim, você vê o resumo dos erros em português."}),
+      ...titled("p", "Seu nível agora: " + level, "A parceira fala nesse nível e usa, de preferência, as palavras das frases que você já aprendeu; conforme você avança no treino, a conversa sobe junto. Fale (F) ou escreva. Ela responde repetindo certo o que você disse, sem interromper. Cada fala sua ganha um sinal (Certo ou o número de erros; toque para ver a correção) e, no fim, você vê o resumo dos erros em português."),
       convModelLine(),
       last ? h("p", {class: "muted small-text", text: data.sessions.length + (data.sessions.length === 1 ? " conversa feita" : " conversas feitas") + " · última em " + new Date(last.at).toLocaleDateString("pt-BR") + "."}) : null),
     f432SetupNode(),

@@ -74,8 +74,11 @@
    <header class="page-head home-head">
     <div class="home-hello"><p id="homeGreeting" class="label"></p><h1 id="homeHeadline">Bom dia.</h1><p id="homeSub" class="lede"></p></div>
     <div class="home-day">
-     <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
-     <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
+     <button id="dayBtn" class="day-btn" type="button" aria-expanded="false" aria-controls="dayPop"></button>
+     <div id="dayPop" class="day-pop panel" hidden>
+      <div id="heroShift" class="shift-today" role="group" aria-label="Tipo de dia de hoje"></div>
+      <div id="heroBudget" class="shift-today" role="group" aria-label="Tempo de estudo hoje"></div>
+     </div>
     </div>
    </header>
    <div id="welcome" class="panel welcome" hidden>
@@ -127,7 +130,7 @@
     </div>
     <p id="dictationInfo" class="level-info" hidden>O ditado usa a fila da escuta. Maiúsculas, ä, ö, ü e ß contam; o app mostra que tipo de erro de grafia você cometeu. Ctrl+Espaço repete o áudio e Ctrl+Shift+Espaço repete devagar.</p>
     <label id="typingRow" class="switch"><input id="typingMode" type="checkbox"><span><b id="typingTitle">Responder digitando</b><small id="typingHint"></small></span></label>
-    <label id="presentRow" class="switch"><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória.</small></span></label>
+    <label id="presentRow" class="switch" title="Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória."><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória.</small></span></label>
     <p id="levelInfo" class="level-info"></p>
     <div id="leechBox" class="notice warn spaced" hidden><span>Algumas frases estão travando: você errou cada uma delas várias vezes. Vale um treino focado.</span><button id="leechButton" class="small" type="button"></button></div>
     <h3>Tema</h3>
@@ -137,7 +140,7 @@
    </div>
    <div id="contPlayer" class="panel cont-player" hidden>
     <div class="row between"><h2>Escuta contínua</h2><span id="contCounter" class="counter"></span></div>
-    <p class="muted">Ouça cada frase, repita em voz alta na pausa e ouça de novo (com a outra voz). Ideal para o trânsito ou a academia.</p>
+    <p class="explain muted">Ouça cada frase, repita em voz alta na pausa e ouça de novo (com a outra voz). Ideal para o trânsito ou a academia.</p>
     <div class="track"><span id="contBar"></span></div>
     <div id="contCard" class="cont-card" lang="de"></div>
     <div class="row center"><button id="contPause" class="primary" type="button">Pausar</button><button id="contNext" type="button">Próxima</button><button id="contStop" class="quiet" type="button">Parar</button></div>
@@ -146,7 +149,7 @@
 
    <div id="speedPlayer" class="panel speed-player" hidden>
     <div class="row between"><h2>Rodada de velocidade</h2><div class="row"><span id="speedCounter" class="counter"></span><button id="speedStop" class="quiet small" type="button">Encerrar <kbd>Esc</kbd></button></div></div>
-    <p class="muted small-text">Leia a situação e comece a falar o mais rápido que puder, sem traduzir na cabeça. O microfone só mede o volume da sua voz para marcar o tempo; nada é gravado.</p>
+    <p class="explain muted small-text">Leia a situação e comece a falar o mais rápido que puder, sem traduzir na cabeça. O microfone só mede o volume da sua voz para marcar o tempo; nada é gravado.</p>
     <div class="track"><span id="speedBar"></span></div>
     <div id="speedStage" class="speed-stage"></div>
    </div>
@@ -284,10 +287,10 @@
      <div class="field"><label for="plan-move">Mudança</label><input id="plan-move" type="date"></div>
      <div class="field"><label for="plan-fsp">Fachsprachprüfung</label><input id="plan-fsp" type="date"></div>
     </div>
-    <p class="muted small-text spaced">As frases gerais (K1 a K3 e chegada) são distribuídas até o B2; as frases médicas, até a FSP. Ajuste as datas à sua realidade; os requisitos da Approbation variam de estado para estado.</p>
+    <p class="explain muted small-text spaced">As frases gerais (K1 a K3 e chegada) são distribuídas até o B2; as frases médicas, até a FSP. Ajuste as datas à sua realidade; os requisitos da Approbation variam de estado para estado.</p>
    </section>
    <section class="panel"><h2>Escala de plantões</h2>
-    <p class="muted">No dia de plantão, o treino fica em cerca de 10 minutos, só com as revisões mais urgentes e sem frases novas. No pós-plantão, o acúmulo é dividido em até 3 dias. Na folga, entram mais frases novas. Plantão e pós-plantão sem estudo não quebram a sequência. No Início, você também escolhe quanto tempo tem em cada dia. Se a escala varia, deixe “sem escala fixa” e informe a média de plantões por semana, para o plano ficar realista.</p>
+    <p class="explain muted">No dia de plantão, o treino fica em cerca de 10 minutos, só com as revisões mais urgentes e sem frases novas. No pós-plantão, o acúmulo é dividido em até 3 dias. Na folga, entram mais frases novas. Plantão e pós-plantão sem estudo não quebram a sequência. No Início, você também escolhe quanto tempo tem em cada dia. Se a escala varia, deixe “sem escala fixa” e informe a média de plantões por semana, para o plano ficar realista.</p>
     <div class="grid shift-fields">
      <div class="field"><label for="shiftMode">Escala</label><select id="shiftMode"><option value="none">Sem escala fixa (marco dia a dia)</option><option value="weekly">Mesmos dias toda semana</option><option value="24x72">24 × 72 · plantão, pós e 2 folgas</option><option value="24x48">24 × 48 · plantão, pós e folga</option><option value="12x36">12 × 36 · plantão e folga</option></select></div>
      <div id="shiftAvgRow" class="field"><label for="shiftAvg">Plantões por semana (média)</label><input id="shiftAvg" type="number" min="0" max="7" step="0.5" value="0"></div>
@@ -297,7 +300,7 @@
     <div id="shiftWeekly" class="grid shift-week" hidden></div>
     <label class="switch spaced"><input id="shiftAutoPos" type="checkbox"><span><b>Dia seguinte ao plantão é pós-plantão</b><small>Para plantões de 24 h ou noturnos. Desligue se os seus plantões são de 12 h diurnos.</small></span></label>
     <h3>Próximas semanas</h3>
-    <p class="muted small-text">Clique num dia para trocar: comum → plantão → pós-plantão → folga. Dias com contorno foram marcados à mão e valem mais que a escala.</p>
+    <p class="explain muted small-text">Clique num dia para trocar: comum → plantão → pós-plantão → folga. Dias com contorno foram marcados à mão e valem mais que a escala.</p>
     <div id="shiftCalendar" class="shift-calendar"></div>
     <div class="row between spaced"><p class="shift-legend"><span class="ct-plantao">P</span> plantão <span class="ct-pos">PP</span> pós-plantão <span class="ct-folga">F</span> folga</p><button id="shiftClear" class="quiet small" type="button" hidden>Limpar marcações manuais</button></div>
     <p id="shiftSummary" class="muted small-text"></p>
@@ -305,7 +308,7 @@
    <div id="planSummary" class="stats"></div>
    <div class="row spaced-bottom plan-actions"><button id="planApply" class="primary" type="button" hidden></button></div>
    <section class="panel"><h2>Curso Nicos Weg</h2>
-    <p class="muted">As frases do reforço (520 do A1 e 867 do A2) seguem os capítulos do Nicos Weg e cobrem as palavras das listas oficiais do Goethe que faltavam. Entre as frases novas, elas vêm logo depois das suas próprias, na ordem do curso, e só até o capítulo em que você está. Quando terminar o A1, escolha um capítulo do A2: o A1 inteiro continua liberado.</p>
+    <p class="explain muted">As frases do reforço (520 do A1 e 867 do A2) seguem os capítulos do Nicos Weg e cobrem as palavras das listas oficiais do Goethe que faltavam. Entre as frases novas, elas vêm logo depois das suas próprias, na ordem do curso, e só até o capítulo em que você está. Quando terminar o A1, escolha um capítulo do A2: o A1 inteiro continua liberado.</p>
     <div class="grid"><div class="field"><label for="nwChapter">Estou no capítulo</label><select id="nwChapter"></select></div></div>
     <p id="nwInfo" class="muted small-text"></p>
    </section>
@@ -315,7 +318,7 @@
    <div class="grid two">
     <section class="panel"><h2>Domínio por nível</h2><div id="planLevels"></div></section>
     <section class="panel"><h2>Alemão médico desde já</h2>
-     <p class="muted">Parte das frases novas de cada dia pode vir do módulo médico, mesmo sem escolher o tema. Recomendado: 0% até o B1, depois 20–30%.</p>
+     <p class="explain muted">Parte das frases novas de cada dia pode vir do módulo médico, mesmo sem escolher o tema. Recomendado: 0% até o B1, depois 20–30%.</p>
      <div class="field"><label for="planMedShare">Frases médicas entre as novas: <span id="planMedShareValue">0%</span></label><input id="planMedShare" type="range" min="0" max="50" step="5" value="0"></div>
     </section>
    </div>
@@ -424,7 +427,7 @@
      <p id="optStatus" class="muted small-text"></p>
      <div id="optProgress" class="track spaced" hidden><span id="optBar"></span></div>
      <div class="row spaced"><button id="optRun" type="button">Otimizar agora</button><button id="optReset" class="quiet" type="button" hidden>Restaurar padrão</button></div>
-     <p class="muted small-text">O FSRS aprende com o seu histórico de revisões e recalcula os intervalos. Refaça a cada um ou dois meses.</p>
+     <p class="explain muted small-text">O FSRS aprende com o seu histórico de revisões e recalcula os intervalos. Refaça a cada um ou dois meses.</p>
     </div>
    </section>
    <section class="panel"><h2>Aparência</h2>
@@ -489,7 +492,7 @@
    </section>
   </section>
   </main>
-  <footer class="footer">Satz para Windows · <span id="appVersion"></span> · Offline e sem conta. Áudio neural embutido; as gravações e a transcrição de fala ficam no computador.</footer>
+  <footer class="footer">Satz <span id="appVersion"></span></footer>
  </div>
 </div>
 <dialog id="grammarDialog" class="grammar-dialog" aria-labelledby="grammarDialogTitle"><div class="dialog-head"><h2 id="grammarDialogTitle"></h2><button id="grammarDialogClose" class="icon-btn quiet" type="button" aria-label="Fechar">×</button></div><div id="grammarDialogBody"></div></dialog>

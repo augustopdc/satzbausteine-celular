@@ -50,12 +50,26 @@ function hojeGo(id) {
   if (id === "diary") { Object.assign(escrita, {view: "editor", spec: escritaDiarySpec()}); navGo("escrita"); }
 }
 
+/* O anel enche a partir do valor anterior (na primeira vez, do zero) e o número conta até o valor novo. */
 function hojeRing(box, m) {
   const r = 54, c = 2 * Math.PI * r, pct = m.complete ? 1 : Math.min(1, m.goal ? m.done / m.goal : 0);
+  const prev = Number(box.dataset.pct || 0), prevDone = Number(box.dataset.done || 0), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dash = p => (c * p).toFixed(1) + " " + c.toFixed(1);
   const svg = svgEl("svg", {viewBox: "0 0 132 132", width: 132, height: 132, "aria-hidden": "true"});
-  svg.append(svgEl("circle", {cx: 66, cy: 66, r, class: "ring-track"}),
-    svgEl("circle", {cx: 66, cy: 66, r, class: "ring-bar" + (pct > 0 ? "" : " empty"), "stroke-dasharray": (c * pct).toFixed(1) + " " + c.toFixed(1), transform: "rotate(-90 66 66)"}));
-  fill(box, svg, h("div", {class: "ring-center"}, m.complete ? icon("check", 34) : h("b", {text: m.done}), h("span", {text: m.complete ? "meta cumprida" : "de " + m.goal + " min"})));
+  const bar = svgEl("circle", {cx: 66, cy: 66, r, class: "ring-bar" + (pct > 0 || prev > 0 ? "" : " empty"), "stroke-dasharray": dash(still ? pct : prev), transform: "rotate(-90 66 66)"});
+  svg.append(svgEl("circle", {cx: 66, cy: 66, r, class: "ring-track"}), bar);
+  const num = h("b", {text: still ? m.done : prevDone});
+  fill(box, svg, h("div", {class: "ring-center"}, m.complete ? icon("check", 34) : num, h("span", {text: m.complete ? "meta cumprida" : "de " + m.goal + " min"})));
+  box.dataset.pct = pct;
+  box.dataset.done = m.done;
+  if (!still) {
+    requestAnimationFrame(() => requestAnimationFrame(() => { bar.setAttribute("stroke-dasharray", dash(pct)); if (pct > 0) bar.classList.remove("empty"); }));
+    if (!m.complete && m.done !== prevDone) {
+      const t0 = performance.now(), from = prevDone, to = m.done;
+      const step = now => { const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3); num.textContent = Math.round(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }
+  }
   box.classList.toggle("complete", m.complete);
   box.setAttribute("aria-label", m.complete ? "Meta de hoje cumprida" : m.done + " de " + m.goal + " minutos de estudo hoje");
 }
@@ -126,8 +140,9 @@ function hojeTiles() {
       (b2 > 0 ? "B2 em " + formatDate(plan.b2, {month: "long", year: "numeric"}) : "Meta do B2 no Meu plano") + (move > 0 ? ", mudança em " + move.toLocaleString("pt-BR") + " dias." : ".")),
     hojeTile("book", "Aprendidas", learned.toLocaleString("pt-BR"), learned === 1 ? "frase" : "frases", null,
       acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + acc.reviews + " avaliações)"),
-    hojeTile("pen", "Escrita", es && es.rate != null ? es.rate.toLocaleString("pt-BR") : "—", es && es.rate != null ? "erros / 100 palavras" : "",
-      rates.length >= 2 ? hojeSpark(rates) : null,
+    // Precisão (palavras sem erro) em vez de “erros por 100 palavras”: o número absoluto fica na tela da Escrita.
+    hojeTile("pen", "Escrita", es && es.rate != null ? Math.max(0, Math.round(100 - es.rate)) + "%" : "—", es && es.rate != null ? "de precisão" : "",
+      rates.length >= 2 ? hojeSpark(rates.map(r => 100 - r)) : null,
       !texts.length ? "Escreva o diário de hoje para começar." : trend == null ? "Média dos últimos textos." : trend <= 0 ? Math.abs(trend) + "% menos erros desde o início" : "Erros subiram " + trend + "%: vale rever as correções.")
   ];
 }

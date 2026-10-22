@@ -1581,3 +1581,62 @@ button.cv-check[aria-expanded="true"] > svg:last-child { transform: rotate(90deg
 .mis-result.ok { background: color-mix(in srgb, var(--good) 12%, var(--surface)); }
 .mis-result p { margin: 0 0 .5rem; }
 .tag.ok { background: color-mix(in srgb, var(--good) 14%, transparent); color: var(--good); }
+
+/* Menos texto, menos caixas, uma ação por cartão (21/10/2026, a partir de uma crítica colada pelo usuário). */
+:root { --spring: cubic-bezier(.34, 1.4, .64, 1); }
+/* Toque: o botão encolhe um pouco e volta com mola. */
+button { transition: background .15s, border-color .15s, color .15s, box-shadow .15s, transform .3s var(--spring); }
+button:active:not(:disabled), .scene-pick:active { transform: scale(.97); transition-duration: .08s; }
+@media (prefers-reduced-motion: reduce) { button:active:not(:disabled), .scene-pick:active { transform: none; } }
+/* Explicação atrás do “i” ao lado do título. */
+.titled { display: flex; align-items: center; gap: .3rem; }
+p.titled { margin: 0; font-weight: 600; }
+.help-mini { width: 28px; height: 28px; min-height: 28px; }
+.explain-text:not([hidden]) { animation: fadeOnly .25s ease-out; }
+/* Hoje: tipo de dia e tempo num botão só. */
+.home-day { position: relative; justify-items: end; }
+.day-btn { min-height: 36px; padding: .3rem .8rem .3rem .65rem; gap: .4rem; border-radius: 99px; background: var(--surface); font-size: .88rem; font-weight: 600; color: var(--ink-2); }
+.day-btn > svg:last-child { transform: rotate(90deg); color: var(--ink-3); transition: transform .3s var(--ease); }
+.day-btn[aria-expanded="true"] > svg:last-child { transform: rotate(-90deg); }
+.day-pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; display: grid; gap: .6rem; width: max-content; max-width: min(460px, calc(100vw - 2rem)); margin: 0; padding: .9rem 1rem; box-shadow: var(--shadow-lg); }
+.day-pop[hidden] { display: none; }
+.day-pop .shift-today { margin: 0; flex-wrap: wrap; }
+@media (prefers-reduced-motion: no-preference) { .day-pop:not([hidden]) { animation: pop-in .3s var(--spring); transform-origin: top right; } }
+@keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
+@media (max-width: 600px) {
+  .home-day { justify-items: start; }
+  .day-pop { left: 0; right: auto; transform-origin: top left; }
+  .home-day .day-pop .shift-today { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+}
+/* Anel da meta: enche com suavidade. */
+.ring-bar { transition: stroke-dasharray .9s cubic-bezier(.22, 1, .36, 1); }
+/* Cenas: o cartão inteiro abre as opções; selo só na sugerida. */
+.scene-pick { cursor: pointer; transition: border-color .2s, box-shadow .2s, transform .3s var(--spring); }
+.scene-pick:hover { border-color: var(--line-strong); box-shadow: var(--shadow); }
+.scene-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.scene-pick.suggested { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.status.s-next { background: var(--accent-soft); color: var(--accent-strong); }
+.scene-meta { margin: auto 0 0; color: var(--ink-3); }
+.chip-more { border-style: dashed; color: var(--ink-2); }
+/* Folha de ações */
+.sheet { width: min(420px, calc(100vw - 2rem)); padding: 0; border: 0; border-radius: 18px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-lg); }
+.sheet::backdrop { background: rgba(10, 20, 18, .4); backdrop-filter: blur(3px); }
+.sheet-body { display: grid; gap: .35rem; padding: 1.1rem 1.1rem .8rem; }
+.sheet-body h2 { margin: 0; font-size: 1.2rem; }
+.sheet-body > p { margin: 0 0 .5rem; }
+.sheet-grip { display: none; }
+.sheet-actions { display: grid; gap: .4rem; }
+.sheet-action { justify-content: flex-start; gap: .8rem; min-height: 56px; padding: .55rem .9rem; border-color: var(--line); border-radius: 12px; text-align: left; }
+.sheet-action > span { display: grid; gap: .05rem; }
+.sheet-action small { font-size: .8rem; font-weight: 500; color: var(--ink-3); }
+.sheet-action.primary small { color: color-mix(in srgb, var(--accent-ink) 80%, transparent); }
+.sheet-cancel { margin-top: .2rem; color: var(--ink-2); }
+@media (prefers-reduced-motion: no-preference) { .sheet[open] { animation: pop-in .35s var(--spring); } }
+@media (max-width: 600px) {
+  .sheet { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 18px 18px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .sheet-grip { display: block; justify-self: center; width: 36px; height: 5px; margin: -.3rem 0 .5rem; border-radius: 3px; background: var(--line-strong); }
+  @media (prefers-reduced-motion: no-preference) { .sheet[open] { animation: sheet-up .4s var(--ease); } }
+}
+.heatmap { grid-auto-columns: var(--hm, 18px); justify-content: start; gap: 4px; }
+/* Treino: as descrições dos interruptores ficam no título (passar o mouse), não embaixo de cada um. */
+#typingRow small, #presentRow small { display: none; }

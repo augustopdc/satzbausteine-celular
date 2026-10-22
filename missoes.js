@@ -305,13 +305,11 @@ function missionSetupNode() {
   const best = id => sessions.filter(s => s.topic === id && s.mission).reduce((m, s) => Math.max(m, s.mission.done / Math.max(1, s.mission.total)), -1);
   return [
     h("section", {class: "scene-group"},
-      h("h2", {text: "Was habe ich? · jogo do diagnóstico"}),
-      h("p", {class: "muted small-text", text: "Um paciente chega com uma queixa e não sabe o que tem. Faça perguntas em alemão, descubra os sintomas e dê o diagnóstico (3 tentativas). Bom para treinar perguntas de anamnese de um jeito leve."}),
+      ...titled("h2", "Was habe ich?", "Jogo do diagnóstico: um paciente chega com uma queixa e não sabe o que tem. Faça perguntas em alemão, descubra os sintomas e dê o diagnóstico (3 tentativas)."),
       h("div", {class: "row"}, h("button", {class: "primary", type: "button", disabled: !ok, onclick: () => openConversaTopic(wasTopic(wasPick()))}, "Atender um paciente"),
         h("span", {class: "muted small-text", text: solved.size + " de " + WAS_CASOS.length + " casos resolvidos"}))),
     h("section", {class: "scene-group"},
-      h("h2", {text: "Chegada à Alemanha · missões"}),
-      h("p", {class: "muted small-text", text: "Situações reais da mudança. Cada uma tem um objetivo, um imprevisto no meio e uma lista do que você precisa conseguir, marcada sozinha conforme você fala."}),
+      ...titled("h2", "Chegada à Alemanha", "Missões com situações reais da mudança. Cada uma tem um objetivo, um imprevisto no meio e uma lista do que você precisa conseguir, marcada sozinha conforme você fala."),
       h("div", {class: "scene-grid"}, ...MISSOES.map(m => {
         const b = best(m.id);
         return h("article", {class: "scene-card"},

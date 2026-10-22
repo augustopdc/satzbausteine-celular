@@ -213,6 +213,7 @@ function shiftNote(load) {
   }
   return parts.length ? parts.join(" ") + later : "";
 }
+let dayPopBound = false;
 function renderShiftToday(load) {
   fill($("heroShift"), h("span", {class: "shift-label", text: "Hoje:"}), ...shiftChips(load.plan.type, setTodayType));
   const options = [...new Set([...BUDGET_OPTIONS, load.plan.type === "plantao" ? load.plan.minutes : 10])].sort((a, b) => a - b);
@@ -220,6 +221,18 @@ function renderShiftToday(load) {
   fill($("heroBudget"), h("span", {class: "shift-label", text: "Tempo:"}),
     ...options.map(m => h("button", {class: "chip shift-chip", type: "button", "aria-pressed": String(load.budget === m), onclick: () => setTodayBudget(m)}, m + " min")),
     h("button", {class: "chip shift-chip", type: "button", "aria-pressed": String(!load.budget), onclick: () => setTodayBudget(0)}, "Sem limite"));
+  // Na tela Hoje, tipo de dia e tempo ficam num botão só (“Dia comum, sem limite”) que abre as opções.
+  const btn = $("dayBtn"), pop = $("dayPop");
+  if (btn) {
+    fill(btn, icon(load.plan.type === "plantao" || load.plan.type === "pos" ? "moon" : "sun", 16),
+      h("span", {text: SHIFT_LABELS[load.plan.type] + ", " + (load.budget ? load.budget + " min" : "sem limite")}), icon("chevron", 14));
+    btn.onclick = e => { e.stopPropagation(); pop.hidden = !pop.hidden; btn.setAttribute("aria-expanded", String(!pop.hidden)); };
+    if (!dayPopBound) {
+      dayPopBound = true;
+      document.addEventListener("click", e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
+      document.addEventListener("keydown", e => { if (e.key === "Escape" && !pop.hidden) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
+    }
+  }
   const note = shiftNote(load);
   $("heroShiftNote").textContent = note;
   $("heroShiftNote").hidden = !note;

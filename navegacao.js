@@ -111,8 +111,48 @@ function initPageHelp() {
     row.append(title, btn);
   });
 }
+/* O mesmo vale dentro das telas: a explicação de um bloco fica escondida atrás de um “i” ao lado do título dele.
+   No HTML, basta a classe “explain” no parágrafo; no código, titled(tag, título, explicação). */
+function explainToggle(p) {
+  p.hidden = true;
+  p.classList.add("explain-text");
+  const btn = h("button", {class: "icon-btn quiet help-toggle help-mini", type: "button", "aria-expanded": "false", "aria-label": "Mais sobre isto", title: "Mais sobre isto"}, icon("info", 16));
+  btn.addEventListener("click", () => { p.hidden = !p.hidden; btn.setAttribute("aria-expanded", String(!p.hidden)); });
+  return btn;
+}
+function titled(tag, text, explain) {
+  const p = h("p", {class: "muted small-text", text: explain});
+  return [h(tag, {class: "titled"}, h("span", {text}), explainToggle(p)), p];
+}
+function initExplain(root = document) {
+  root.querySelectorAll("p.explain:not(.explain-text)").forEach(p => {
+    const prev = p.previousElementSibling, btn = explainToggle(p);
+    if (prev && /^H[1-4]$/.test(prev.tagName)) { prev.classList.add("titled"); prev.append(btn); }
+    else if (prev && prev.querySelector("h2, h3")) { const t = prev.querySelector("h2, h3"); t.classList.add("titled"); t.append(btn); }
+    else p.before(btn);
+  });
+}
+/* Folha de ações: um toque no cartão abre as opções (em vez de repetir os mesmos botões em todos os cartões).
+   No celular sobe de baixo; no PC aparece no meio. Esc ou toque fora fecham. */
+function actionSheet({title, sub, actions}) {
+  let dlg = $("actionSheet");
+  if (!dlg) {
+    dlg = h("dialog", {id: "actionSheet", class: "sheet", "aria-labelledby": "actionSheetTitle"});
+    dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+    document.body.append(dlg);
+  }
+  fill(dlg, h("div", {class: "sheet-body"},
+    h("span", {class: "sheet-grip", "aria-hidden": "true"}),
+    h("h2", {id: "actionSheetTitle", text: title}),
+    sub ? h("p", {class: "muted small-text", text: sub}) : null,
+    h("div", {class: "sheet-actions"}, ...actions.map(a => h("button", {class: "sheet-action" + (a.primary ? " primary" : ""), type: "button", onclick: () => { dlg.close(); a.onclick(); }},
+      a.icon ? icon(a.icon, 18) : null, h("span", null, h("b", {text: a.label}), a.note ? h("small", {text: a.note}) : null)))),
+    h("button", {class: "quiet sheet-cancel", type: "button", onclick: () => dlg.close()}, "Cancelar")));
+  if (!dlg.open) dlg.showModal();
+}
 function initNav() {
   initPageHelp();
+  initExplain();
   try { nav.last = JSON.parse(localStorage.getItem(NAV_KEY)) || {}; } catch (e) { nav.last = {}; }
   all(".nav-hub").forEach(b => b.addEventListener("click", () => navHub(b.dataset.hub)));
   all(".nav-sub button[data-view]").forEach(b => b.addEventListener("click", () => navGo(b.dataset.view)));
