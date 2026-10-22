@@ -3,7 +3,7 @@
    Tudo é calculado por regra a partir do progresso; nada aqui grava dados. */
 const HOJE_NAME = "Luiz";
 const HOJE_READ_MIN = 10, HOJE_DIARY_MIN = 3;
-const hoje = {seenIncomplete: false};
+const hoje = {seenIncomplete: false, routeDone: null};
 const SVG_NS = "http://www.w3.org/2000/svg";
 function svgEl(tag, attrs = {}) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -82,10 +82,14 @@ function hojeCelebrate() {
   toast("Meta de hoje cumprida. Até amanhã!", "success");
 }
 function hojeRouteList(items, next) {
+  const before = hoje.routeDone, now = new Set(items.filter(it => it.done).map(it => it.id));
+  hoje.routeDone = now;
+  const fresh = before ? [...now].filter(id => !before.has(id)) : [];
+  if (fresh.length && navigator.vibrate) navigator.vibrate(15);
   fill($("homeRoute"), items.map(it => {
     let bar = null;
     if (!it.done && it.progress > 0) { const fillEl = h("i"); setWidth(fillEl, it.progress * 100); bar = h("span", {class: "route-bar"}, fillEl); }
-    return h("li", {class: "route-item" + (it.done ? " done" : it === next ? " now" : "") + (it.optional && !it.done ? " optional" : "")},
+    return h("li", {class: "route-item" + (it.done ? " done" : it === next ? " now" : "") + (fresh.includes(it.id) ? " just-done" : "") + (it.optional && !it.done ? " optional" : "")},
       h("button", {class: "route-btn", type: "button", onclick: () => hojeGo(it.id)},
         h("span", {class: "route-mark"}, it.done ? icon("check", 14) : null),
         h("span", {class: "route-text"}, h("b", {text: it.title}),

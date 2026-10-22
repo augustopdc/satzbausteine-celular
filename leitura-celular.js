@@ -167,13 +167,13 @@ function rdWebRender() {
   const items = ids.map(id => {
     const {remote, mine, busy, outdated, b} = rdWebBook(id);
     return rdShelfItem(b, {cloud: !mine,
-      open: () => mine && !busy ? openBook(id) : remote && !rdWeb.busy && navigator.onLine ? rdWebDownload(remote) : rdBookDialog(id, rdWebBookSettings),
+      open: e => mine && !busy ? rdOpenFromCover(id, rdCoverOf(e)) : remote && !rdWeb.busy && navigator.onLine ? rdWebDownload(remote) : rdBookDialog(id, rdWebBookSettings),
       gear: () => rdBookDialog(id, rdWebBookSettings),
       alert: busy ? "Baixando… " + rdWeb.done + " de " + rdWeb.total : !mine ? "Toque para baixar" : outdated ? "Versão nova no PC" : null});
   });
   const recent = ids.filter(id => local[id] && bookPosition(id)).sort((x, y) => (bookPosition(y).at || 0) - (bookPosition(x).at || 0))[0];
   fill(box, rdLibraryLayout(
-    recent && rdWebBook(recent).b.chapters ? rdContinueNode(rdWebBook(recent).b, () => openBook(recent)) : null,
+    recent && rdWebBook(recent).b.chapters ? rdContinueNode(rdWebBook(recent).b, e => rdOpenFromCover(recent, rdCoverOf(e))) : null,
     rdWeb.error ? h("p", {class: "notice warn", text: "Não consegui ver a lista de livros no GitHub: " + rdWeb.error}) : null,
     items.length ? rdShelf(items)
       : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “Enviar para o celular” no livro."}),

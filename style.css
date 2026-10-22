@@ -1640,3 +1640,28 @@ p.titled { margin: 0; font-weight: 600; }
 .heatmap { grid-auto-columns: var(--hm, 18px); justify-content: start; gap: 4px; }
 /* Treino: as descrições dos interruptores ficam no título (passar o mouse), não embaixo de cada um. */
 #typingRow small, #presentRow small { display: none; }
+
+/* Transição herói da Leitura: a capa cresce até virar a tela do livro (e encolhe de volta ao sair). */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-nav="book"]::view-transition-group(rd-hero) { animation-duration: .55s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); border-radius: 8px; overflow: hidden; }
+  html[data-nav="book"]::view-transition-old(rd-hero), html[data-nav="book"]::view-transition-new(rd-hero) { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+  html[data-nav="book"]::view-transition-old(rd-hero) { animation: vt-hero-out .35s ease both; }
+  html[data-nav="book"]::view-transition-new(rd-hero) { animation: vt-hero-in .4s .12s ease both; }
+  html[data-nav="book"]::view-transition-old(root) { animation: vt-hero-out .25s ease both; }
+  html[data-nav="book"]::view-transition-new(root) { animation: vt-hero-in .35s .15s ease both; }
+}
+@keyframes vt-hero-out { to { opacity: 0; } }
+@keyframes vt-hero-in { from { opacity: 0; } }
+
+/* Roteiro da Hoje: a etapa que acabou de ficar pronta ganha o círculo cheio com um pulo, o check se desenhando e o risco
+   atravessando o texto (só nessa hora; ao abrir o app com a etapa já feita, fica parado). */
+.route-item.done .route-text b { justify-self: start; text-decoration: none; background: linear-gradient(currentColor, currentColor) no-repeat 0 55% / 100% 1.5px; }
+@media (prefers-reduced-motion: no-preference) {
+  .route-item.just-done .route-mark { animation: route-pop .5s var(--spring) both; }
+  .route-item.just-done .route-mark svg path { stroke-dasharray: 22; stroke-dashoffset: 22; animation: route-draw .4s .2s var(--ease) forwards; }
+  .route-item.just-done .route-text b { animation: route-strike .45s .45s var(--ease) both; }
+  .route-item.just-done .route-text b, .route-item.just-done .route-meta { transition: color .4s .45s; }
+}
+@keyframes route-pop { 0% { transform: scale(.55); background: var(--surface); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes route-draw { to { stroke-dashoffset: 0; } }
+@keyframes route-strike { from { background-size: 0 1.5px; } }
