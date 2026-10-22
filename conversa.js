@@ -132,7 +132,10 @@ function convStyleList(style) {
       h("p", {class: "muted small-text", text: s.explicacao}))))];
 }
 const CONV_HOWTO_SCHEMA = {type: "object", properties: {de: {type: "string"}, nota: {type: "string"}}, required: ["de", "nota"]};
-const CONV_HINT_SCHEMA = {type: "object", properties: {dicas: {type: "array", minItems: 1, maxItems: 2, items: {type: "object", properties: {de: {type: "string"}, pt: {type: "string"}}, required: ["de", "pt"]}}}, required: ["dicas"]};
+const CONV_HINT_SCHEMA = {type: "object", properties: {
+  palavras: {type: "array", minItems: 2, maxItems: 4, items: {type: "object", properties: {de: {type: "string"}, pt: {type: "string"}}, required: ["de", "pt"]}},
+  respostas: {type: "array", minItems: 1, maxItems: 2, items: {type: "object", properties: {inicio: {type: "string"}, frase: {type: "string"}, pt: {type: "string"}}, required: ["inicio", "frase", "pt"]}}},
+  required: ["palavras", "respostas"]};
 function parseLooseJson(text) {
   const s = String(text || "").trim();
   try { return JSON.parse(s); } catch (e) { /* tenta o trecho entre chaves */ }
@@ -556,21 +559,61 @@ function convHowto() {
   convHelpBox(h("h3", {text: "Como digo…?"}), h("div", {class: "row"}, input, h("button", {class: "primary small", type: "button", onclick: ask}, "Traduzir")), out);
   input.focus();
 }
+/* Ajuda em degraus para quando você trava: 1) palavras que ajudam, 2) o começo da frase, 3) a resposta inteira, escondida
+   até você tocar. Uma chamada só à IA; cada toque em “Dica” (ou “Mais ajuda”) abre o degrau seguinte. */
+const CONV_HINT_STEPS = ["Palavras que ajudam", "Comece assim", "Uma resposta possível"];
+function convHintPrompt(level, sie) {
+  return `Luiz (German level ${level}) is in a German conversation and does not know what to answer to the partner's last message (${sie ? "he uses \"Sie\"" : "he uses \"du\""}). Help him in steps. "palavras": 2 to 4 useful GERMAN words for his answer (single words or two-word chunks, never Portuguese and never a whole answer; nouns with their article, verbs in the infinitive), each with its Brazilian Portuguese meaning; avoid words that are already in the partner's message. "respostas": 2 different, short possible answers at his level, each a complete and correct German sentence: "inicio" = the first 2 to 4 words of the answer, "frase" = the whole answer, "pt" = its Brazilian Portuguese translation. Answer as JSON.`;
+}
+/* Confere a resposta da IA por regra: o começo tem de ser mesmo o começo da frase (senão vem das primeiras palavras dela). */
+function convHintData(j) {
+  const words = j && Array.isArray(j.palavras) ? j.palavras.filter(p => p && convClean(p.de)).map(p => ({de: convClean(p.de), pt: convClean(p.pt)})) : [];
+  // Fora: repetidas e “palavras” iguais à tradução (o Gemma às vezes devolve a palavra em português, ex.: “Brasil (Brasil)”).
+  const seen = new Set(), uniq = words.filter(p => convBare(p.de) !== convBare(p.pt) && !seen.has(convBare(p.de)) && seen.add(convBare(p.de)));
+  const answers = (j && Array.isArray(j.respostas) ? j.respostas : []).filter(r => r && convClean(r.frase)).slice(0, 2).map(r => {
+    const frase = convClean(r.frase), all = frase.split(/\s+/);
+    let inicio = convClean(r.inicio).replace(/\s*(…|\.\.\.)$/, "");
+    if (!inicio || !convBare(frase).startsWith(convBare(inicio)) || convBare(inicio) === convBare(frase)) inicio = all.slice(0, Math.max(1, Math.min(3, all.length - 1))).join(" ");
+    return {inicio: inicio.replace(/[.,!?;:]+$/, "") + " …", frase, pt: convClean(r.pt)};
+  });
+  return {words: uniq.slice(0, 4), answers};
+}
 async function convHint() {
   if (conv.busy) return;
   const last = [...conv.turns].reverse().find(t => t.who === "partner");
   if (!last) return;
-  convSetBusy(true, "Pensando em respostas possíveis…");
+  if (conv.hint && conv.hint.turn === last) {
+    conv.hint.step = Math.min(CONV_HINT_STEPS.length, conv.hint.step + 1);
+    convHintRender();
+    return;
+  }
+  convSetBusy(true, "Preparando a ajuda…");
   try {
-    const r = await window.satzDesktop.convChat([{role: "system", content: `Luiz (German level ${convLevel()}) is in a German conversation and does not know what to answer. Suggest 2 short, different possible answers at his level to the partner's last message (${convSie() ? "he uses \"Sie\"" : "he uses \"du\""}), each with a Brazilian Portuguese translation. Answer as JSON.`},
-      {role: "user", content: "Partner: " + last.de}], {kind: "hint", temperature: .6, maxTokens: 250, schema: CONV_HINT_SCHEMA});
-    const j = parseLooseJson(r.text);
-    const list = j && Array.isArray(j.dicas) ? j.dicas.filter(d => d && d.de) : [];
-    convHelpBox(h("h3", {text: "Ideias de resposta"}), h("p", {class: "muted small-text", text: "Use como ponto de partida e mude o que quiser. Falar com as suas palavras vale mais."}),
-      ...list.map(d => h("div", {class: "help-item"}, h("p", {class: "help-de", lang: "de", text: convClean(d.de)}), h("p", {class: "muted small-text", text: convClean(d.pt)}),
-        h("button", {class: "quiet small", type: "button", onclick: () => convSpeak(convClean(d.de))}, icon("volume", 16), "Ouvir"))));
-  } catch (e) { setStatus("Não consegui: " + cleanIpcError(e, "erro"), "error"); }
-  convSetBusy(false, "");
+    const r = await window.satzDesktop.convChat([{role: "system", content: convHintPrompt(convLevel(), convSie())},
+      {role: "user", content: "Partner: " + last.de}], {kind: "hint", temperature: .5, maxTokens: 400, schema: CONV_HINT_SCHEMA});
+    const data = convHintData(parseLooseJson(r.text));
+    if (!data.words.length && !data.answers.length) throw new Error("a ajuda não saiu no formato esperado");
+    conv.hint = {turn: last, step: data.words.length ? 1 : 2, ...data};
+    convSetBusy(false, "");
+    convHintRender();
+  } catch (e) { convSetBusy(false, ""); setStatus("Não consegui: " + cleanIpcError(e, "erro"), "error"); }
+}
+function convHintRender() {
+  const hint = conv.hint, speak = text => h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir", onclick: () => convSpeak(text)}, icon("volume", 16));
+  const steps = [
+    hint.words.length ? h("div", {class: "hint-words"}, ...hint.words.map(w => h("button", {class: "hint-word", type: "button", title: "Ouvir", onclick: () => convSpeak(w.de)},
+      h("b", {lang: "de", text: w.de}), w.pt ? h("span", {text: w.pt}) : null))) : h("p", {class: "muted small-text", text: "Sem palavras sugeridas desta vez."}),
+    h("div", {class: "hint-lines"}, ...hint.answers.map(a => h("p", {class: "hint-start"}, h("span", {lang: "de", text: a.inicio}), speak(a.inicio.replace(/ …$/, ""))))),
+    h("div", {class: "hint-lines"}, ...hint.answers.map(a => h("div", {class: "hint-full"},
+      h("button", {class: "hint-hidden", type: "button", title: "Toque para ver", onclick: e => e.currentTarget.classList.add("shown")}, h("span", {lang: "de", text: a.frase})),
+      speak(a.frase), a.pt ? h("p", {class: "muted small-text", text: a.pt}) : null)))];
+  convHelpBox(
+    h("div", {class: "hint-head"}, h("h3", {text: "Ajuda para responder"}),
+      h("ol", {class: "hint-dots", "aria-label": "Degrau " + hint.step + " de " + steps.length}, ...steps.map((_, k) => h("li", {class: k < hint.step ? "on" : ""})))),
+    ...steps.slice(0, hint.step).map((node, k) => h("section", {class: "hint-step" + (k === hint.step - 1 ? " current" : "")}, h("p", {class: "label", text: CONV_HINT_STEPS[k]}), node)),
+    hint.step < steps.length
+      ? h("div", {class: "row hint-more"}, h("button", {class: "small", type: "button", onclick: convHint}, "Mais ajuda"), h("span", {class: "muted small-text", text: "Tente falar antes de abrir o próximo degrau."}))
+      : h("p", {class: "muted small-text hint-foot", text: "Toque na frase para ver. Depois, fale com as suas palavras: mudar a resposta vale mais do que copiar."}));
 }
 async function convFinish() {
   if (conv.busy || conv.finished) return;

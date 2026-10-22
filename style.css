@@ -1533,3 +1533,29 @@ button.cv-check[aria-expanded="true"] > svg:last-child { transform: rotate(90deg
 .cv-pair .icon-btn { width: 28px; height: 28px; min-height: 28px; }
 .cv-why { font-size: .84rem; color: var(--ink-2); }
 .cv-list .conv-card { min-height: 28px; padding: 0 .1rem; font-size: .8rem; color: var(--accent-strong); }
+
+/* Conversa: ajuda em degraus (palavras → começo da frase → resposta escondida). */
+.hint-head { display: flex; align-items: center; gap: .8rem; padding-right: 2.4rem; }
+.hint-head h3 { margin: 0; }
+.hint-dots { display: flex; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.hint-dots li { width: 22px; height: 4px; border-radius: 2px; background: var(--line-strong); transition: background .3s var(--ease); }
+.hint-dots li.on { background: var(--accent); }
+.hint-step { display: grid; gap: .45rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px dashed var(--line-strong); }
+.hint-step .label { margin: 0; }
+.hint-step:not(.current) { opacity: .7; }
+@media (prefers-reduced-motion: no-preference) { .hint-step.current { animation: reveal .3s var(--ease); } }
+.hint-words { display: flex; flex-wrap: wrap; gap: .4rem; }
+.hint-word { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0; min-height: 0; padding: .35rem .75rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.hint-word b { font: 600 1rem/1.3 var(--font-de); }
+.hint-word span { font-size: .76rem; font-weight: 500; color: var(--ink-3); }
+.hint-lines { display: grid; gap: .4rem; }
+.hint-lines .icon-btn { width: 30px; height: 30px; min-height: 30px; }
+.hint-start { display: flex; align-items: center; gap: .2rem; margin: 0; font: 500 1.08rem/1.4 var(--font-de); }
+.hint-full { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: .3rem; }
+.hint-full p { grid-column: 1 / -1; margin: 0; }
+.hint-hidden { justify-content: flex-start; min-height: 0; padding: .2rem .1rem; border: 0; background: none; text-align: left; white-space: normal; font: 500 1.08rem/1.4 var(--font-de); }
+.hint-hidden:hover { background: none; }
+.hint-hidden span { filter: blur(6px); user-select: none; transition: filter .3s var(--ease); }
+.hint-hidden.shown span { filter: none; user-select: auto; }
+.hint-more { align-items: center; gap: .7rem; margin-top: .85rem; }
+.hint-foot { margin: .85rem 0 0; }
