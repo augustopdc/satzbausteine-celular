@@ -146,7 +146,7 @@ function hojeTiles() {
       acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + acc.reviews + " avaliações)"),
     // Precisão (palavras sem erro) em vez de “erros por 100 palavras”: o número absoluto fica na tela da Escrita.
     hojeTile("pen", "Escrita", es && es.rate != null ? Math.max(0, Math.round(100 - es.rate)) + "%" : "—", es && es.rate != null ? "de precisão" : "",
-      rates.length >= 2 ? hojeSpark(rates.map(r => 100 - r)) : null,
+      rates.length >= 5 ? hojeSpark(rates.map(r => 100 - r)) : null,
       !texts.length ? "Escreva o diário de hoje para começar." : trend == null ? "Média dos últimos textos." : trend <= 0 ? Math.abs(trend) + "% menos erros desde o início" : "Erros subiram " + trend + "%: vale rever as correções.")
   ];
 }

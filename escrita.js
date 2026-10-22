@@ -36,6 +36,7 @@ function sanitizeEscritaText(t) {
   const out = {id: t.id, at: Number(t.at) || updatedAt, updatedAt, kind: ESCRITA_KINDS[t.kind] ? t.kind : "diario", ref: escritaLine(t.ref, 160), title: escritaLine(t.title, 160),
     spec, v1: escritaStr(t.v1, 4000), v2: escritaStr(t.v2, 4000), status: ["pendente", "corrigido", "revisto"].includes(t.status) ? t.status : "pendente"};
   if (t.resumoRef) out.resumoRef = escritaStr(t.resumoRef, 1500);
+  if (Array.isArray(t.ajuda)) out.ajuda = t.ajuda.filter(a => ["frases", "palavra", "banco"].includes(a)).slice(0, 3);
   if (t.err) { out.err = escritaLine(t.err, 300); out.errAt = Number(t.errAt) || updatedAt; }
   const f = t.fb && typeof t.fb === "object" ? t.fb : null;
   if (f) {
@@ -115,7 +116,7 @@ function escritaRegister(text) {
 /* Lista de conferências: {k, ok: true | false | null (neutro), label}. pontos = citações devolvidas pela IA (depois da correção). */
 function escritaChecks(text, spec, pontos) {
   const out = [], words = escritaWords(text), n = words.length, [min, max] = spec.palavras || [0, 0];
-  if (max) out.push({k: "palavras", ok: n >= min && n <= Math.round(max * 1.25), label: n + " palavras" + " (pedido: " + min + "–" + max + ")" + (n < min ? " · escreva um pouco mais" : n > max * 1.25 ? " · ficou longo" : "")});
+  if (max) out.push({k: "palavras", ok: n >= min && n <= Math.round(max * 1.25), n, min, max, label: n + (n === 1 ? " palavra" : " palavras") + ", alvo " + min + " a " + max});
   else out.push({k: "palavras", ok: null, label: n + " palavras"});
   if (spec.minFrases) { const f = escritaSentences(text).length; out.push({k: "frases", ok: f >= spec.minFrases, label: f + (f === 1 ? " frase" : " frases") + " (pedido: " + spec.minFrases + " ou mais)"}); }
   const letter = ["mensagem", "email", "formal"].includes(spec.formato);
@@ -128,7 +129,8 @@ function escritaChecks(text, spec, pontos) {
     const okBye = bye.test(tail);
     out.push({k: "despedida", ok: okBye, label: okBye ? "Despedida ✓" : spec.reg === "Sie" ? "Termine com uma despedida (Mit freundlichen Grüßen / Viele Grüße) e seu nome" : "Termine com uma despedida (Viele Grüße / Bis bald) e seu nome"});
   }
-  if (spec.reg) {
+  if (spec.reg && n < 3) out.push({k: "registro", ok: null, label: spec.reg === "du" ? "Tratamento com du (dir, dich, dein)" : "Tratamento com Sie (Ihnen, Ihr)"});
+  else if (spec.reg) {
     const r = escritaRegister(text);
     if (spec.reg === "du") out.push({k: "registro", ok: r.formal === 0, label: r.formal ? "Você escreveu Sie/Ihnen, mas a tarefa é com du (dir, dich, dein)" : "Tratamento com du ✓"});
     else out.push({k: "registro", ok: r.informal === 0, label: r.informal ? "Você usou du/dir/dein, mas a tarefa é com Sie (Ihnen, Ihr)" : "Tratamento com Sie ✓"});
@@ -306,8 +308,12 @@ function escritaStats(texts = escritaTexts()) {
   for (const t of withFb.slice(0, 10)) for (const e of t.fb.erros) tipos[e.tipo] = (tipos[e.tipo] || 0) + 1;
   return {rate, count: last.length, tipos: Object.entries(tipos).sort((a, b) => b[1] - a[1]).slice(0, 4)};
 }
+/* Tela inicial: o diário é o cartão principal (pergunta grande e o campo ali mesmo); tarefa da prova e resumo ficam
+   menores; “Seus textos” mostra o começo de cada texto, como um diário de verdade; a evolução aparece a partir de 5 textos. */
+const ESCRITA_MIN_STATS = 5;
 function escritaHome(box) {
-  const tasks = escritaTasksFor(), texts = escritaTexts(), stats = escritaStats(texts);
+  const tasks = escritaTasksFor(), texts = escritaTexts(), stats = escritaStats(texts), diary = escritaDiarySpec();
+  const today = texts.find(t => t.ref === diary.ref);
   const select = h("select", {id: "esTask", "aria-label": "Tarefa"});
   for (const lvl of ["A1", "A2"]) {
     const group = tasks.open.filter(t => t.nivel === lvl);
@@ -317,68 +323,217 @@ function escritaHome(box) {
     select.append(og);
   }
   select.value = tasks.suggested.id;
-  const diary = escritaDiaryPrompt();
+  const startTask = () => {
+    const task = ESCRITA_TAREFAS.find(t => t.id === select.value) || tasks.suggested;
+    escritaOpen("editor", {spec: {kind: "prova", ref: task.id, title: task.tema, ...escritaTaskSpec(task), ptText: task.pt, pontosPt: task.pontos.map(p => p[1])}});
+  };
   fill(box,
+    escritaDiaryHero(diary, today),
     h("div", {class: "es-grid"},
       h("section", {class: "panel es-card"},
-        h("h2", {class: "ico-inline"}, icon("pen"), "Tarefa da prova"),
-        h("p", {class: "muted small-text", text: "Mensagem ou e-mail com 3 pontos obrigatórios, no formato da prova Goethe. Liberadas até o seu capítulo do Nicos Weg (" + nwChapterLabel(escritaNw()) + ")."}),
-        select,
-        tasks.locked ? h("p", {class: "muted small-text", text: "Mais " + tasks.locked + " tarefas aparecem conforme você avança (Meu plano → Estou no capítulo)."}) : null,
-        h("button", {class: "primary", type: "button", onclick: () => {
-          const task = ESCRITA_TAREFAS.find(t => t.id === select.value) || tasks.suggested;
-          escritaOpen("editor", {spec: {kind: "prova", ref: task.id, title: task.tema, ...escritaTaskSpec(task), ptText: task.pt, pontosPt: task.pontos.map(p => p[1])}});
-        }}, "Começar")),
-      h("section", {class: "panel es-card"},
-        h("h2", {class: "ico-inline"}, icon("notebook"), "Diário de hoje"),
-        h("p", {class: "muted small-text", text: "Três frases sobre o seu dia: 3 minutos, até no plantão."}),
-        h("p", {class: "es-prompt", lang: "de", text: diary.de}),
-        h("p", {class: "muted small-text", text: diary.pt}),
-        h("button", {class: "primary", type: "button", onclick: () => escritaOpen("editor", {spec: escritaDiarySpec()})}, "Escrever")),
+        h("p", {class: "label ico-inline", lang: "pt-BR"}, icon("pen", 16), "Tarefa da prova"),
+        h("p", {class: "es-card-title", text: tasks.suggested.tema}),
+        h("p", {class: "muted small-text", text: "Mensagem com 3 pontos, no formato da prova Goethe."}),
+        h("div", {class: "row"}, h("button", {class: "small primary", type: "button", onclick: startTask}, "Começar"),
+          h("details", {class: "es-more"}, h("summary", {text: "Outra tarefa"}), select,
+            tasks.locked ? h("p", {class: "muted small-text", text: "Mais " + tasks.locked + " aparecem conforme você avança no Nicos Weg."}) : null))),
       escritaBookCard()),
-    stats.count ? h("section", {class: "panel es-stats"},
-      h("h2", {text: "Sua evolução"}),
-      h("p", null, h("b", {text: String(stats.rate).replace(".", ",")}), " erros a cada 100 palavras", h("span", {class: "muted", text: stats.count === 1 ? " (no seu primeiro texto corrigido)" : " (média dos últimos " + stats.count + " textos)"})),
-      stats.tipos.length ? h("p", null, h("span", {class: "muted", text: "Seus erros mais comuns: "}), stats.tipos.map(([k, n]) => ESCRITA_TIPOS[k] + " (" + n + ")").join(" · ")) : null) : null,
-    h("section", {class: "panel"},
+    escritaEvolution(stats),
+    h("section", {class: "es-diary-list"},
       h("h2", {text: "Seus textos"}),
-      texts.length ? h("ul", {class: "es-list"}, ...texts.slice(0, 30).map(t => {
-        const [label, cls] = escritaStatusTag(t), rate = escritaRate(t);
-        return h("li", null, h("button", {class: "es-item", type: "button", onclick: () => escritaOpen("texto", {id: t.id})},
-          h("span", {class: "es-item-title", text: t.title || ESCRITA_KINDS[t.kind]}),
-          h("span", {class: "muted small-text", text: ESCRITA_KINDS[t.kind] + " · " + formatDate(dateKey(new Date(t.at)), {day: "numeric", month: "short"}) + " · " + escritaWords(t.v1).length + " palavras" + (rate != null ? " · " + String(rate).replace(".", ",") + " erros/100" : "")}),
-          h("span", {class: "tag " + cls, text: label})));
-      })) : h("p", {class: "muted", text: "Nenhum texto ainda. Comece pelo diário de hoje: são só três frases."}),
-      !escritaCanCorrect() ? h("p", {class: "muted small-text", text: "No celular você escreve e salva; o PC corrige quando o app abrir lá (pela sincronização) e a correção volta para cá."}) : null));
+      texts.length ? h("ol", {class: "es-timeline"}, ...texts.slice(0, 30).map(escritaTimelineItem))
+        : h("p", {class: "muted", text: "Nenhum texto ainda. Comece pelo diário de hoje: são só três frases."}),
+      !escritaCanCorrect() ? h("p", {class: "muted small-text", text: "No celular você escreve e salva; o PC corrige quando o app abrir lá e a correção volta para cá."}) : null));
 }
-/* Resumo do capítulo: livros com resumo anotado; o capítulo sugerido é o último lido. */
+function escritaDiaryHero(spec, today) {
+  const head = [h("p", {class: "label", text: "Diário de hoje"}), h("p", {class: "es-hero-q", lang: "de", text: spec.de}), h("p", {class: "muted small-text", text: spec.ptText})];
+  if (today) return h("section", {class: "panel es-hero done"}, ...head,
+    h("div", {class: "row"}, h("span", {class: "es-hero-ok ico-inline"}, icon("check", 16), "Diário de hoje escrito."), h("button", {class: "small", type: "button", onclick: () => escritaOpen("texto", {id: today.id})}, "Ver o texto")));
+  const input = h("textarea", {id: "esDiary", class: "es-input es-page es-hero-input", lang: "de", rows: "4", spellcheck: "false", autocomplete: "off", autocapitalize: "sentences", placeholder: "Heute …"});
+  input.setAttribute("autocorrect", "off");
+  input.value = escritaDrafts()[spec.ref] || "";
+  const count = h("span", {class: "muted small-text"});
+  const update = () => {
+    const n = escritaSentences(input.value).length;
+    count.textContent = n + " de 3 frases";
+    count.classList.toggle("ok", n >= 3);
+    const d = escritaDrafts();
+    if (input.value.trim()) d[spec.ref] = input.value; else delete d[spec.ref];
+    safeWrite(ESCRITA_DRAFT_KEY, d);
+  };
+  input.addEventListener("input", update);
+  update();
+  return h("section", {class: "panel es-hero"}, ...head, h("div", {class: "es-sheet"}, input, escritaKeys(input)),
+    h("div", {class: "row es-hero-foot"}, count,
+      h("button", {class: "primary", type: "button", onclick: () => { escrita.spec = spec; escritaSubmit(input.value); }}, escritaCanCorrect() ? "Enviar para correção" : "Salvar · o PC corrige")));
+}
+/* Um texto na linha do tempo: o começo dele em destaque; data, tipo e situação pequenos. */
+function escritaTimelineItem(t) {
+  const [label, cls] = escritaStatusTag(t), first = escritaSentences(t.v1)[0] || t.v1;
+  return h("li", null, h("button", {class: "es-tl-item", type: "button", onclick: () => escritaOpen("texto", {id: t.id})},
+    h("span", {class: "es-tl-date", text: formatDate(dateKey(new Date(t.at)), {day: "numeric", month: "short"})}),
+    h("span", {class: "es-tl-body"},
+      h("span", {class: "es-tl-text", lang: "de", text: first.length > 140 ? first.slice(0, 137) + "…" : first}),
+      h("span", {class: "es-tl-meta"}, h("span", {text: t.kind === "livro" ? t.title || ESCRITA_KINDS.livro : t.kind === "prova" ? t.title || ESCRITA_KINDS.prova : ESCRITA_KINDS.diario}),
+        h("span", {class: "tag " + cls, text: label})))));
+}
+/* Evolução: só com 5 textos corrigidos (com menos, uma média é só um ponto se achando importante). */
+function escritaEvolution(stats) {
+  const all = escritaTexts().filter(t => t.fb && escritaWords(t.v1).length).length;
+  if (!all) return null;
+  if (all < ESCRITA_MIN_STATS) return h("p", {class: "muted small-text es-evo-wait", text: "Depois de " + ESCRITA_MIN_STATS + " textos corrigidos, aparece aqui a sua evolução e o tipo de erro para focar (faltam " + (ESCRITA_MIN_STATS - all) + ")."});
+  const top = stats.tipos[0], verb = top && ["posicao", "separavel"].includes(top[0]);
+  return h("section", {class: "panel es-stats"},
+    h("p", {class: "label", text: "Sua evolução"}),
+    h("p", null, h("b", {text: Math.max(0, Math.round(100 - stats.rate)) + "%"}), " das palavras sem erro", h("span", {class: "muted", text: " (últimos " + stats.count + " textos)"})),
+    stats.tipos.length ? h("p", {class: "muted small-text", text: "Erros mais comuns: " + stats.tipos.map(([k, n]) => ESCRITA_TIPOS[k] + " (" + n + ")").join(", ")}) : null,
+    top ? h("div", {class: "es-focus"}, h("p", null, "Foco da semana: ", h("b", {text: ESCRITA_TIPOS[top[0]]})),
+      verb ? h("p", {class: "muted small-text", text: "Na Leitura, a ponte do verbo mostra onde o verbo vai em cada frase escolhida."}) : null,
+      h("button", {class: "small", type: "button", onclick: () => showView("grammar")}, "Treinar na Gramática")) : null);
+}
+/* Resumo do capítulo: já sugere o último capítulo lido; os seletores ficam em “Outro capítulo”. */
 function escritaBookCard() {
-  const card = h("section", {class: "panel es-card"}, h("h2", {class: "ico-inline"}, icon("bookOpen"), "Resumo do capítulo"),
-    h("p", {class: "muted small-text", text: "Depois de ler um capítulo, resuma com as suas palavras e compare com o resumo de referência."}));
+  const card = h("section", {class: "panel es-card"}, h("p", {class: "label ico-inline", lang: "pt-BR"}, icon("bookOpen", 16), "Resumo do capítulo"));
   if (!escrita.books) {
     card.append(h("p", {class: "muted small-text", text: "Procurando livros…"}));
     escritaLoadBooks().then(() => { if (currentView === "escrita" && escrita.view === "home") renderEscrita(); });
     return card;
   }
   if (!escrita.books.length) { card.append(h("p", {class: "muted small-text", text: "Nenhum livro com resumos ainda. Importe e anote um livro na Leitura" + (escritaCanCorrect() ? "." : " (no PC) e baixe-o aqui na aba Leitura.")})); return card; }
+  const first = escrita.books[0], pos = (readingState().pos || {})[first.id];
+  const loaded = escrita.book && escrita.book.id === first.id ? escrita.book : null;
+  if (!loaded) escritaGetBook(first.id).then(() => { if (currentView === "escrita" && escrita.view === "home") renderEscrita(); });
+  const ch = loaded && pos && loaded.notes && loaded.notes.c && loaded.notes.c[pos.ch] ? pos.ch : null;
+  if (ch != null) card.append(h("p", {class: "es-card-title", lang: "de", text: loaded.chapters[ch].title}),
+    h("p", {class: "muted small-text", text: "Você parou aqui em " + first.title + ". Resuma em 3 a 5 frases."}));
+  else card.append(h("p", {class: "muted small-text", text: loaded ? "Escolha um capítulo que você já leu." : "Carregando o livro…"}));
   const bookSel = h("select", {"aria-label": "Livro"}, ...escrita.books.map(b => h("option", {value: b.id}, b.title)));
   const chSel = h("select", {"aria-label": "Capítulo"});
   const fillCh = async () => {
     const b = await escritaGetBook(bookSel.value);
-    fill(chSel, ...(b ? b.chapters.map((c, i) => [c, i]).filter(([, i]) => b.notes && b.notes.c && b.notes.c[i]).map(([c, i]) => h("option", {value: String(i)}, (i + 1) + ". " + c.title)) : []));
-    const pos = (readingState().pos || {})[bookSel.value];
-    if (pos && [...chSel.options].some(o => o.value === String(pos.ch))) chSel.value = String(pos.ch);
+    fill(chSel, ...(b ? b.chapters.map((c, i) => [c, i]).filter(([, i]) => b.notes && b.notes.c && b.notes.c[i]).map(([c, i]) => h("option", {value: String(i)}, c.title)) : []));
+    const p = (readingState().pos || {})[bookSel.value];
+    if (p && [...chSel.options].some(o => o.value === String(p.ch))) chSel.value = String(p.ch);
   };
   bookSel.addEventListener("change", fillCh);
-  fillCh();
-  card.append(bookSel, chSel, h("button", {class: "primary", type: "button", onclick: async () => {
-    const b = await escritaGetBook(bookSel.value), ch = Number(chSel.value);
-    if (!b || !Number.isFinite(ch) || !b.notes || !b.notes.c || !b.notes.c[ch]) { setStatus("Escolha um capítulo com resumo.", "info"); return; }
-    const words = /^A1/.test(escritaLevel()) ? [20, 60] : [30, 80];
-    escritaOpen("editor", {spec: {kind: "livro", ref: "livro|" + b.id + "|" + ch, title: b.title + " · cap. " + (ch + 1) + " (" + b.chapters[ch].title + ")", de: "", pt: "",
-      ptText: "Resuma o capítulo em 3 a 5 frases, com as suas palavras. Não copie frases do livro.", pontos: [], pontosPt: [], palavras: words, formato: "resumo", reg: "", nivel: escritaLevel(), resumoRef: b.notes.c[ch]}});
-  }}, "Escrever o resumo"));
+  const more = h("details", {class: "es-more"}, h("summary", {text: "Outro capítulo"}), bookSel, chSel,
+    h("button", {class: "small", type: "button", onclick: async () => { const b = await escritaGetBook(bookSel.value); escritaStartSummary(b, Number(chSel.value)); }}, "Resumir este"));
+  more.addEventListener("toggle", () => { if (more.open && !chSel.options.length) fillCh(); });
+  card.append(h("div", {class: "row"}, ch != null ? h("button", {class: "small primary", type: "button", onclick: () => escritaStartSummary(loaded, ch)}, "Resumir agora") : null, more));
   return card;
+}
+function escritaStartSummary(b, ch) {
+  if (!b || !Number.isFinite(ch) || !b.notes || !b.notes.c || !b.notes.c[ch]) { setStatus("Escolha um capítulo com resumo.", "info"); return; }
+  const words = /^A1/.test(escritaLevel()) ? [20, 60] : [30, 80];
+  escritaOpen("editor", {spec: {kind: "livro", ref: "livro|" + b.id + "|" + ch, title: b.title + ", " + b.chapters[ch].title, de: "", pt: "", banco: escritaBookBank(b, ch),
+    ptText: "Resuma o capítulo em 3 a 5 frases, com as suas palavras. Não copie frases do livro.", pontos: [], pontosPt: [], palavras: words, formato: "resumo", reg: "", nivel: escritaLevel(), resumoRef: b.notes.c[ch]}});
+}
+/* 8 a 10 palavras-chave do capítulo (substantivos, verbos e adjetivos que aparecem pela 1ª vez nele). */
+function escritaBookBank(b, ch) {
+  if (!b || typeof chapterGlossary !== "function") return [];
+  const order = [];
+  b.chapters.forEach((c, ci) => c.blocks.forEach(bl => (bl.s || []).forEach(([id, text]) => order.push({id, text, ch: ci}))));
+  return chapterGlossary(order, b.notes && b.notes.w, ch, 60).filter(w => ["substantivo", "verbo", "adjetivo"].includes(w.classe)).slice(0, 10).map(w => ({de: w.lema || w.w, pt: w.pt || ""}));
+}
+
+// ---------- Editor: teclas e ajudas ----------
+const ESCRITA_TECLAS = ["und", "aber", "dann", "danach", "weil", "deshalb"];
+/* ä ö ü ß e os conectores mais usados, tocáveis (o cursor fica onde estava). */
+function escritaKeys(input) {
+  const put = text => {
+    const s = input.selectionStart ?? input.value.length, e = input.selectionEnd ?? s;
+    input.setRangeText(text, s, e, "end");
+    input.dispatchEvent(new Event("input"));
+    input.focus();
+  };
+  const key = (label, text, cls) => { const b = h("button", {class: "es-key" + (cls ? " " + cls : ""), type: "button", text: label}); b.addEventListener("mousedown", e => e.preventDefault()); b.addEventListener("click", () => put(text)); return b; };
+  return h("div", {class: "es-keys", role: "group", "aria-label": "Teclas"},
+    ...["ä", "ö", "ü", "ß"].map(c => key(c, c)), h("span", {class: "es-keys-sep", "aria-hidden": "true"}),
+    ...ESCRITA_TECLAS.map(w => key(w, w + " ", "word")));
+}
+/* Ajudas escondidas por padrão (e registradas no texto quando usadas): frases úteis, palavras do capítulo e “[palavra]”. */
+function escritaScaffolds(spec, input, helpBox) {
+  const pc = escritaCanCorrect(), use = kind => { (spec.ajuda = spec.ajuda || new Set()).add(kind); };
+  const frases = h("div", {class: "es-frases"});
+  const fr = pc && spec.kind !== "livro" ? h("details", {class: "es-scaffold"}, h("summary", {text: "Frases úteis"}), frases) : null;
+  if (fr) fr.addEventListener("toggle", () => { if (fr.open) { use("frases"); escritaUsefulPhrases(spec, frases); } });
+  const bank = spec.banco && spec.banco.length ? h("details", {class: "es-scaffold"}, h("summary", {text: "Palavras do capítulo"}),
+    h("div", {class: "es-bank"}, ...spec.banco.map(w => h("span", {class: "es-bank-word"}, h("b", {lang: "de", text: w.de}), w.pt ? h("small", {text: w.pt}) : null)))) : null;
+  if (bank) bank.addEventListener("toggle", () => { if (bank.open) use("banco"); });
+  return h("div", {class: "es-scaffolds"}, fr, bank,
+    pc ? h("p", {class: "muted small-text es-tip-bracket", text: "Não sabe uma palavra? Escreva em português entre colchetes, como [garfo], e o app sugere em alemão."}) : null,
+    helpBox);
+}
+async function escritaUsefulPhrases(spec, box) {
+  escrita.frases = escrita.frases || {};
+  if (escrita.frases[spec.ref]) { escritaPhrasesFill(box, escrita.frases[spec.ref]); return; }
+  fill(box, h("p", {class: "muted small-text", text: "Pensando em frases para esta tarefa…"}));
+  try {
+    const task = (spec.de ? spec.de + " / " : "") + (spec.ptText || "") + (spec.pontos && spec.pontos.length ? " Pontos: " + spec.pontos.join("; ") : "");
+    const r = await window.satzDesktop.convChat([{role: "system", content: "Luiz (German level " + escritaLevel() + ") must write a short German text for this task. Give 4 short, useful and correct German sentence beginnings or phrases at his level that help him start (not a finished text), each with its Brazilian Portuguese translation." + (spec.reg ? " He uses \"" + spec.reg + "\"." : "") + " Answer as JSON."},
+      {role: "user", content: task}], {kind: "frases", temperature: .4, maxTokens: 400, schema: ESCRITA_FRASES_SCHEMA});
+    const j = parseLooseJson(r.text), list = j && Array.isArray(j.frases) ? j.frases.filter(f => f && f.de).slice(0, 4).map(f => ({de: escritaLine(f.de, 160), pt: escritaLine(f.pt, 160)})) : [];
+    escrita.frases[spec.ref] = list;
+    escritaPhrasesFill(box, list);
+  } catch (e) { fill(box, h("p", {class: "muted small-text", text: "Não consegui agora: " + cleanIpcError(e, "erro")})); }
+}
+const ESCRITA_FRASES_SCHEMA = {type: "object", properties: {frases: {type: "array", minItems: 2, maxItems: 4, items: {type: "object", properties: {de: {type: "string"}, pt: {type: "string"}}, required: ["de", "pt"]}}}, required: ["frases"]};
+function escritaPhrasesFill(box, list) {
+  fill(box, list.length ? list.map(f => h("p", {class: "es-frase"}, h("span", {lang: "de", text: f.de}), f.pt ? h("small", {text: f.pt}) : null))
+    : h("p", {class: "muted small-text", text: "Sem sugestões desta vez."}),
+    h("p", {class: "muted small-text", text: "Use como ponto de partida: escreva com as suas palavras."}));
+}
+/* “[garfo]” no texto: o app sugere a palavra em alemão (com artigo) e troca com um toque. */
+function escritaWordHelp(input, spec, box) {
+  if (!box) return;
+  const found = [...new Set([...input.value.matchAll(/\[([^\[\]\n]{2,40})\]/g)].map(m => m[1].trim()))];
+  escrita.words = escrita.words || {};
+  if (!found.length) { fill(box); return; }
+  if (!escritaCanCorrect()) { fill(box, h("p", {class: "muted small-text", text: "No PC, o app sugere a palavra em alemão para o que estiver entre colchetes."})); return; }
+  (spec.ajuda = spec.ajuda || new Set()).add("palavra");
+  fill(box, ...found.map(pt => {
+    const de = escritaWordFor(pt, () => escritaWordHelp(input, spec, box));
+    return h("div", {class: "es-word-help"}, h("span", {text: "[" + pt + "]"}), icon("chevron", 13),
+      de ? h("b", {lang: "de", text: de}) : h("span", {class: "muted small-text", text: "procurando…"}),
+      de ? h("button", {class: "small", type: "button", onclick: () => { input.value = input.value.split("[" + pt + "]").join(de); input.dispatchEvent(new Event("input")); input.focus(); }}, "Trocar") : null);
+  }));
+}
+function escritaWordFor(pt, done) {
+  const key = pt.toLocaleLowerCase("pt-BR"), cache = escrita.words;
+  if (cache[key] && cache[key] !== "…") return cache[key];
+  if (cache[key] === "…") return "";
+  cache[key] = "…";
+  window.satzDesktop.convChat([{role: "system", content: "Give the German word or short expression for this Brazilian Portuguese word, as a learner at level " + escritaLevel() + " would need it: nouns with their article (der/die/das), verbs in the infinitive. In \"nota\", a very short note in Brazilian Portuguese or empty. Answer as JSON."},
+    {role: "user", content: pt}], {kind: "howto", temperature: .2, maxTokens: 120, schema: CONV_HOWTO_SCHEMA})
+    .then(r => { const j = parseLooseJson(r.text); cache[key] = j && j.de ? escritaLine(j.de, 60) : ""; done(); })
+    .catch(() => { delete cache[key]; });
+  return "";
+}
+
+// ---------- Correção ----------
+/* Cor da correção pelo grupo do erro: verbo (posição, tempo, conjugação, separável), caso e artigo, outros. */
+function escritaTipoGroup(tipo) {
+  if (["posicao", "separavel", "tempo", "conjugacao"].includes(tipo)) return "verbo";
+  if (["caso", "genero", "adjetivo", "pronome", "preposicao"].includes(tipo)) return "caso";
+  return "outro";
+}
+/* Quantas frases saíram sem nenhum erro marcado (o que você acertou também conta). */
+function escritaCleanCount(t) {
+  if (!t.fb) return null;
+  // Frases de verdade (3+ palavras): “Hallo Anna,” e “Viele Grüße” não contam.
+  const spans = escritaSpans(t.v1, t.fb.erros).filter(Boolean), sentences = escritaSentences(t.v1).filter(s => escritaWords(s).length >= 3);
+  let from = 0, clean = 0;
+  for (const s of sentences) {
+    const a = t.v1.indexOf(s, from), b = a + s.length;
+    from = a >= 0 ? b : from;
+    if (a >= 0 && !spans.some(([x, y]) => x < b && y > a)) clean++;
+  }
+  return {clean, total: sentences.length};
+}
+function escritaCleanLine(t) {
+  const c = escritaCleanCount(t);
+  if (!c || !c.total) return null;
+  return h("p", {class: "es-clean" + (c.clean ? " some" : "")}, h("b", {text: c.clean + " de " + c.total}), c.total === 1 ? " frase sem erro" : " frases sem erro");
 }
 async function escritaLoadBooks() {
   try {
@@ -395,26 +550,44 @@ async function escritaGetBook(id) {
   return escrita.book;
 }
 function escritaDrafts() { return safeRead(ESCRITA_DRAFT_KEY, {}) || {}; }
-function escritaTaskBox(spec) {
-  return h("section", {class: "panel es-task"},
+function escritaTaskBox(spec, editing = false) {
+  return h("section", {class: "es-task" + (editing ? " editing" : " panel")},
     spec.de ? h("p", {class: "es-prompt", lang: "de", text: spec.de}) : null,
     spec.ptText ? h("p", {class: "muted small-text", text: spec.ptText}) : null,
-    spec.pontos && spec.pontos.length ? h("ol", {class: "es-pontos"}, ...spec.pontos.map((p, i) => h("li", null, h("span", {lang: "de", text: p}),
+    spec.pontos && spec.pontos.length && !editing ? h("ol", {class: "es-pontos"}, ...spec.pontos.map((p, i) => h("li", null, h("span", {lang: "de", text: p}),
       spec.pontosPt && spec.pontosPt[i] ? h("span", {class: "muted small-text", text: " — " + spec.pontosPt[i]}) : null))) : null,
-    spec.palavras && spec.palavras[1] ? h("p", {class: "muted small-text", text: "Escreva " + spec.palavras[0] + " a " + spec.palavras[1] + " palavras" + (spec.reg ? " · tratamento: " + (spec.reg === "du" ? "du (informal)" : "Sie (formal)") : "") + "."}) : null);
+    spec.palavras && spec.palavras[1] && !editing ? h("p", {class: "muted small-text", text: "Escreva " + spec.palavras[0] + " a " + spec.palavras[1] + " palavras" + (spec.reg ? " · tratamento: " + (spec.reg === "du" ? "du (informal)" : "Sie (formal)") : "") + "."}) : null);
 }
-function escritaCheckList(checks) {
-  return h("ul", {class: "es-checks"}, ...checks.map(c => h("li", {class: c.ok === true ? "ok" : c.ok === false ? "no" : ""}, h("span", {class: "es-check-ico", text: c.ok === true ? "✓" : c.ok === false ? "!" : "·"}), c.label)));
+function escritaCheckList(checks, live = false) {
+  return h("ul", {class: "es-checks" + (live ? " live" : "")}, ...checks.map(c => {
+    const state = c.ok === true ? "ok" : c.ok === false && !live ? "no" : "";
+    const ico = h("span", {class: "es-check-ico", "aria-hidden": "true"}, c.ok === true ? icon("check", 12) : state === "no" ? "!" : null);
+    let bar = null;
+    if (c.k === "palavras" && c.max) {
+      const top = c.max * 1.25, fillEl = h("i");
+      bar = h("span", {class: "es-wbar"}, fillEl);
+      setWidth(fillEl, c.n / top * 100);
+      bar.style.setProperty("--a", (c.min / top * 100) + "%");
+      bar.style.setProperty("--b", (c.max / top * 100) + "%");
+    }
+    const body = [ico, h("span", {class: "es-check-label", text: c.label.replace(/ ✓$/, "")}), bar];
+    return h("li", {class: state + (c.manual ? " manual" : "")}, c.manual ? h("button", {class: "es-check-btn", type: "button", "aria-pressed": String(c.ok === true), onclick: c.manual}, ...body) : body);
+  }));
 }
 function escritaEditor(box) {
   const spec = escrita.spec, drafts = escritaDrafts();
   const input = h("textarea", {id: "esInput", class: "es-input", lang: "de", rows: "9", spellcheck: "false", autocapitalize: "sentences", autocomplete: "off",
-    placeholder: spec.formato === "diario" ? "Heute …" : ["mensagem", "email"].includes(spec.formato) ? (spec.reg === "Sie" ? "Liebe Frau …,\n\n…\n\nViele Grüße\nLuiz" : "Hallo …,\n\n…\n\nViele Grüße\nLuiz") : spec.formato === "formal" ? "Sehr geehrte Damen und Herren,\n\n…\n\nMit freundlichen Grüßen\nLuiz" : "…"});
+    placeholder: spec.formato === "diario" ? "Heute …" : ["mensagem", "email"].includes(spec.formato) ? (spec.reg === "Sie" ? "Liebe Frau …," : "Hallo …,") : spec.formato === "formal" ? "Sehr geehrte Damen und Herren," : spec.formato === "resumo" ? "In diesem Kapitel …" : "…"});
   input.setAttribute("autocorrect", "off");
   input.value = drafts[spec.ref] || "";
-  const checks = h("div", {class: "es-live"});
+  const checks = h("div", {class: "es-live"}), helpBox = h("div", {class: "es-helps"});
+  escrita.pontosOk = escrita.pontosOk && escrita.pontosOk.ref === spec.ref ? escrita.pontosOk : {ref: spec.ref, set: new Set()};
   const update = () => {
-    fill(checks, escritaCheckList(escritaChecks(input.value, spec)));
+    // Os pontos da tarefa entram na lista: você marca quando respondeu (a IA confere depois da correção).
+    const pontos = (spec.pontos || []).map((p, i) => ({k: "ponto" + (i + 1), ok: escrita.pontosOk.set.has(i) ? true : null, manual: () => { const s = escrita.pontosOk.set; s.has(i) ? s.delete(i) : s.add(i); update(); },
+      label: p + (spec.pontosPt && spec.pontosPt[i] ? " (" + spec.pontosPt[i] + ")" : "")}));
+    fill(checks, escritaCheckList([...pontos, ...escritaChecks(input.value, spec)], true));
+    escritaWordHelp(input, spec, helpBox);
     const d = escritaDrafts();
     if (input.value.trim()) d[spec.ref] = input.value; else delete d[spec.ref];
     safeWrite(ESCRITA_DRAFT_KEY, d);
@@ -422,13 +595,17 @@ function escritaEditor(box) {
   let timer = 0;
   input.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(update, 250); });
   update();
+  input.classList.add("es-page");
+  input.addEventListener("input", () => document.getElementById("view-escrita").classList.toggle("es-typing", !!input.value.trim()), {once: false});
   fill(box,
     h("div", {class: "row between es-head"}, h("button", {class: "quiet small", type: "button", onclick: () => escritaOpen("home")}, "← Escrita"), h("b", {text: spec.title})),
-    escritaTaskBox(spec),
-    input, umlautRow(input), checks,
+    escritaTaskBox(spec, true),
+    h("div", {class: "es-sheet"}, input, escritaKeys(input)),
+    escritaScaffolds(spec, input, helpBox),
+    checks,
     h("div", {class: "row"},
-      h("button", {id: "esSend", class: "primary", type: "button", onclick: () => escritaSubmit(input.value)}, escritaCanCorrect() ? "Enviar para correção" : "Salvar · o PC corrige"),
-      h("p", {class: "muted small-text", text: "O corretor do teclado fica desligado aqui: a ortografia também é treino."})));
+      h("button", {id: "esSend", class: "primary", type: "button", onclick: () => escritaSubmit(input.value)}, escritaCanCorrect() ? "Enviar para correção" : "Salvar · o PC corrige")));
+  update();
   input.focus();
 }
 function escritaSubmit(text) {
@@ -438,7 +615,9 @@ function escritaSubmit(text) {
   const t = {id, at: now, updatedAt: now, kind: spec.kind, ref: spec.ref, title: spec.title, v1, v2: "", status: "pendente",
     spec: {de: spec.de || "", pt: spec.ptText || "", pontos: spec.pontos || [], palavras: spec.palavras || [0, 0], formato: spec.formato, reg: spec.reg || "", nivel: spec.nivel || escritaLevel(), minFrases: spec.minFrases || 0}};
   if (spec.resumoRef) t.resumoRef = spec.resumoRef;
+  if (spec.ajuda && spec.ajuda.size) t.ajuda = [...spec.ajuda];
   saveEscritaText(t);
+  document.getElementById("view-escrita").classList.remove("es-typing");
   const d = escritaDrafts(); delete d[spec.ref]; safeWrite(ESCRITA_DRAFT_KEY, d);
   escritaOpen("texto", {id, spec: null});
   if (escritaCanCorrect()) escritaPump();
@@ -451,7 +630,12 @@ function escritaMarked(text, erros, reveal) {
   let at = 0;
   for (const [[a, b], i] of order) {
     if (a > at) out.append(text.slice(at, a));
-    out.append(h("mark", {class: "es-mark", title: ESCRITA_TIPOS[erros[i].tipo] + (reveal ? " → " + erros[i].certo : "")}, text.slice(a, b), h("sup", {text: String(i + 1)})));
+    if (reveal) {
+      const fix = h("span", {class: "es-fix t-" + escritaTipoGroup(erros[i].tipo), title: ESCRITA_TIPOS[erros[i].tipo] + (erros[i].explicacao ? ": " + erros[i].explicacao : "")},
+        h("s", {text: text.slice(a, b)}), h("ins", {text: erros[i].certo}), h("sup", {text: String(i + 1)}));
+      fix.style.setProperty("--d", (order.findIndex(x => x[1] === i) * 80) + "ms");
+      out.append(fix);
+    } else out.append(h("mark", {class: "es-mark", title: ESCRITA_TIPOS[erros[i].tipo]}, text.slice(a, b), h("sup", {text: String(i + 1)})));
     at = b;
   }
   out.append(text.slice(at));
@@ -541,6 +725,7 @@ function escritaTextView(box) {
     h("p", null, h("b", {text: fb.erros.length + (fb.erros.length === 1 ? " erro" : " erros")}),
       h("span", {class: "muted", text: " · " + n + " palavras" + (rate != null ? " · " + String(rate).replace(".", ",") + " a cada 100 palavras" : "")}),
       t.v2 && fb.erros.length ? h("span", {class: "es-fixed", text: " · você corrigiu " + fixed + " de " + fb.erros.length + " sozinho"}) : null),
+    escritaCleanLine(t),
     escritaMarked(t.v1, fb.erros, true).node,
     fb.erros.length ? h("ol", {class: "es-errors"}, ...fb.erros.map((e, i) => {
       const st = states[i] && stateLabel[states[i]];
@@ -560,6 +745,7 @@ function escritaTextView(box) {
     t.v2 && t.v2 !== t.v1 ? h("details", {class: "es-v2"}, h("summary", {text: "Sua versão reescrita"}), h("p", {class: "es-text", lang: "de", text: t.v2})) : null,
     t.resumoRef ? h("section", {class: "panel es-natural"}, h("h3", {text: "Resumo de referência (em português)"}), h("p", {text: t.resumoRef})) : null,
     escritaCheckList(escritaChecks(t.v1, t.spec, fb.pontos)),
+    t.ajuda && t.ajuda.length ? h("p", {class: "muted small-text", text: "Com ajuda: " + t.ajuda.map(a => ({frases: "frases úteis", palavra: "como se diz", banco: "palavras do capítulo"})[a]).join(", ") + "."}) : null,
     h("p", {class: "muted small-text", text: "A correção é da IA e às vezes erra: os textos vão no Pacote para a aula para o seu tutor conferir."}),
     h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => escritaOpen("home")}, "Escrever outro"), del));
 }
