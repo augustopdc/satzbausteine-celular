@@ -225,7 +225,7 @@ function sceneCardsNode(data) {
     reg: data.register === "du" ? "du" : "Sie", nivel: data.level, fonte: "cena", erro: null});
   const rows = mineLines.map(x => {
     const done = exists(x.l[1]);
-    const btn = h("button", {class: "quiet small", type: "button", disabled: done, onclick: () => { if (make(x)) { btn.disabled = true; btn.textContent = "Cartão criado ✓"; } }}, done ? "Já é cartão" : "Virar cartão");
+    const btn = h("button", {class: "quiet small", type: "button", disabled: done, onclick: () => { if (make(x)) { btn.disabled = true; btn.textContent = "Cartão criado ✓"; } }}, done ? "Já é cartão" : "Criar cartão");
     return h("div", {class: "scene-card-row"}, h("span", {lang: "de", text: x.l[1]}), btn);
   });
   const pending = mineLines.filter(x => !exists(x.l[1]));

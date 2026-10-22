@@ -66,9 +66,11 @@ function rdDifficultyNode(compact) {
   const why = "Proporção das palavras do capítulo que aparecem nas frases do app até o nível " + (LEVELS[LEVELS.indexOf(currentLevel()) + 1] || currentLevel()) + ". Para ler com folga, o ideal é perto de 98%.";
   const detail = rdPct(c.level) + " das palavras o app já ensina até o seu nível · " + rdPct(c.mine) + " você já estudou · " + hint
     + (easier && c.level < .95 ? " · o capítulo " + (easier[0] + 1) + " é mais fácil (" + rdPct(easier[1]) + ")" : "");
-  const cls = "tag rd-diff-" + RD_DIFF.findIndex(x => x[1] === label);
-  if (compact) return h("span", {class: "rd-diff", tabindex: "0", title: detail + ". " + why}, h("span", {class: cls, text: label + " · " + rdPct(c.level)}));
-  return h("div", {class: "rd-diff", title: why}, h("span", {class: cls, text: label}), h("span", {class: "muted small-text", text: detail}));
+  // Informação neutra (e que sobe com o tempo) em vez de um aviso vermelho: quanto das palavras você já estudou.
+  // No comecinho (menos de 10% estudadas) vale mais dizer quanto o app já ensina até o seu nível do que “0%”.
+  const known = c.mine >= .1 ? "Você conhece " + rdPct(c.mine) + " das palavras" : rdPct(c.level) + " das palavras estão nas frases do app";
+  if (compact) return h("span", {class: "rd-diff", tabindex: "0", title: label + ": " + detail + ". " + why}, h("span", {class: "tag rd-diff-n", text: known}));
+  return h("div", {class: "rd-diff", title: why}, h("span", {class: "tag rd-diff-n", text: known + " deste capítulo"}), h("span", {class: "muted small-text", text: label + ": " + detail}));
 }
 function rdBookCardDifficulty(b) {
   const d = (readingState().diff || {})[b.id];

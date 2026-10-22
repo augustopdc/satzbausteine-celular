@@ -145,7 +145,7 @@ function renderSavedWords() {
         v.t === "x" ? null : h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(v.w)}, icon("volume", 18)),
         v.sid && reading.byId.has(v.sid) ? h("button", {class: "quiet small", type: "button", onclick: () => openSpot(v.sid)}, "No livro") : null,
         v.sid && reading.byId.has(v.sid) && reading.starts[reading.byId.get(v.sid)] != null ? h("button", {class: "small", type: "button", onclick: () => playSentence(reading.byId.get(v.sid))}, "Ouvir a frase") : null,
-        v.s ? h("button", {class: "quiet small", type: "button", onclick: e => { e.currentTarget.disabled = true; addMineDrafts(v.s, convAvailable(), "livro"); toast("Rascunho criado em Minhas frases: confira e salve lá.", "success"); }}, "Virar cartão") : null,
+        v.s ? h("button", {class: "quiet small", type: "button", onclick: e => { e.currentTarget.disabled = true; addMineDrafts(v.s, convAvailable(), "livro"); toast("Rascunho criado em Minhas frases: confira e salve lá.", "success"); }}, "Criar cartão") : null,
         h("button", {class: "quiet small", type: "button", onclick: () => { toggleSavedWordByKey(v.k); renderSavedWords(); }}, "Tirar")))));
 }
 /* Volta ao texto no ponto guardado, com a frase selecionada. */
@@ -362,7 +362,7 @@ function checkPractice(it, spoken) {
       bp.kind === "sombra" ? h("p", {class: "muted small-text", lang: "de", text: "Você: " + typed}) : h("p", {class: "muted small-text", text: "A sua frase pode estar certa mesmo sendo diferente da do livro: compare o sentido e a gramática."}),
       it.pt && bp.kind === "sombra" ? h("p", {class: "muted small-text", text: it.pt}) : null,
       h("div", {class: "row"}, reading.starts[it.i] != null ? hear : null,
-        bp.kind === "volta" ? h("button", {class: "quiet small", type: "button", onclick: e => { e.currentTarget.disabled = true; addMineDrafts(it.text, convAvailable(), "livro"); toast("Rascunho criado em Minhas frases: confira e salve lá.", "success"); }}, "Virar cartão") : null,
+        bp.kind === "volta" ? h("button", {class: "quiet small", type: "button", onclick: e => { e.currentTarget.disabled = true; addMineDrafts(it.text, convAvailable(), "livro"); toast("Rascunho criado em Minhas frases: confira e salve lá.", "success"); }}, "Criar cartão") : null,
         bp.kind === "sombra" ? h("button", {type: "button", onclick: () => { bp.answered = false; practiceMic(it); }}, icon("mic", 16), "Tentar de novo") : null,
         next));
     box.hidden = false;
@@ -676,7 +676,14 @@ function passageButton(i) {
     if (!on) toast("Trecho guardado para estudar depois.", "success");
   }}, iconText(on ? "check" : "pin", "Estudar depois"));
 }
-function updateSavedCount() { const btn = $("rdSavedBtn"); if (btn && reading.book) btn.textContent = "★ (" + savedWordsOf(reading.book.id).length + ")"; }
+function updateSavedCount() {
+  const btn = $("rdSavedBtn");
+  if (!btn || !reading.book) return;
+  btn.textContent = "★ (" + savedWordsOf(reading.book.id).length + ")";
+  // A estrela dá um pulinho quando a contagem muda (e um toque leve no Android).
+  btn.classList.remove("bump"); void btn.offsetWidth; btn.classList.add("bump");
+  if (navigator.vibrate) navigator.vibrate(10);
+}
 /* Conteúdo do balão do modo contínuo: o essencial e atalhos; o resto abre no painel. */
 function readerPopContent() {
   const i = reading.sel;

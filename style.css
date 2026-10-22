@@ -1665,3 +1665,73 @@ p.titled { margin: 0; font-weight: 600; }
 @keyframes route-pop { 0% { transform: scale(.55); background: var(--surface); } 60% { transform: scale(1.12); } 100% { transform: scale(1); } }
 @keyframes route-draw { to { stroke-dashoffset: 0; } }
 @keyframes route-strike { from { background-size: 0 1.5px; } }
+
+/* Leitura, 3ª rodada (21/10/2026): ajudas de compreensão no texto e a interface saindo da frente. */
+:root { --vb-1: #7a4fd6; --vb-2: #c2185b; --vb-3: #00838f; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --vb-1: #b79bff; --vb-2: #f48fb1; --vb-3: #5fd3dd; } }
+:root[data-theme="dark"] { --vb-1: #b79bff; --vb-2: #f48fb1; --vb-3: #5fd3dd; }
+#rdText { position: relative; }
+/* Destaque da frase: um fundo contínuo e macio, sem recortes entre as linhas. */
+.rd-s.on { -webkit-box-decoration-break: clone; box-decoration-break: clone; padding: .1em .08em; margin: 0 -.08em; border-radius: 5px; }
+/* Ponte do verbo: as duas partes na mesma cor e um arco que se desenha entre elas. */
+#rdText .rd-w.vb { font-weight: 650; }
+#rdText .rd-w.vb-1 { color: var(--vb-1); } #rdText .rd-w.vb-2 { color: var(--vb-2); } #rdText .rd-w.vb-3 { color: var(--vb-3); }
+.rd-bridges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.vb-arc { fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; }
+.vb-arc.vb-1 { stroke: var(--vb-1); } .vb-arc.vb-2 { stroke: var(--vb-2); } .vb-arc.vb-3 { stroke: var(--vb-3); }
+@media (prefers-reduced-motion: no-preference) { .vb-arc { animation: vb-draw .55s .1s cubic-bezier(.22, 1, .36, 1) both; } }
+@keyframes vb-draw { from { stroke-dashoffset: 100; } }
+/* Gênero (sublinhado nas três cores) e palavras ainda não estudadas (pontilhado leve). */
+#rdText .rd-w.gn { text-decoration: underline 2px; text-underline-offset: 5px; text-decoration-skip-ink: none; }
+#rdText .rd-w.gn-der { text-decoration-color: color-mix(in srgb, var(--g-der) 70%, transparent); }
+#rdText .rd-w.gn-die { text-decoration-color: color-mix(in srgb, var(--g-die) 70%, transparent); }
+#rdText .rd-w.gn-das { text-decoration-color: color-mix(in srgb, var(--g-das) 70%, transparent); }
+#rdText .rd-w.nw { background-image: radial-gradient(circle, color-mix(in srgb, var(--ink-3) 70%, transparent) 1px, transparent 1.4px); background-size: 5px 3px; background-repeat: repeat-x; background-position: 0 100%; }
+#rdText .rd-w.gn.nw { background-position: 0 calc(100% + 3px); }
+/* Tradução no modo Apoio: abre embaixo da frase escolhida, desdobrando a altura. */
+.reader-text .rd-pt.fold { display: grid; grid-template-rows: 0fr; margin: 0; padding-top: 0; padding-bottom: 0; border-left-color: transparent; opacity: 0;
+  transition: grid-template-rows .35s var(--ease), opacity .25s, margin .35s var(--ease), border-color .25s; }
+.reader-text .rd-pt.fold > span { overflow: hidden; min-height: 0; }
+.reader-text .rd-pt.fold.open { grid-template-rows: 1fr; opacity: 1; margin: .3rem 0 .75rem; border-left-color: var(--line-strong); }
+/* Capitular no começo do capítulo. */
+.rd-p.rd-first::first-letter { float: left; font-size: 3.4em; line-height: .82; font-weight: 600; margin: .08em .09em 0 0; color: var(--accent-strong); }
+/* Antes de ler / fim do capítulo */
+.rd-open { display: grid; gap: .5rem; margin: 0 0 1.6rem; padding: 0 0 1.2rem; border-bottom: 1px solid var(--line); font-family: var(--font); font-size: 1rem; line-height: 1.5; }
+.rd-open .label, .rd-close .label { margin: 0; }
+.rd-open-line { margin: 0; color: var(--ink-2); font-size: .98rem; }
+.rd-open-words { display: flex; flex-wrap: wrap; gap: .4rem; }
+.rd-open-word { flex-direction: column; align-items: flex-start; gap: 0; min-height: 0; padding: .3rem .7rem; border-color: var(--line); border-radius: 10px; }
+.rd-open-word b { font: 600 1rem/1.3 var(--font-de); }
+.rd-open-word span { font-size: .75rem; font-weight: 500; color: var(--ink-3); }
+.rd-close { display: grid; gap: .5rem; justify-items: start; margin: 2.4rem 0 1rem; padding: 1.3rem 1.4rem; border-radius: var(--radius-lg); background: var(--surface-2); font-family: var(--font); font-size: 1rem; line-height: 1.5; }
+.rd-close p { margin: 0; }
+.rd-close-stats { color: var(--ink-2); }
+.rd-close-next { font-size: 1.05rem; }
+.rd-close-next b { font-family: var(--font-de); }
+.rd-close .row { margin-top: .4rem; }
+/* Dificuldade sem cara de aviso */
+.rd-diff .tag.rd-diff-n { background: var(--surface-2); color: var(--ink-2); }
+/* Painel quando a frase escolhida saiu da tela */
+.reader-detail.away > :not(.rd-away) { opacity: .5; transition: opacity .3s; }
+.rd-away { justify-content: flex-start; gap: .4rem; min-height: 34px; padding: .3rem .7rem; border: 0; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: .82rem; }
+.rd-away > svg { transform: rotate(-90deg); }
+/* Barra do livro: some ao rolar para baixo também no PC e volta ao rolar para cima ou com o mouse no topo. */
+@media (min-width: 601px) {
+  .reader-bar { transition: transform .35s var(--ease), opacity .25s; }
+  body.rd-bar-up .reader-bar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
+}
+/* Balão da palavra nasce dela, com mola curta. */
+@media (prefers-reduced-motion: no-preference) { .rd-pop { animation: pop-in .28s var(--spring); transform-origin: top center; } }
+/* Estrela das guardadas dá um pulinho quando a contagem muda. */
+@media (prefers-reduced-motion: no-preference) { #rdSavedBtn.bump { animation: star-bump .45s var(--spring); } }
+@keyframes star-bump { 40% { transform: scale(1.25); color: var(--warn); } }
+/* Fundo do livro: sépia e noite só na área de leitura (o app continua no tema escolhido). */
+body.rd-paper-sepia .main-col { --bg: #f4ead5; --surface: #fbf4e4; --surface-2: #efe3c9; --surface-3: #e6d7b9; --ink: #3a2e1f; --ink-2: #5b4a33; --ink-3: #7b694f;
+  --line: #e2d3b4; --line-strong: #ccb892; --mark: #f3d77c; background: var(--bg); color: var(--ink); }
+body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: #1c2524; --surface-3: #24302e; --ink: #e3e8e6; --ink-2: #aeb9b6; --ink-3: #87938f;
+  --line: #222c2a; --line-strong: #364442; --mark: #4d3f12; --accent-soft: #143430; --accent-strong: #7ddcc9; --warn-line: #6a5024; --warn-soft: #36290f;
+  --g-der: #8db8f2; --g-die: #f2998d; --g-das: #8fd6a3; --vb-1: #b79bff; --vb-2: #f48fb1; --vb-3: #5fd3dd; background: var(--bg); color: var(--ink); }
+/* Menu “Aa” cabe na tela do celular, mesmo com as opções novas. */
+.rd-look { width: min(330px, calc(100vw - 2rem)); overflow-x: hidden; }
+.rd-look-row select { min-width: 0; flex: 1 1 auto; max-width: 200px; }
+.rd-look .inline-check { white-space: normal; align-items: flex-start; }

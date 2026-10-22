@@ -5,7 +5,7 @@
 const KEY_READING = "satzbausteine.reading.v1";
 const reading = {books: [], book: null, ch: 0, order: [], byId: new Map(), starts: [], sel: -1, word: "", audio: null,
   playing: null, follow: false, raf: 0, rate: 1, clickPlays: true, ptMode: "painel", wordCount: null, articles: null, catalogWords: null, view: "text"};
-const RD_PT_MODES = {painel: "Tradução no painel", pedir: "Tradução só quando pedir", abaixo: "Tradução embaixo", borrada: "Tradução borrada (toque)"};
+const RD_PT_MODES = {painel: "Imersão: só no painel", pedir: "Só quando eu pedir", toque: "Apoio: abre na frase escolhida", abaixo: "Sempre embaixo de cada frase"};
 
 function readingState() { return safeRead(KEY_READING, {}); }
 function saveReadingState(patch) { const s = readingState(); safeWrite(KEY_READING, {...s, ...patch}); }
@@ -337,11 +337,12 @@ async function openBook(id, keepPlace, preloaded) {
   const s = readingState();
   reading.rate = Number(s.rate) || 1;
   reading.clickPlays = s.clickPlays !== false;
-  reading.ptMode = RD_PT_MODES[s.ptMode] ? s.ptMode : s.showPt ? "abaixo" : "painel";
+  // “borrada” (antigo) virou o modo Apoio: a tradução se abre embaixo da frase escolhida, sem borrão nas outras.
+  reading.ptMode = s.ptMode === "borrada" ? "toque" : RD_PT_MODES[s.ptMode] ? s.ptMode : s.showPt ? "abaixo" : "painel";
   reading.flow = !!s.flow;
   reading.focus = s.focus !== false;
   reading.lookOpen = false; reading.summaryOpen = null; reading.sheet = null;
-  reading.fs = Math.min(1.8, Math.max(.9, Number(s.fs) || 1.14));
+  reading.fs = Math.min(1.8, Math.max(.9, Number(s.fs) || 1.24));
   reading.lh = [1.6, 1.85, 2.15].includes(Number(s.lh)) ? Number(s.lh) : 1.85;
   reading.pick = []; reading.wk = -1; reading.picking = false;
   reading.view = "text";
@@ -376,7 +377,7 @@ function renderBook() {
   speed.value = String(reading.rate);
   speed.addEventListener("change", () => { reading.rate = Number(speed.value); if (reading.audio) reading.audio.playbackRate = reading.rate; saveReadingState({rate: reading.rate}); });
   const notes = book.notes && book.notes.s;
-  // Tradução: no painel (ao tocar), no painel só quando pedir (para se testar), embaixo de cada frase, ou embaixo mas borrada.
+  // Tradução: só no painel (imersão), no painel só quando pedir, embaixo da frase escolhida (apoio) ou embaixo de todas.
   const ptMode = h("select", {id: "rdPtMode", "aria-label": "Tradução", title: "Onde mostrar a tradução"},
     ...Object.entries(RD_PT_MODES).map(([k, l]) => new Option(l, k)));
   ptMode.value = reading.ptMode;
@@ -395,6 +396,18 @@ function renderBook() {
         h("button", {class: "icon-btn", type: "button", title: "Espaçamento entre linhas", "aria-label": "Espaçamento entre linhas", onclick: () => setReaderLook(0, 1)}, icon("lineHeight", 18)))),
     h("label", {class: "inline-check", title: "Tela limpa: a consulta abre num balão ao lado da palavra, sem o painel lateral"},
       h("input", {id: "rdFlow", type: "checkbox", checked: reading.flow, onchange: e => { reading.flow = e.target.checked; saveReadingState({flow: reading.flow}); renderBook(); }}), phone ? "Leitura contínua (balão em vez da gaveta)" : "Leitura contínua (sem painel lateral)"),
+    h("label", {class: "rd-look-row"}, h("span", {text: "Fundo"}), (() => {
+      const sel = h("select", {"aria-label": "Fundo do livro"}, ...Object.entries(RD_PAPERS).map(([k, l]) => new Option(l, k)));
+      sel.value = RD_PAPERS[readingState().paper] ? readingState().paper : "padrao";
+      sel.addEventListener("change", () => { saveReadingState({paper: sel.value}); rdApplyPaper(); });
+      return sel;
+    })()),
+    h("label", {class: "inline-check", title: "Liga com a mesma cor as partes do verbo que o alemão separa (habe … gesehen, weil … ist, ruft … an)"},
+      h("input", {type: "checkbox", checked: readingState().bridges !== false, onchange: e => { saveReadingState({bridges: e.target.checked}); rdDrawBridges(reading.sel); }}), "Ponte do verbo na frase escolhida"),
+    h("label", {class: "inline-check", title: "Sublinhado em azul (der), vermelho (die) ou verde (das) nos substantivos"},
+      h("input", {type: "checkbox", checked: !!readingState().gender, onchange: e => { saveReadingState({gender: e.target.checked}); renderBook(); }}), "Cor do gênero nos substantivos"),
+    h("label", {class: "inline-check", title: "Pontilhado leve nas palavras que ainda não apareceram nos seus cartões; o texto vai clareando conforme você estuda"},
+      h("input", {type: "checkbox", checked: !!readingState().newWords, onchange: e => { saveReadingState({newWords: e.target.checked}); renderBook(); }}), "Marcar palavras que você ainda não estudou"),
     h("label", {class: "inline-check", title: "Mostra tudo aberto no painel: dicionário, exemplos, análise completa e todas as notas de gramática"},
       h("input", {type: "checkbox", checked: rdPanelFull(), onchange: e => { saveReadingState({panelFull: e.target.checked}); renderDetail(); }}), "Painel completo (tudo aberto)"),
     h("label", {class: "inline-check", title: "Toca a frase quando você escolhe outra frase"}, h("input", {type: "checkbox", checked: reading.clickPlays, onchange: e => { reading.clickPlays = e.target.checked; saveReadingState({clickPlays: reading.clickPlays}); }}), "Tocar a frase ao clicar"),
@@ -438,17 +451,18 @@ function renderBook() {
     for (const [sid] of blk.s) {
       const i = reading.byId.get(sid), s = reading.order[i];
       if (s.h) { text.append(h("h2", {class: "rd-h"}, sentenceNode(i))); continue; }
-      if (!para) { para = h("p", {class: "rd-p"}); text.append(para); } else para.append(" ");
+      // O primeiro parágrafo do capítulo ganha a capitular.
+      if (!para) { para = h("p", {class: "rd-p" + (text.querySelector(".rd-p") ? "" : " rd-first")}); text.append(para); } else para.append(" ");
       para.append(sentenceNode(i));
-      if ((reading.ptMode === "abaixo" || reading.ptMode === "borrada") && notes && notes[s.id] && notes[s.id].pt)
-        para.append(h("span", {class: "rd-pt" + (reading.ptMode === "borrada" ? " blur" : ""), lang: "pt-BR", title: reading.ptMode === "borrada" ? "Toque para ver a tradução" : null, text: " " + notes[s.id].pt}));
+      if ((reading.ptMode === "abaixo" || reading.ptMode === "toque") && notes && notes[s.id] && notes[s.id].pt)
+        para.append(reading.ptMode === "toque" ? h("span", {class: "rd-pt fold", lang: "pt-BR"}, h("span", {text: notes[s.id].pt}))
+          : h("span", {class: "rd-pt", lang: "pt-BR", text: " " + notes[s.id].pt}));
     }
   }
-  const last = reading.ch === book.chapters.length - 1;
-  text.append(h("div", {class: "row center rd-end"},
-    h("button", {type: "button", onclick: markChapterRead}, "Capítulo lido ✓"),
-    last ? null : h("button", {class: "primary", type: "button", onclick: () => { reading.ch++; reading.sel = -1; reading.cycle = null; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); }}, "Próximo capítulo →")));
+  if (typeof rdOpeningNode === "function") { const open = rdOpeningNode(); if (open) text.prepend(open); }
+  text.append(typeof rdClosingNode === "function" ? rdClosingNode() : h("div", {class: "row center rd-end"}, h("button", {type: "button", onclick: markChapterRead}, "Capítulo lido ✓")));
   text.addEventListener("click", onReaderClick);
+  if (typeof rdDecorateText === "function") rdDecorateText(text);
   applyReaderLook(text);
   hideReaderPop();
   // Resumo do capítulo (anotação): para ler antes; já aberto no 1º passo do ouvir → ler → ouvir.
@@ -466,6 +480,7 @@ function renderBook() {
   if (reading.sel >= a && reading.sel <= b) { highlightSentence(reading.sel); renderDetail(); }
   updateReaderControls();
   rdApplyFocus();
+  if (typeof rdApplyPaper === "function") rdApplyPaper();
   rdWatchBar();
   document.body.classList.remove("rd-bar-up");
 }
@@ -552,12 +567,13 @@ function rdSheetHead() {
   });
   return head;
 }
-/* Rolar para baixo esconde a barra de cima; rolar um pouco para cima mostra de novo. */
+/* Rolar para baixo esconde a barra de cima; rolar um pouco para cima (ou levar o mouse ao topo, no PC) mostra de novo. */
+if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("mousemove", e => { if (e.clientY < 90 && document.body.classList.contains("rd-bar-up")) document.body.classList.remove("rd-bar-up"); }, {passive: true});
 let rdLastY = 0;
 if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("scroll", () => {
   const y = window.scrollY;
   // Rolagem feita pelo app (abrir na última frase, acompanhar o áudio) não esconde a barra.
-  if (!rdPhone() || !document.body.classList.contains("book-open") || reading.lookOpen || Date.now() - (reading.autoScroll || 0) < 1200) { rdLastY = y; if (y < 60) document.body.classList.remove("rd-bar-up"); return; }
+  if (!document.body.classList.contains("book-open") || reading.lookOpen || Date.now() - (reading.autoScroll || 0) < 1200) { rdLastY = y; if (y < 60) document.body.classList.remove("rd-bar-up"); return; }
   if (y > rdLastY + 8 && y > 90) document.body.classList.add("rd-bar-up");
   else if (y < rdLastY - 8 || y < 60) document.body.classList.remove("rd-bar-up");
   if (Math.abs(y - rdLastY) > 8) rdLastY = y;
@@ -567,7 +583,7 @@ function rdToggleTranslation() {
   const i = reading.sel, s = reading.order[i], note = s && reading.book.notes && reading.book.notes.s && reading.book.notes.s[s.id];
   if (!note || !note.pt) { setStatus(i < 0 ? "Escolha uma frase primeiro." : "Esta frase não tem tradução anotada.", "info"); return; }
   const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]'), next = el && el.nextElementSibling;
-  if (next && next.classList.contains("rd-pt")) { next.classList.toggle("shown"); return; }
+  if (next && next.classList.contains("rd-pt")) { next.classList.toggle(next.classList.contains("fold") ? "open" : "shown"); return; }
   if (reading.flow) { const w = el && (el.querySelector(".rd-w.on") || el.querySelector(".rd-w")); if (w) showReaderPop(w); return; }
   const box = $("rdDetail"), shown = box && box.querySelector(".rd-translation");
   if (shown && reading.ptMode === "pedir") { renderDetail(); return; }
@@ -593,7 +609,7 @@ function detailPlaceholder() {
    Lendo ouvindo, o clique só mostra a palavra e o áudio segue. */
 function onReaderClick(e) {
   const pt = e.target.closest(".rd-pt");
-  if (pt) { pt.classList.toggle("shown"); return; }
+  if (pt) { if (!pt.classList.contains("fold")) pt.classList.toggle("shown"); return; }
   const s = e.target.closest(".rd-s");
   if (!s) return;
   const i = Number(s.dataset.i), w = e.target.closest(".rd-w"), word = w ? w.textContent : "", k = w ? Number(w.dataset.k) : -1;
@@ -638,6 +654,11 @@ function highlightSentence(i) {
     if (hit) hit.classList.add("on");
   }
   for (const k of reading.pick || []) if (ws[k]) ws[k].classList.add("pick");
+  for (const f of all("#rdText .rd-pt.fold.open")) f.classList.remove("open");
+  const fold = el.nextElementSibling;
+  if (fold && fold.classList.contains("fold")) fold.classList.add("open");
+  if (typeof rdDrawBridges === "function") rdDrawBridges(i);
+  if (typeof rdWatchSelection === "function") rdWatchSelection(el);
   const prog = $("rdProgress");
   if (prog) { const [a, b] = chapterRange(reading.ch); setWidth(prog, a < 0 ? 0 : (i - a + 1) / Math.max(1, b - a + 1) * 100); }
 }
@@ -687,7 +708,7 @@ function scrollToSentence(i, block = "nearest") {
     if (block === "center" || r.top < 70 || r.bottom > bottom) window.scrollBy({top: r.top - Math.max(70, (bottom - r.height) * .35), behavior: "smooth"});
     return;
   }
-  if (block === "center" || r.top < 110 || r.bottom > window.innerHeight - 40) el.scrollIntoView({block: "center", behavior: "smooth"});
+  if (block === "center" || r.top < 110 || r.bottom > window.innerHeight - 40) { reading.autoScroll = Date.now(); el.scrollIntoView({block: "center", behavior: "smooth"}); }
 }
 
 // ---------- Palavra e frase ----------
@@ -814,7 +835,7 @@ function renderDetail() {
     e.currentTarget.disabled = true;
     addMineDrafts(s.text, convAvailable(), "livro");
     toast("Rascunho criado em Minhas frases: confira e salve lá.", "success");
-  }}, full ? "Virar cartão" : iconText("plus", "Virar cartão"));
+  }}, full ? "Criar cartão" : iconText("plus", "Criar cartão"));
   const copyBtn = h("button", {class: "quiet small", type: "button", onclick: () => copySentence(s.text)}, "Copiar");
   fill(box, rdSheetHead(),
     picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null,
@@ -843,6 +864,7 @@ function renderDetail() {
           h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", t.title, 15)), h("p", {class: "muted small-text", text: t.short})); }))
         : h("p", {class: "muted small-text", text: note ? "" : "Sem ponto de gramática destacado nesta frase."})));
   rdMarkTip(i, tip ? rdTipWords(i, tip) : new Set());
+  if (typeof rdAwayUpdate === "function") rdAwayUpdate();
 }
 async function copySentence(text) {
   try { await navigator.clipboard.writeText(text); setStatus("Frase copiada.", "success"); }
