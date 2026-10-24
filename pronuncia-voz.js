@@ -78,11 +78,12 @@ function pvCompare(word, groupId, side, model, me, vot = PV_VOT_DEFAULT) {
     else if (me.vot >= vot * .6) out.push({k: "vot", ok: null, label: "Sopro fraco: " + r(me.vot) + " ms" + m});
     else out.push({k: "vot", ok: false, label: "Sem sopro: soa como b, d ou g (" + r(me.vot) + " ms" + m + ")"});
   }
-  // Fim: o modelo termina sem voz (t, s, k…). Você terminar com a voz vibrando já é suspeito; com um trecho de voz a
-  // mais que o modelo, quase certo que saiu uma vogal. (Nos áudios do app: Tablett/Herd terminam com 165–175 ms sem voz,
-  // Tablette/Herde com 5–10 ms.)
+  // Fim: o modelo termina sem voz (t, s, k…). Comparado com o fim do modelo (não com um número fixo, porque um respiro
+  // depois da vogal também conta como “sem voz”): bem menos tempo sem voz que o modelo + um trecho de voz a mais = saiu
+  // uma vogal; quase nada sem voz = aviso. Medido nos áudios do Otto: Tablett 290 ms e Herd 205 ms sem voz no fim;
+  // Tablette e Herde, 85–100 ms (o respiro do ElevenLabs).
   if (c.fim && model.tail >= 30) {
-    const voicedEnd = me.tail < 15, extra = voicedEnd && me.segs > model.segs;
+    const voicedEnd = me.tail < Math.min(40, model.tail * .3), extra = me.tail < model.tail * .5 && me.segs > model.segs;
     out.push({k: "fim", ok: extra ? false : voicedEnd ? null : true,
       label: extra ? "Parece que saiu uma vogal no fim" : voicedEnd ? "Terminou com a voz vibrando: confira se não saiu um “i” no fim" : "Terminou na consoante"});
   }
@@ -189,6 +190,7 @@ async function pvStore(mode, value) {
 }
 
 // ---------- Tela ----------
+function pvModelVoice() { return typeof PRON_MODEL_VOICE !== "undefined" ? PRON_MODEL_VOICE : "katja"; }
 const pv = {busy: false, model: new Map()};
 function pvWave(env, cls, scale) {
   const c = h("canvas", {class: "pv-wave " + cls, width: 600, height: 56, "aria-hidden": "true"});
@@ -202,7 +204,7 @@ function pvWave(env, cls, scale) {
   return c;
 }
 async function pvModel(g, pair, side) {
-  const url = pronUrl(g.id, pair, side), key = url;
+  const url = pronUrl(g.id, pair, side, pvModelVoice()), key = url;
   if (!pv.model.has(key)) {
     const buf = await (await fetch(url)).arrayBuffer();
     pv.model.set(key, pvAnalyze(await pvDecode(buf)));
@@ -219,7 +221,7 @@ async function pvTry(groupId, pair, side) {
   const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t, " ", h("b", {lang: "de", text: word})));
   try {
     say("Ouça o modelo:");
-    await pvPlay(pronUrl(g.id, pair, side));
+    await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()));
     say("Agora você. Fale:", "rec");
     const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); });
     if (!blob) { fill(box, h("p", {class: "muted", text: "Não ouvi nada. Fale mais perto do microfone e tente de novo."}), pvAgain(groupId, pair, side)); return; }
@@ -240,13 +242,13 @@ async function pvTry(groupId, pair, side) {
       checks.length ? h("ul", {class: "pv-checks"}, ...checks.map(c => h("li", {class: c.ok === true ? "ok" : c.ok === false ? "no" : "meh"},
         h("span", {class: "pv-dot", "aria-hidden": "true"}), c.label))) : h("p", {class: "muted small-text", text: "Nesta palavra não há o que medir por regra: compare de ouvido."}),
       h("div", {class: "row"},
-        h("button", {class: "small", type: "button", onclick: () => pvPlay(pronUrl(g.id, pair, side))}, icon("volume", 16), "Modelo"),
+        h("button", {class: "small", type: "button", onclick: () => pvPlay(pronUrl(g.id, pair, side, pvModelVoice()))}, icon("volume", 16), "Modelo"),
         h("button", {class: "small", type: "button", onclick: () => pvPlay(myUrl)}, icon("volume", 16), "Você"),
-        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(pronUrl(g.id, pair, side)); await pvPlay(myUrl); }}, "Os dois"),
+        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(pronUrl(g.id, pair, side, pvModelVoice())); await pvPlay(myUrl); }}, "Os dois"),
         firstUrl && old.first.at < now - 60000 ? h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(firstUrl); await pvPlay(myUrl); }}, "Antes × agora") : null,
         pvAgain(groupId, pair, side)),
       h("p", {class: "muted small-text", text: "Medida aproximada: use como pista para ouvir de novo. Quem decide é o seu ouvido e a sua professora."}));
-    await pvPlay(pronUrl(g.id, pair, side));
+    await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()));
     await pvPlay(myUrl);
   } finally { pv.busy = false; }
 }

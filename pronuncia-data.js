@@ -67,13 +67,14 @@ const PRON_TRACKS = [
   ["ler", "Ler certo", "Letras que em alemão soam diferente do português.", ["eiie", "euau", "vw", "ssch", "zs", "auslaut", "pff", "chk"]],
   ["gramatica", "Gramática que depende do som", "Às vezes só o som separa singular e plural, ou o real do hipotético.", ["er", "aae", "konjii"]],
   ["natural", "Soar natural", "Acabamento: o paciente já entende, mas fica mais natural.", ["ch", "chsch", "ngnk"]]];
-/* Vozes do treino do ouvido: edge-tts (grátis) e Google Chirp 3 HD (cota grátis). Katja é a pasta original (sem sufixo);
-   as outras têm o sufixo no nome do arquivo (ui-1-a-conrad.mp3). As da Áustria ficam fora dos grupos de ch (lá -ig e
-   alguns ch soam diferente). Sem as vozes “Multilingual” (Florian, Seraphina): com uma palavra solta elas adivinham
-   inglês (o usuário ouviu; o Whisper confirmou: 17 de 20 palavras detectadas como inglês). */
-const PRON_VOICES = [["katja", "Katja", "Alemanha"], ["conrad", "Conrad", "Alemanha"], ["amala", "Amala", "Alemanha"], ["killian", "Killian", "Alemanha"],
-  ["aoede", "Aoede", "Alemanha"], ["kore", "Kore", "Alemanha"], ["puck", "Puck", "Alemanha"], ["fenrir", "Fenrir", "Alemanha"],
-  ["ingrid", "Ingrid", "Áustria"], ["jonas", "Jonas", "Áustria"]];
+/* Vozes do treino do ouvido (24/10/2026): 6 do ElevenLabs (modelo eleven_v4 com o alemão forçado) escolhidas pelo usuário
+   numa comparação às cegas, em que as do edge-tts e do Google (Katja, Killian, Ingrid, Kore) soaram estranhas em todos os
+   pares; o Conrad (edge-tts) passou e ficou. Arquivos com o sufixo da voz (ui-1-a-otto.mp3); os sem sufixo são da Katja
+   (antigos, só de reserva). O v3 do ElevenLabs ignora o alemão forçado (“Rate” saiu em inglês): não usar. As vozes
+   “Multilingual” do edge-tts também leem palavra solta em inglês. O Otto é o modelo do “Modelo × você”. */
+const PRON_MODEL_VOICE = "otto";
+const PRON_VOICES = [["otto", "Otto", "Alemanha"], ["mila", "Mila", "Alemanha"], ["helmut", "Helmut", "Alemanha"], ["robert", "Robert", "Alemanha"],
+  ["lisa", "Lisa", "Alemanha"], ["elisabeth", "Elisabeth", "Alemanha"], ["conrad", "Conrad", "Alemanha"]];
 const PRON_NO_AT = ["ch", "chsch", "chk"];
 /* As vozes do Google adivinham o idioma pela palavra: quando ela também existe em inglês, às vezes sai em inglês
    (o usuário ouviu “Rate” com a Kore). Nessas palavras (e no par inteiro) só tocam as vozes da Microsoft e da Áustria. */
