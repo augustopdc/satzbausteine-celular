@@ -372,6 +372,7 @@ function renderPron() {
       h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub})),
         h("span", {class: "pron-track-count muted small-text", text: ids.filter(x => pronState(x).state === "estavel").length + " de " + ids.length + " estáveis"})),
       h("div", {class: "pron-rows"}, ...ids.map(x => byId.get(x)).filter(Boolean).map(pronRow)))));
+  if (typeof pvHomeExtra === "function" && canRecord()) pvHomeExtra($("pronList"));
 }
 function pronHeader(g) {
   return [h("button", {class: "quiet small", type: "button", onclick: () => { stopAudio(); renderPron(); }}, "← Todos os sons"), h("h2", {text: g.title}), h("p", {class: "lede", text: g.tip})];
@@ -390,16 +391,21 @@ function showPronPairs(groupId) {
   $("pronPlayer").hidden = false;
   pron.group = null;
   fill($("pronPlayer"), ...pronHeader(g),
-    h("p", {class: "muted", text: "Ouça cada par e repita em voz alta, exagerando a diferença. Cada toque usa outra voz."}),
+    h("p", {class: "muted", text: canRecord() ? "Ouça cada par (cada toque usa outra voz). No microfone, você fala a palavra e compara com o modelo." : "Ouça cada par e repita em voz alta, exagerando a diferença. Cada toque usa outra voz."}),
     h("p", {id: "pronVoiceNow", class: "pron-voice muted small-text"}),
+    h("div", {id: "pvPanel", class: "pv-panel", hidden: true, "aria-live": "polite"}),
     h("div", {class: "pair-list"}, ...g.pairs.map((p, i) => h("div", {class: "pair-row"},
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "a", pronNextVoice(g, p.slice(0, 2)))}, icon("volume", 16), h("b", {lang: "de", text: p[0]}), h("small", {text: p[2]})),
-      h("span", {class: "pair-vs", text: "×"}),
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "b", pronNextVoice(g, p.slice(0, 2)))}, icon("volume", 16), h("b", {lang: "de", text: p[1]}), h("small", {text: p[3]}))))),
+      pronSide(g, i, "a", p[0], p[2], p), h("span", {class: "pair-vs", text: "×"}), pronSide(g, i, "b", p[1], p[3], p)))),
     med.length ? h("section", {class: "pron-med"}, h("h3", {class: "label", text: "No consultório"}),
       h("div", {class: "pron-med-list"}, ...med.map(([de, pt], i) => h("button", {class: "pair-word", type: "button", onclick: () => playClip(pronMedUrl(g.id, i, pronNextVoice(g, [de])), de)},
         icon("volume", 16), h("b", {lang: "de", text: de}), h("small", {text: pt}))))) : null,
     h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startPronQuiz(g.id)}, "Agora, treinar o ouvido")));
+}
+/* Um lado do par: ouvir (troca de voz a cada toque) e, no PC, gravar e comparar com o modelo (pronuncia-voz.js). */
+function pronSide(g, i, side, word, pt, p) {
+  return h("div", {class: "pair-side"},
+    h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, side, pronNextVoice(g, p.slice(0, 2)))}, icon("volume", 16), h("b", {lang: "de", text: word}), h("small", {text: pt})),
+    canRecord() && typeof pvTry === "function" ? h("button", {class: "icon-btn pv-mic", type: "button", title: "Falar e comparar", "aria-label": "Falar " + word + " e comparar com o modelo", onclick: () => pvTry(g.id, i, side)}, icon("mic", 18)) : null);
 }
 /* Treino do ouvido com várias vozes: cada pergunta sorteia a voz (o cérebro aprende o som, não a voz da Katja). */
 function startPronQuiz(groupId) {

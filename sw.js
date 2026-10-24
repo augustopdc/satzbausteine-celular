@@ -3,7 +3,7 @@
    - App: na instalação, guarda o index.html e tudo o que ele carrega (lido do próprio index.html, sem lista para manter).
      A versão abaixo é trocada pelo script de publicação; versão nova = cache novo, e o antigo é apagado.
    - Áudio: guardado conforme toca ou é baixado antes pela página (celular.js), num cache que sobrevive às atualizações. */
-const VERSION = "ad8ed9700d16";
+const VERSION = "43b671536f5c";
 const APP_CACHE = "satz-app-" + VERSION;
 const AUDIO_CACHE = "satz-audio";
 const AUDIO_PATH = /\/(audio-charon|audio-cenas|audio-katja|audio|audio-pronuncia)\/[^/]+\.mp3$/;
