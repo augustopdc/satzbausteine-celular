@@ -272,14 +272,18 @@ function grammarChips(card) {
 }
 function grammarTopicContent(t, withExamples = true) {
   const examples = withExamples ? topicCards(t.id).slice(0, 6) : [];
+  const extra = typeof GRAM_EXTRA !== "undefined" ? GRAM_EXTRA[t.id] : null;
   return [
     h("p", {class: "lede", text: t.short}),
     ...t.body.map(p => h("p", {text: p})),
     h("div", {class: "trap"},
       h("b", {text: "Armadilha para brasileiros"}),
+      extra && extra.pt ? h("p", {class: "trap-pt"}, "Em português: ", h("i", {text: "“" + extra.pt + "”"})) : null,
       h("p", {class: "trap-wrong", lang: "de"}, h("span", {text: "✗ "}), t.trap[0]),
       h("p", {class: "trap-right", lang: "de"}, h("span", {text: "✓ "}), t.trap[1])),
     h("div", {class: "grammar-examples"}, ...t.examples.map(([de, pt]) => h("p", null, h("b", {lang: "de", text: de}), h("span", {class: "muted", text: " — " + pt})))),
+    extra && extra.clinic ? h("div", {class: "gram-clinic"}, h("b", {class: "label", text: "No hospital"}),
+      h("p", {class: "gram-clinic-de", lang: "de", text: extra.clinic[0]}), h("p", {class: "muted small-text", text: extra.clinic[1]}), h("p", {class: "small-text", text: extra.clinic[2]})) : null,
     examples.length ? h("h3", {text: "No seu catálogo"}) : null,
     examples.length ? h("div", {class: "list"}, ...examples.map(catalogItem)) : null
   ].filter(Boolean);

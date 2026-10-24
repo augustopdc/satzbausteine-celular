@@ -1920,3 +1920,23 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 @keyframes gf-label { from { opacity: 0; transform: translateY(-3px); } }
 .gf-stage.small { margin: .2rem auto .4rem; max-width: 100%; width: fit-content; background: transparent; padding: .4rem 0 0; min-height: 0; }
 .gf-stage.small .gf-row { font-size: 1.12rem; justify-content: center; }
+
+/* Gramática, rodada 4: frase em português que leva ao erro, “No hospital”, tabelas vivas. */
+.trap .trap-pt { font-size: .92rem; color: var(--ink-2); margin-bottom: .3rem; }
+.gram-clinic { display: grid; gap: .15rem; margin: 1rem 0; padding: .9rem 1.1rem; border-radius: var(--radius-lg); border: 1px solid var(--line); border-left: 3px solid var(--accent); background: var(--surface); }
+.gram-clinic .label { margin: 0 0 .2rem; color: var(--accent-strong); }
+.gram-clinic p { margin: 0; }
+.gram-clinic-de { font: 500 1.12rem/1.45 var(--font-de); }
+.gram-table-scroll { overflow-x: auto; }
+.gram-table td:has(> .gram-cell) { padding: 0; }
+.gram-cell { width: 100%; min-height: 0; padding: .45rem .6rem; border: 0; border-radius: 0; background: transparent; font: inherit; color: inherit; text-align: inherit; justify-content: flex-start; font-weight: 500; }
+.gram-cell:hover { background: var(--surface-2); }
+.gram-cell.on { background: var(--accent-soft); color: var(--accent-strong); }
+.gram-table td.err { background: var(--warn-soft); }
+.gram-table td.err .gram-cell { color: var(--warn); font-weight: 650; }
+.gram-table-ex { min-height: 0; margin-top: .5rem; }
+.gram-table-ex:empty { display: none; }
+.gram-table-ex p { margin: .1rem 0; }
+.gram-table-de { font: 500 1.08rem/1.45 var(--font-de); }
+.gram-table-de mark { background: var(--accent-soft); color: var(--accent-strong); border-radius: 4px; padding: 0 .15rem; }
+@media (prefers-reduced-motion: no-preference) { .gram-table-ex > * { animation: gram-open .3s var(--ease); } }

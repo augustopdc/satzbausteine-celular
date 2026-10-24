@@ -300,3 +300,38 @@ const ERROR_REASONS = [
   {id: "pronuncia", label: "Pronúncia", topics: []},
   {id: "travei", label: "Travei", topics: []}
 ];
+/* Rodada 4 da Gramática (24/10/2026, escrito pelo Claude: revisar com o tutor). Para cada tópico:
+   pt = a frase em português que leva ao erro da armadilha; clinic = [alemão, tradução, para que serve no hospital/na FSP]. */
+const GRAM_EXTRA = {
+  v2: {pt: "Hoje eu trabalho.", clinic: ["Heute Nacht habe ich schlecht geschlafen.", "Esta noite dormi mal.", "O paciente começa pelo tempo; o verbo continua em 2º lugar."]},
+  nebensatz: {pt: "Aprendo alemão porque quero trabalhar na Alemanha.", clinic: ["Ich glaube, dass Sie eine Lungenentzündung haben.", "Acho que o senhor está com pneumonia.", "Ao comunicar o diagnóstico: dass manda haben para o fim."]},
+  trennbar: {pt: "Eu ligo para você amanhã.", clinic: ["Atmen Sie bitte tief ein.", "Respire fundo, por favor.", "No exame físico: einatmen se separa e o ein fecha a frase."]},
+  modal: {pt: "Posso vir amanhã.", clinic: ["Sie dürfen heute nichts mehr essen.", "O senhor não pode comer mais nada hoje.", "Jejum antes de exame: dürfen no 2º lugar, essen no fim."]},
+  perfekt: {pt: "Eu fui de carro para Berlim.", clinic: ["Sind Sie gestürzt?", "O senhor caiu?", "Anamnese de trauma: stürzen é mudar de lugar, então usa sein."]},
+  genero: {pt: "a ponte, o sangue, a dor", clinic: ["das Blut, der Schmerz, das Herz", "o sangue, a dor, o coração", "O gênero não segue o português: o sangue é neutro, a dor é masculina."]},
+  akkusativ: {pt: "Tenho um horário.", clinic: ["Ich verschreibe Ihnen einen Hustensaft.", "Vou receitar um xarope para a tosse.", "Na receita: o objeto masculino vira einen."]},
+  dativ: {pt: "Eu ajudo você.", clinic: ["Ich helfe Ihnen gleich.", "Já vou ajudar o senhor.", "helfen pede dativo: Ihnen, nunca Sie."]},
+  genitiv: {pt: "a atividade do seu coração", clinic: ["Die Ursache der Schmerzen ist noch unklar.", "A causa das dores ainda não está clara.", "No laudo e na apresentação do caso: genitivo plural com der."]},
+  praep: {pt: "Eu vou no hospital.", clinic: ["Der Schmerz strahlt in den linken Arm aus.", "A dor irradia para o braço esquerdo.", "Para onde a dor vai: acusativo (in den Arm). Onde ela está: dativo (Schmerzen im Bauch)."]},
+  sie: {pt: "Você tem dor? (para um paciente)", clinic: ["Wie kann ich Ihnen helfen?", "Como posso ajudar o senhor?", "Com pacientes, sempre Sie e Ihnen, com maiúscula."]},
+  passiv: {pt: "O paciente está sendo operado.", clinic: ["Es wurde ein EKG geschrieben.", "Foi feito um ECG.", "No Arztbrief: a passiva diz o que foi feito sem dizer quem fez."]},
+  konjunktiv: {pt: "Eu quero um café.", clinic: ["Könnten Sie sich bitte hinlegen?", "O senhor poderia se deitar, por favor?", "Pedido educado ao paciente: könnten + infinitivo no fim."]},
+  negacao: {pt: "Eu não tenho febre.", clinic: ["Ich habe keine Allergien.", "Não tenho alergias.", "Na anamnese: kein nega o substantivo (Allergien, Fieber, Schmerzen)."]},
+  falsos: {pt: "Eu vou virar médico.", clinic: ["Die Patientin bekommt eine Infusion.", "A paciente recebe uma infusão.", "bekommen = receber, nunca “virar” (isso é werden)."]},
+  imperativ: {pt: "Tome os comprimidos depois de comer.", clinic: ["Machen Sie bitte den Oberkörper frei.", "Tire a roupa da cintura para cima, por favor.", "No exame físico: verbo + Sie, e o frei fecha a frase."]},
+  possessiv: {pt: "Essa é a filha dela.", clinic: ["Ist das Ihre Tochter?", "Essa é a filha do senhor?", "Ihre com maiúscula = do senhor/da senhora; ihre = dela."]},
+  wfragen: {pt: "Aonde você vai?", clinic: ["Wohin strahlt der Schmerz aus?", "Para onde a dor irradia?", "Ao caracterizar a dor: wohin = para onde; wo = onde."]},
+  praeteritum: {pt: "Eu estive doente.", clinic: ["Hatten Sie schon einmal eine Operation?", "O senhor já fez alguma cirurgia?", "Na anamnese: haben e sein no Präteritum (hatten, waren)."]},
+  konnektoren: {pt: "Não venho, porque estou doente.", clinic: ["Der Patient hat Fieber, aber keinen Husten.", "O paciente tem febre, mas não tem tosse.", "Na apresentação do caso: aber não muda a ordem."]},
+  komparativ: {pt: "Berlim é maior que Munique.", clinic: ["Sind die Schmerzen stärker als gestern?", "As dores estão mais fortes que ontem?", "Evolução dos sintomas: stärker als, nunca “mehr stark wie”."]},
+  adjektiv: {pt: "Tenho um apartamento novo.", clinic: ["Haben Sie starke Schmerzen?", "O senhor tem dores fortes?", "Sem artigo, o adjetivo leva a terminação: starke Schmerzen."]},
+  reflexiv: {pt: "Eu me sinto bem.", clinic: ["Wie fühlen Sie sich heute?", "Como o senhor se sente hoje?", "sich fühlen precisa do pronome: Sie … sich."]},
+  indirekt: {pt: "Pode me dizer onde fica a farmácia?", clinic: ["Können Sie mir sagen, seit wann Sie Schmerzen haben?", "Pode me dizer desde quando tem dor?", "Pergunta educada na anamnese: o verbo vai para o fim."]},
+  daworter: {pt: "Eu espero por isso.", clinic: ["Haben Sie Angst davor?", "O senhor tem medo disso?", "Angst vor + uma coisa = davor."]},
+  relativ: {pt: "O colega que eu encontrei é simpático.", clinic: ["Das ist das Medikament, das Sie jeden Tag nehmen.", "Esse é o remédio que o senhor toma todo dia.", "O relativo segue o gênero: das Medikament → das."]},
+  alswenn: {pt: "Quando eu era criança, morei em Recife.", clinic: ["Als die Schmerzen anfingen, waren Sie zu Hause?", "Quando as dores começaram, o senhor estava em casa?", "Uma vez no passado: als."]},
+  umzu: {pt: "Aprendo alemão para trabalhar na Alemanha.", clinic: ["Wir machen ein Röntgenbild, um eine Lungenentzündung auszuschließen.", "Vamos fazer um raio X para descartar pneumonia.", "Explicar a conduta: um … zu + infinitivo."]},
+  doppelkonj: {pt: "Não bebo nem café nem chá.", clinic: ["Sie haben weder Fieber noch Husten.", "O senhor não tem nem febre nem tosse.", "weder … noch já nega: sem nicht nem kein."]},
+  zweiobjekt: {pt: "Eu dou isso a ele.", clinic: ["Ich erkläre es Ihnen gleich.", "Já explico isso ao senhor.", "Dois pronomes: o acusativo (es) vem antes do dativo (Ihnen)."]},
+  deshalb: {pt: "Estou cansado, por isso vou para a cama.", clinic: ["Der Blutdruck ist zu hoch, deshalb bleiben Sie heute hier.", "A pressão está alta demais, por isso o senhor fica aqui hoje.", "Depois de deshalb, o verbo vem logo (bleiben Sie)."]}
+};

@@ -592,9 +592,22 @@ function gramInfos() {
   const errs = typeof gramErrorsByTopic === "function" ? gramErrorsByTopic() : new Map();
   return [...GRAMMAR_BY_ID.values()].map(t => {
     const scope = topicCards(t.id).filter(c => !isMine(c) && !nwLocked(c) && (open.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null));
-    const learned = scope.filter(studied).length, stat = gramStat(t.id);
-    return {t, scope, learned, stat, ch: GRAM_CHAPTER[t.id] ?? 0, state: gramTopicState(learned, scope.length, stat), errs: errs.get(t.id) || 0};
+    const learned = scope.filter(studied).length, stat = gramStat(t.id), due = gramReviewDue(t.id);
+    let state = gramTopicState(learned, scope.length, stat);
+    if (due && (state === "firme" || state === "firmando")) state = "revisar";
+    return {t, scope, learned, stat, ch: GRAM_CHAPTER[t.id] ?? 0, state, due, errs: errs.get(t.id) || 0};
   });
+}
+/* Revisão espaçada por tópico (não por frase): depois de N acertos seguidos nos exercícios, o tópico volta em
+   1, 2, 4, 7, 14 ou 30 dias. Vencido, ele vira “Revisar” e entra em “Agora” e no “5 minutos” (com frases variadas do exPool).
+   Devolve há quantos dias foi o último exercício, ou 0 se ainda não venceu. */
+const GRAM_REVIEW_DAYS = [1, 2, 4, 7, 14, 30];
+function gramReviewDue(id, now = Date.now()) {
+  const s = gramData().topics[id];
+  if (!s || s.n < 5 || !s.at) return 0;
+  const streak = ((s.r || "").match(/1*$/) || [""])[0].length, wait = GRAM_REVIEW_DAYS[Math.min(streak, GRAM_REVIEW_DAYS.length - 1)];
+  const days = Math.floor((now - s.at) / 864e5);
+  return days >= wait ? days : 0;
 }
 /* Agora: até 2 pontos fracos + o que o seu capítulo e o anterior trazem (até 4). Em seguida: os 3 capítulos seguintes. */
 function gramZones(infos, cur) {
@@ -629,6 +642,7 @@ function gramExample(x) {
 }
 function gramWhy(x, cur) {
   if (x.errs) return x.errs + (x.errs === 1 ? " erro seu" : " erros seus") + " nesta semana";
+  if (x.state === "revisar" && x.due && x.stat.pct >= .8) return "Hora de revisar: o último treino foi há " + x.due + (x.due === 1 ? " dia" : " dias");
   if (x.state === "revisar") return Math.round(x.stat.pct * 100) + "% nas últimas " + x.stat.recentN + " respostas";
   if (x.ch === cur) return "Do seu capítulo";
   return null;
@@ -717,10 +731,44 @@ function renderGrammarTables() {
   $("grammarList").hidden = true;
   $("grammarTrain").hidden = true;
   $("grammarDetail").hidden = false;
-  const table = tb => h("div", {class: "gram-table-wrap"}, h("h3", {text: tb.title}), tb.note ? h("p", {class: "muted small-text", text: tb.note}) : null,
-    h("table", {class: "gram-table"}, h("thead", null, h("tr", null, ...tb.head.map(x => h("th", {text: x})))),
-      h("tbody", null, ...tb.rows.map(r => h("tr", null, ...r.map((x, k) => h(k ? "td" : "th", {text: x, lang: k ? "de" : null})))))));
+  // Tabelas vivas: tocar numa forma mostra uma frase do seu nível com ela; as formas que você já errou ficam em âmbar.
+  const pool = exPool(null), errForms = gramTableErrForms();
+  const table = tb => {
+    const out = h("div", {class: "gram-table-ex", "aria-live": "polite"});
+    const cell = x => {
+      if (!gramTableClickable(x)) return h("td", {text: x, lang: "de"});
+      const err = errForms.has(x.toLocaleLowerCase("de"));
+      return h("td", {lang: "de", class: err ? "err" : ""}, h("button", {class: "gram-cell", type: "button", title: err ? "Você já errou esta forma" : "Ver um exemplo",
+        onclick: e => { all(".gram-cell.on").forEach(b => b.classList.remove("on")); e.currentTarget.classList.add("on"); fill(out, gramTableExample(x, pool)); }}, x));
+    };
+    return h("div", {class: "gram-table-wrap"}, h("h3", {text: tb.title}), tb.note ? h("p", {class: "muted small-text", text: tb.note}) : null,
+      h("div", {class: "gram-table-scroll"}, h("table", {class: "gram-table"}, h("thead", null, h("tr", null, ...tb.head.map(x => h("th", {text: x})))),
+        h("tbody", null, ...tb.rows.map(r => h("tr", null, ...r.map((x, k) => !k ? h("th", {text: x}) : tb.head[k] === "Tradução" ? h("td", {text: x}) : cell(x))))))), out);
+  };
   fill($("grammarDetail"), h("button", {class: "quiet small", type: "button", onclick: renderGrammar}, "← Todos os tópicos"),
-    h("h2", {text: "Tabelas de consulta"}), ...GRAM_TABLES.map(table));
+    h("h2", {text: "Tabelas de consulta"}),
+    h("p", {class: "muted small-text", text: "Toque numa forma para ver uma frase do seu nível com ela." + (errForms.size ? " Em âmbar: formas que você já errou na Conversa ou na Escrita." : "")}),
+    ...GRAM_TABLES.map(table));
   window.scrollTo({top: 0});
+}
+/* Forma de verdade (uma ou duas palavras, sem “-en” nem listas): dá para procurar nas frases. */
+function gramTableClickable(x) { return /^\p{L}+( \p{L}+)?$/u.test(x) && x.length > 1; }
+function gramTableErrForms() {
+  const out = new Set();
+  if (typeof gramMyErrors !== "function") return out;
+  for (const e of gramMyErrors()) {
+    const a = gramErrTok(e.errado).map(w => w.toLocaleLowerCase("de")), b = gramErrTok(e.certo).map(w => w.toLocaleLowerCase("de"));
+    for (const w of gramMinus(b, a)) out.add(w);
+  }
+  return out;
+}
+function gramTableExample(x, pool) {
+  // x só tem letras e espaço (gramTableClickable), então entra direto na expressão.
+  const re = new RegExp("(^|[^\\p{L}])" + x + "(?=[^\\p{L}]|$)", "iu");
+  const hits = pool.filter(c => c.frase && !/\n/.test(c.frase) && re.test(c.frase));
+  const c = hits.find(studied) || hits.find(c => c.frase.length <= 60) || hits[0];
+  if (!c) return [h("p", {class: "muted small-text", text: "Ainda não há frase do seu nível com “" + x + "”."})];
+  const m = re.exec(c.frase), at = m.index + m[1].length;
+  return [h("p", {class: "gram-table-de", lang: "de"}, c.frase.slice(0, at), h("mark", {text: c.frase.slice(at, at + x.length)}), c.frase.slice(at + x.length)),
+    h("p", {class: "muted small-text", text: c.traducao})];
 }
