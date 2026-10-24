@@ -368,6 +368,7 @@ function renderPron() {
   fill($("pronList"),
     h("section", {class: "pron-zone"}, h("h2", {class: "label", text: "Comece por estes 3"}),
       h("div", {class: "pron-start-grid"}, ...pronPick().map(id => pronStartCard(byId.get(id))))),
+    typeof melHomeZone === "function" ? melHomeZone() : null,
     ...tracks.map(([id, title, sub, ids], k) => h("section", {class: "pron-zone pron-track", dataset: {track: id}},
       h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub})),
         h("span", {class: "pron-track-count muted small-text", text: ids.filter(x => pronState(x).state === "estavel").length + " de " + ids.length + " estáveis"})),

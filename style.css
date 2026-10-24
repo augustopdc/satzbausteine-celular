@@ -2012,3 +2012,38 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 .pv-prof { display: flex; gap: .35rem; }
 .pv-prof button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
 @media (max-width: 600px) { .pv-item { grid-template-columns: 1fr; } }
+
+/* Pronúncia, rodada 3: melodia das frases, passo a passo e acento das palavras médicas. */
+.mel-card { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .3rem; min-height: 0; padding: 1rem 1.2rem; border-radius: var(--radius-lg); text-align: left; font-weight: 500; }
+.mel-card b { font-family: var(--font-display); font-size: 1.02rem; }
+.mel-card-ex { margin-top: .3rem; font: 500 1.1rem/1.3 var(--font-de); color: var(--accent-strong); }
+.mel-group { display: grid; gap: .5rem; margin-top: 1.2rem; }
+.mel-group-head { display: flex; align-items: flex-start; gap: .7rem; }
+.mel-group-head h3 { margin: 0; font-size: 1.02rem; }
+.mel-group-head p { margin: .1rem 0 0; }
+/* Seta da melodia desenhada em CSS: sobe ou cai. */
+.mel-dir { flex: none; position: relative; width: 2.1rem; height: 1.5rem; margin-top: .1rem; }
+.mel-dir::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2.5px; border-radius: 2px; background: var(--accent); transform-origin: left center; }
+.mel-dir.d-sobe::before { transform: rotate(-24deg) translateY(4px); }
+.mel-dir.d-cai::before { transform: rotate(24deg) translateY(-5px); background: var(--ink-3); }
+.mel-item { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; padding: .7rem .9rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.mel-text { display: grid; gap: .1rem; min-width: 0; }
+.mel-text b { font: 500 1.12rem/1.35 var(--font-de); }
+.mel-acts { display: flex; align-items: center; gap: .4rem; }
+.mel-acts .pv-mic { min-height: 40px; width: 42px; }
+.mel-chain { display: flex; flex-wrap: wrap; gap: .3rem .7rem; margin: 0; font: 500 1.15rem/1.4 var(--font-de); }
+.mel-chain span { color: var(--ink-3); }
+.mel-chain span.done { color: var(--ink-2); }
+.mel-chain span.on { color: var(--ink); font-weight: 650; }
+.mel-curve { width: 100%; height: 150px; border-radius: var(--radius); background: var(--surface); }
+.mel-legend { display: flex; align-items: center; gap: .4rem; margin: 0; color: var(--ink-3); }
+.mel-key { display: inline-block; width: 1.4rem; height: 3px; border-radius: 2px; margin-left: .4rem; }
+.mel-key.model { background: var(--accent); } .mel-key.me { background: var(--warn); }
+.ac-rule { margin: 0; font-weight: 600; color: var(--ink-2); }
+.ac-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: .6rem; }
+.ac-item { display: flex; gap: .35rem; }
+.ac-play { flex: 1; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .25rem; min-height: 0; padding: .7rem .9rem; border-radius: var(--radius-lg); text-align: left; }
+.ac-play small { color: var(--ink-3); font-weight: 500; }
+.ac-word { display: inline-flex; align-items: flex-end; gap: 2px; font-family: var(--font-de); }
+.ac-syl { padding: .1rem .3rem; border-radius: 5px; background: var(--surface-2); color: var(--ink-2); font-size: 1rem; font-weight: 500; }
+.ac-syl.on { padding: .18rem .4rem; background: var(--accent); color: var(--accent-ink); font-size: 1.22rem; font-weight: 700; }
