@@ -297,15 +297,7 @@ function renderGrammar() {
   $("grammarDetail").hidden = true;
   $("grammarList").hidden = false;
   if (typeof renderGrammarTrain === "function") renderGrammarTrain();
-  $("grammarList").replaceChildren(...[...GRAMMAR_BY_ID.values()].map(t => {
-    const list = topicCards(t.id), learned = list.filter(studied).length, bar = h("span");
-    const ex = typeof gramStat === "function" ? gramStat(t.id) : null;
-    setWidth(bar, list.length ? learned / list.length * 100 : 0);
-    return h("button", {class: "grammar-card", type: "button", onclick: () => renderGrammarTopic(t.id)},
-      h("b", {text: t.title}), h("span", {class: "muted small-text", text: t.short}),
-      h("div", {class: "track"}, bar), h("span", {class: "small-text muted", text: list.length + " frases · " + learned + " aprendidas"
-        + (ex ? " · exercícios: " + (typeof gramStatText === "function" ? gramStatText(ex) : Math.round(ex.pct * 100) + "% de " + ex.n) : "")}));
-  }));
+  renderGrammarHome($("grammarList"));
 }
 function renderGrammarTopic(id) {
   const t = GRAMMAR_BY_ID.get(id);
@@ -317,6 +309,7 @@ function renderGrammarTopic(id) {
   fill($("grammarDetail"),
     h("button", {class: "quiet small", type: "button", onclick: renderGrammar}, "← Todos os tópicos"),
     h("h2", {text: t.title}),
+    typeof gramInfoLine === "function" ? gramInfoLine(id) : null,
     ...grammarTopicContent(t, true),
     h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startTopicSession(id)}, "Treinar frases deste tópico"),
       typeof startExercise === "function" ? h("button", {type: "button", onclick: () => startExercise("build", id)}, "Montar a frase") : null,

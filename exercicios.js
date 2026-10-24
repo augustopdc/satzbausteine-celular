@@ -361,10 +361,15 @@ function gramWeakTopics() {
 
 // ---------- Tela ----------
 function startExercise(kind, topic) {
-  const items = exItems(kind, topic);
+  exBegin(kind, topic, exItems(kind, topic), (kind === "build" ? "Montar a frase" : "Escolha a forma certa") + (topic ? ": " + GRAMMAR_BY_ID.get(topic).title : ""));
+}
+/* “5 minutos”: escolha e montagem misturadas, só dos tópicos de “Agora” (pontos fracos primeiro). */
+function startGramQuick() {
+  exBegin("mix", null, gramQuickItems(), "5 minutos");
+}
+function exBegin(kind, topic, items, label) {
   if (items.length < 3) { setStatus("Ainda não há frases suficientes para este exercício no seu nível.", "error"); return; }
-  Object.assign(ex, {kind, topic, items, i: 0, score: 0, answered: false, picked: [],
-    label: (kind === "build" ? "Montar a frase" : "Escolha a forma certa") + (topic ? ": " + GRAMMAR_BY_ID.get(topic).title : "")});
+  Object.assign(ex, {kind, topic, items, i: 0, score: 0, answered: false, picked: [], label});
   stopAudio();
   $("grammarList").hidden = true;
   $("grammarTrain").hidden = true;
@@ -465,8 +470,8 @@ function nextExercise() {
   fill($("grammarDetail"), h("button", {class: "quiet small", type: "button", onclick: exClose}, "← Voltar"),
     h("div", {class: "summary"}, h("div", {class: "summary-icon"}, icon("check", 30)), h("h2", {text: ex.score + " de " + ex.items.length + " acertos"}),
       h("p", {class: "muted", text: pct >= .9 ? "Muito bem! Esse ponto já está firme." : pct >= .6 ? "Bom caminho. Repita daqui a pouco para fixar." : "Leia a nota de gramática e tente de novo: o erro de hoje é o acerto de amanhã."}),
-      h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: () => startExercise(kind, topic)}, "De novo"),
-        h("button", {type: "button", onclick: () => startExercise(kind === "build" ? "form" : "build", topic && (kind === "build" ? EX_FORM_TOPICS : EX_ORDER_TOPICS).includes(topic) ? topic : null)}, kind === "build" ? "Escolha a forma certa" : "Montar a frase"),
+      h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: () => kind === "mix" ? startGramQuick() : startExercise(kind, topic)}, "De novo"),
+        kind === "mix" ? null : h("button", {type: "button", onclick: () => startExercise(kind === "build" ? "form" : "build", topic && (kind === "build" ? EX_FORM_TOPICS : EX_ORDER_TOPICS).includes(topic) ? topic : null)}, kind === "build" ? "Escolha a forma certa" : "Montar a frase"),
         h("button", {class: "quiet", type: "button", onclick: exClose}, "Voltar"))));
   ex.kind = null;
 }
@@ -489,18 +494,155 @@ function renderGrammarTrain() {
   const box = $("grammarTrain");
   if (!box) return;
   const weak = gramWeakTopics(), d = gramData().topics, total = Object.values(d).reduce((a, s) => a + s.n, 0);
+  const now = gramZones(gramInfos(), gramCurrentChapter()).now;
   fill(box,
-    h("h2", {text: "Treino de gramática"}),
-    h("p", {class: "muted small-text", text: "Exercícios montados com as frases do seu nível (primeiro as que você já viu). “Escolha a forma certa” puxa mais dos seus pontos fracos."}),
-    h("div", {class: "row"},
-      h("button", {class: "primary", type: "button", onclick: () => startExercise("build")}, "Montar a frase"),
-      h("button", {class: "primary", type: "button", onclick: () => startExercise("form")}, "Escolha a forma certa"),
-      h("button", {type: "button", onclick: renderGrammarTables}, "Tabelas de consulta")),
-    weak.length ? h("p", {class: "small-text spaced"}, h("b", {text: "Seus pontos fracos: "}), ...weak.flatMap((w, k) => [k ? ", " : "",
-      h("button", {class: "quiet small", type: "button", onclick: () => renderGrammarTopic(w.id)}, w.title + " (" + Math.round(w.pct * 100) + "%" + (w.trend === "up" ? ", melhorando" : w.trend === "down" ? ", piorou" : "") + ")")]),
-      h("span", {class: "muted", text: " · conta mais o que você fez nas últimas 10 respostas de cada tema."}))
-      : h("p", {class: "muted small-text spaced", text: total ? "Nenhum ponto fraco por enquanto (abaixo de 80% nas respostas recentes, com 5 ou mais)." : "Faça alguns exercícios para o app mostrar seus pontos fracos."}));
+    h("button", {class: "primary gram-quick", type: "button", onclick: startGramQuick},
+      h("b", {text: "5 minutos"}),
+      h("span", {text: now.length ? "8 exercícios de " + now.slice(0, 3).map(x => x.t.title.split(/[:(]/)[0].trim()).join(", ") : "8 exercícios do seu nível"})),
+    h("div", {class: "gram-tools"},
+      h("button", {type: "button", onclick: () => startExercise("build")}, "Montar a frase"),
+      h("button", {type: "button", onclick: () => startExercise("form")}, "Escolha a forma certa"),
+      h("button", {class: "quiet", type: "button", onclick: renderGrammarTables}, "Tabelas de consulta")),
+    h("p", {class: "muted small-text gram-train-note", text: weak.length ? "Pontos fracos (abaixo de 80% nas últimas 10 respostas) entram primeiro." : total ? "" : "Os exercícios usam as frases do seu nível, primeiro as que você já viu."}));
   box.hidden = false;
+}
+/* ---------- Tela inicial da Gramática (24/10/2026): “Agora”, “Em seguida” e as famílias recolhidas ----------
+   Capítulo do Nicos Weg (índice global: A1 1–18, A2 = 19 + cap.) em que cada tópico entra. É aproximado: alguns aparecem aos
+   poucos desde o começo; vale o capítulo em que a armadilha aparece (a inversão do v2 no cap. 7, o Präteritum de haben no 8). */
+const GRAM_CHAPTER = {genero: 1, falsos: 1, sie: 2, konnektoren: 3, negacao: 5, akkusativ: 5, possessiv: 6, v2: 7, trennbar: 7,
+  modal: 8, praeteritum: 8, dativ: 9, praep: 10, wfragen: 10, komparativ: 11, perfekt: 13, adjektiv: 14, imperativ: 16, konjunktiv: 18,
+  nebensatz: 19, indirekt: 19, doppelkonj: 19, daworter: 22, reflexiv: 24, deshalb: 25, relativ: 27, alswenn: 30, zweiobjekt: 34,
+  genitiv: 35, passiv: 37, umzu: 37};
+const GRAM_FAMILIES = [
+  ["ordem", "Ordem das palavras", ["v2", "trennbar", "modal", "negacao", "konnektoren", "nebensatz", "indirekt", "deshalb", "relativ", "umzu", "doppelkonj"]],
+  ["verbo", "Verbo e tempo", ["praeteritum", "perfekt", "imperativ", "konjunktiv", "reflexiv", "alswenn", "passiv"]],
+  ["caso", "Casos e artigos", ["genero", "akkusativ", "possessiv", "dativ", "praep", "adjektiv", "daworter", "zweiobjekt", "genitiv"]],
+  ["palavras", "Palavras e tratamento", ["sie", "falsos", "wfragen", "komparativ"]]];
+const GRAM_STATES = {novo: "Ainda não visto", contato: "Em contato", firmando: "Firmando", firme: "Firme", revisar: "Revisar"};
+function gramCurrentChapter() {
+  const n = Number(settings.nwChapter);
+  return Number.isFinite(n) ? n : 7;
+}
+/* Estado de um tópico pelo que é do seu nível (nunca pelo catálogo inteiro): frases liberadas que você já estudou
+   e o acerto recente nos exercícios. “Ainda não visto” é um fato, não um fracasso. */
+function gramTopicState(learned, total, s) {
+  const share = total ? learned / total : 0, ex5 = !!(s && s.n >= 5);
+  if (ex5 && (s.pct < .8 || s.trend === "down")) return "revisar";
+  if ((ex5 && s.pct >= .9 && share >= .3) || (learned >= 5 && share >= .8)) return "firme";
+  if (share >= .3 || ex5) return "firmando";
+  if (learned || (s && s.n)) return "contato";
+  return "novo";
+}
+function gramInfos() {
+  const open = typeof unlockedLevels === "function" ? unlockedLevels() : new Set(["A1"]);
+  return [...GRAMMAR_BY_ID.values()].map(t => {
+    const scope = topicCards(t.id).filter(c => !isMine(c) && !nwLocked(c) && (open.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null));
+    const learned = scope.filter(studied).length, stat = gramStat(t.id);
+    return {t, scope, learned, stat, ch: GRAM_CHAPTER[t.id] ?? 0, state: gramTopicState(learned, scope.length, stat)};
+  });
+}
+/* Agora: até 2 pontos fracos + o que o seu capítulo e o anterior trazem (até 4). Em seguida: os 3 capítulos seguintes. */
+function gramZones(infos, cur) {
+  const now = infos.filter(x => x.state === "revisar").sort((a, b) => a.stat.pct - b.stat.pct).slice(0, 2);
+  const open = infos.filter(x => x.ch <= cur && !now.includes(x) && x.state !== "firme").sort((a, b) => b.ch - a.ch);
+  for (const x of open) {
+    if (now.length >= 4 || (x.ch < cur - 1 && now.length >= 2)) break;
+    now.push(x);
+  }
+  const next = infos.filter(x => x.ch > cur && x.ch <= cur + 3).sort((a, b) => a.ch - b.ch).slice(0, 4);
+  return {now, next};
+}
+function gramChapterText(ch) {
+  const a2 = ch >= NW_A2_BASE, n = a2 ? ch - NW_A2_BASE : ch;
+  return (n ? "cap. " + n + " do " : "início do ") + (a2 ? "A2" : "A1");
+}
+function gramCountText(x) {
+  return x.scope.length ? x.learned + " de " + x.scope.length + " no seu nível" : "chega no " + gramChapterText(x.ch);
+}
+function gramBadge(state) {
+  return h("span", {class: "gram-state s-" + state, text: GRAM_STATES[state]});
+}
+/* Uma frase curta do seu nível para o cartão: de preferência uma em que a regra aparece com certeza (a regra do “Escolha a
+   forma certa” consegue estragá-la) e que você já estudou. A detecção de tópico sozinha às vezes erra (wiederholen não é separável). */
+function gramExample(x) {
+  const short = x.scope.filter(c => c.frase && !/\n/.test(c.frase) && c.frase.split(/\s+/).length <= 8);
+  const sure = EX_FORM_TOPICS.includes(x.t.id) ? short.filter(c => formItem(c, x.t.id)) : [];
+  const pick = sure.find(studied) || sure[0] || short.find(studied) || short[0];
+  return pick ? h("p", {class: "gram-ex", lang: "de", text: pick.frase}) : null;
+}
+function gramWhy(x, cur) {
+  if (x.state === "revisar") return Math.round(x.stat.pct * 100) + "% nas últimas " + x.stat.recentN + " respostas";
+  if (x.ch === cur) return "Do seu capítulo";
+  return null;
+}
+function gramNowCard(x, cur) {
+  const bar = h("span"), why = gramWhy(x, cur);
+  setWidth(bar, x.scope.length ? x.learned / x.scope.length * 100 : 0);
+  return h("button", {class: "gram-now" + (x.state === "revisar" ? " weak" : ""), type: "button", dataset: {topic: x.t.id}, onclick: () => renderGrammarTopic(x.t.id)},
+    h("span", {class: "gram-top"}, h("b", {text: x.t.title}), gramBadge(x.state)),
+    why ? h("span", {class: "gram-why", text: why}) : null,
+    gramExample(x),
+    h("span", {class: "muted small-text gram-short", text: x.t.short}),
+    h("span", {class: "gram-foot"}, x.learned ? h("span", {class: "track"}, bar) : null, h("span",{class: "small-text muted", text: gramCountText(x)})));
+}
+function gramNextCard(x) {
+  return h("button", {class: "gram-next", type: "button", dataset: {topic: x.t.id}, onclick: () => renderGrammarTopic(x.t.id)},
+    h("span", {class: "gram-when", text: gramChapterText(x.ch)}), h("b", {text: x.t.title}), h("span", {class: "muted small-text", text: x.t.short}));
+}
+function gramRow(x, cur) {
+  const later = x.ch > cur && !x.learned && !x.stat;
+  return h("button", {class: "gram-row" + (later ? " later" : ""), type: "button", dataset: {topic: x.t.id}, onclick: () => renderGrammarTopic(x.t.id)},
+    h("span", {class: "gram-row-main"}, h("b", {text: x.t.title}), h("span", {class: "muted small-text", text: later ? "chega no " + gramChapterText(x.ch) : gramCountText(x)})),
+    later ? null : gramBadge(x.state));
+}
+function gramFamilyNote(list) {
+  const firm = list.filter(x => x.state === "firme").length, rev = list.filter(x => x.state === "revisar").length;
+  const parts = [firm ? firm + (firm === 1 ? " firme" : " firmes") : "", rev ? rev + " para revisar" : ""].filter(Boolean);
+  return parts.length ? parts.join(" · ") : list.length + " tópicos";
+}
+function renderGrammarHome(box) {
+  const infos = gramInfos(), cur = gramCurrentChapter(), {now, next} = gramZones(infos, cur), byId = new Map(infos.map(x => [x.t.id, x]));
+  const opened = gram.familiesOpen || (gram.familiesOpen = new Set());
+  fill(box,
+    now.length ? h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Agora"}), h("div", {class: "gram-now-grid"}, ...now.map(x => gramNowCard(x, cur)))) : null,
+    next.length ? h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Em seguida"}), h("div", {class: "gram-next-row"}, ...next.map(gramNextCard))) : null,
+    h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Todos os tópicos"}),
+      ...GRAM_FAMILIES.map(([id, title, ids]) => {
+        const list = ids.map(k => byId.get(k)).filter(Boolean);
+        const d = h("details", {class: "gram-family", dataset: {family: id}},
+          h("summary", null, h("b", {text: title}), h("span", {class: "muted small-text", text: gramFamilyNote(list)})),
+          h("div", {class: "gram-rows"}, ...list.map(x => gramRow(x, cur))));
+        d.open = opened.has(id);
+        d.addEventListener("toggle", () => { d.open ? opened.add(id) : opened.delete(id); });
+        return d;
+      })));
+}
+const gram = {familiesOpen: null};
+/* Linha de estado no topo do tópico aberto. */
+function gramInfoLine(id) {
+  const x = gramInfos().find(y => y.t.id === id);
+  if (!x) return null;
+  return h("p", {class: "gram-info"}, gramBadge(x.state), h("span", {class: "muted small-text", text: gramCountText(x) + (x.stat ? " · exercícios: " + gramStatText(x.stat) : "")}));
+}
+/* Itens do “5 minutos”: por rodada, de cada tópico de “Agora”, uma escolha (se o tópico tem regra) e uma montagem
+   (se é de ordem das palavras); completa com exercícios gerais do seu nível. Nunca repete a frase na mesma sessão. */
+function gramQuickItems(n = 8) {
+  const topics = gramZones(gramInfos(), gramCurrentChapter()).now.map(x => x.t.id), out = [], used = new Set();
+  const add = it => { if (!it || used.has(it.card.id) || out.length >= n) return false; used.add(it.card.id); out.push(it); return true; };
+  const pools = new Map(topics.map(id => [id, exPool(id)]));
+  for (let round = 0; round < 3 && out.length < n; round++) {
+    for (const id of topics) {
+      const pool = pools.get(id);
+      if (EX_FORM_TOPICS.includes(id)) for (const c of pool) { if (!used.has(c.id) && add(formItem(c, id))) break; }
+      if (EX_ORDER_TOPICS.includes(id)) for (const c of pool) {
+        if (used.has(c.id)) continue;
+        const it = buildItem(c);
+        if (it) { it.topics = [id]; if (add(it)) break; }
+      }
+    }
+  }
+  for (const it of [...exItems("form", null, n), ...exItems("build", null, n)]) add(it);
+  return shuffled(out);
 }
 function renderGrammarTables() {
   stopAudio();

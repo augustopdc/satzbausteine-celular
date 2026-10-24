@@ -1830,3 +1830,58 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
   .es-hero-q { font-size: 1.28rem; }
   .es-tl-item { grid-template-columns: 3.4rem minmax(0, 1fr); gap: .6rem; }
 }
+
+/* Gramática, rodada 1 (24/10/2026): “Agora”, “Em seguida” e famílias recolhidas; progresso pelo seu nível. */
+#grammarTrain { display: grid; gap: .8rem; }
+.gram-quick { flex-direction: column; align-items: flex-start; gap: .15rem; width: 100%; min-height: 0; padding: .9rem 1.2rem; border-radius: var(--radius-lg); text-align: left; }
+.gram-quick b { font-size: 1.15rem; }
+.gram-quick span { font-size: .85rem; font-weight: 500; opacity: .85; }
+.gram-tools { display: flex; flex-wrap: wrap; gap: .5rem; }
+.gram-train-note { margin: 0; }
+.gram-train-note:empty { display: none; }
+#grammarList.grammar-grid { display: grid; grid-template-columns: 1fr; gap: 1.6rem; }
+.gram-zone { display: grid; gap: .6rem; }
+.gram-sec { margin: 0; }
+.gram-now-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: .9rem; }
+.gram-now { flex-direction: column; align-items: stretch; justify-content: flex-start; gap: .45rem; padding: 1.1rem 1.2rem; text-align: left; border-radius: var(--radius-lg); font-weight: 500; }
+.gram-now.weak { border-color: var(--warn-line); }
+.gram-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+.gram-top b, .gram-next b, .gram-row b { font-family: var(--font-display); }
+.gram-top b { font-size: 1.05rem; }
+.gram-why { font-size: .8rem; color: var(--accent-strong); font-weight: 600; }
+.gram-now.weak .gram-why { color: var(--warn); }
+.gram-ex { margin: .1rem 0; font: 500 1.12rem/1.4 var(--font-de); color: var(--ink); }
+.gram-short { line-height: 1.4; }
+.gram-foot { display: grid; gap: .3rem; margin-top: auto; padding-top: .3rem; }
+.gram-state { flex: none; padding: .12rem .55rem; border-radius: 99px; font-size: .74rem; font-weight: 600; white-space: nowrap; background: var(--surface-2); color: var(--ink-3); }
+.gram-state.s-contato { color: var(--ink-2); }
+.gram-state.s-firmando { background: var(--accent-soft); color: var(--accent-strong); }
+.gram-state.s-firme { background: var(--accent); color: var(--accent-ink); }
+.gram-state.s-revisar { background: var(--warn-soft); color: var(--warn); }
+.gram-next-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: .7rem; }
+.gram-next { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .25rem; padding: .8rem 1rem; text-align: left; border-style: dashed; border-radius: var(--radius-lg); background: transparent; font-weight: 500; }
+.gram-when { font-size: .74rem; font-weight: 600; color: var(--ink-3); }
+.gram-family { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.gram-family > summary { display: flex; align-items: center; gap: .7rem; padding: .85rem 1.1rem; cursor: pointer; list-style: none; }
+.gram-family > summary::-webkit-details-marker { display: none; }
+.gram-family > summary::before { content: ""; width: .42rem; height: .42rem; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(-45deg); transition: transform .25s var(--ease); margin-right: .2rem; }
+.gram-family[open] > summary::before { transform: rotate(45deg); }
+.gram-family > summary b { font-size: 1rem; }
+.gram-family > summary span { margin-left: auto; }
+.gram-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: .1rem .8rem; padding: 0 .6rem .7rem; }
+.gram-row { justify-content: space-between; gap: .6rem; min-height: 0; padding: .55rem .6rem; border: 0; border-radius: var(--radius); background: transparent; text-align: left; font-weight: 500; }
+.gram-row:hover { background: var(--surface-2); }
+.gram-row-main { display: grid; gap: .05rem; }
+.gram-row b { font-size: .95rem; }
+.gram-row.later { opacity: .55; }
+.gram-info { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .2rem 0 .6rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .gram-family[open] .gram-rows { animation: gram-open .3s var(--ease); }
+  .gram-now { transition: transform .35s var(--spring), border-color .2s; }
+}
+@keyframes gram-open { from { opacity: 0; transform: translateY(-4px); } }
+@media (max-width: 600px) {
+  .gram-next-row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; }
+  .gram-next { flex: 0 0 72%; scroll-snap-align: start; }
+  .gram-tools button { flex: 1 1 auto; }
+}
