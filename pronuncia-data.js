@@ -75,6 +75,11 @@ const PRON_VOICES = [["katja", "Katja", "Alemanha"], ["conrad", "Conrad", "Alema
   ["aoede", "Aoede", "Alemanha"], ["kore", "Kore", "Alemanha"], ["puck", "Puck", "Alemanha"], ["fenrir", "Fenrir", "Alemanha"],
   ["ingrid", "Ingrid", "Áustria"], ["jonas", "Jonas", "Áustria"]];
 const PRON_NO_AT = ["ch", "chsch", "chk"];
+/* As vozes do Google adivinham o idioma pela palavra: quando ela também existe em inglês, às vezes sai em inglês
+   (o usuário ouviu “Rate” com a Kore). Nessas palavras (e no par inteiro) só tocam as vozes da Microsoft e da Áustria. */
+const PRON_GOOGLE = ["aoede", "kore", "puck", "fenrir"];
+const PRON_EN_LIKE = new Set(["tier", "hut", "rock", "beet", "stall", "wen", "bach", "bitter", "lied", "bass", "pass", "pier", "bar", "dank", "tank", "kern", "tag",
+  "kind", "kinder", "rad", "fund", "fad", "sang", "sank", "war", "mantel", "halt", "bald", "herd", "fest", "rat", "rate", "hand", "patient", "also", "gift", "rose", "wind", "sand"]);
 /* Palavras do consultório com o som de cada grupo (ouvir e repetir; áudio <grupo>-m<n>[-voz].mp3). */
 const PRON_MED = {
   ui: [["Übelkeit", "náusea"], ["Gefühl", "sensação"], ["Rücken", "costas"]],

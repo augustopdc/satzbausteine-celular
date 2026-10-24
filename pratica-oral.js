@@ -281,9 +281,12 @@ const pron = {group: null, items: [], i: 0, score: 0, answered: false, listen: 0
 /* Áudio: Katja na pasta original (sem sufixo); as outras vozes com -<voz> no nome (treino com várias vozes). */
 const pronUrl = (group, pair, side, voice = "katja") => "audio-pronuncia/" + group + "-" + (pair + 1) + "-" + side + (voice === "katja" ? "" : "-" + voice) + ".mp3";
 const pronMedUrl = (group, n, voice = "katja") => "audio-pronuncia/" + group + "-m" + (n + 1) + (voice === "katja" ? "" : "-" + voice) + ".mp3";
-function pronVoices(g) {
+/* Vozes que podem tocar estas palavras: sem as da Áustria nos grupos de ch e sem as do Google quando alguma
+   palavra também existe em inglês (elas às vezes leem em inglês). */
+function pronVoices(g, words = []) {
   const list = typeof PRON_VOICES !== "undefined" ? PRON_VOICES : [["katja", "Katja", "Alemanha"]];
-  return list.filter(v => !(typeof PRON_NO_AT !== "undefined" && PRON_NO_AT.includes(g.id) && v[2] === "Áustria"));
+  const en = typeof PRON_EN_LIKE !== "undefined" && words.some(w => PRON_EN_LIKE.has(String(w).toLocaleLowerCase("de")));
+  return list.filter(v => !(typeof PRON_NO_AT !== "undefined" && PRON_NO_AT.includes(g.id) && v[2] === "Áustria") && !(en && PRON_GOOGLE.includes(v[0])));
 }
 function playPron(groupId, pairIndex, side, voice) {
   const g = PRON.find(x => x.id === groupId), word = g.pairs[pairIndex][side === "a" ? 0 : 1];
@@ -374,8 +377,8 @@ function pronHeader(g) {
   return [h("button", {class: "quiet small", type: "button", onclick: () => { stopAudio(); renderPron(); }}, "← Todos os sons"), h("h2", {text: g.title}), h("p", {class: "lede", text: g.tip})];
 }
 /* Ouvir e repetir: cada toque toca a próxima voz, para ouvir o mesmo som em gente diferente. */
-function pronNextVoice(g) {
-  const vs = pronVoices(g), v = vs[pron.listen % vs.length];
+function pronNextVoice(g, words) {
+  const vs = pronVoices(g, words), v = vs[pron.listen % vs.length];
   pron.listen++;
   const lab = $("pronVoiceNow");
   if (lab) lab.textContent = "Voz: " + v[1] + " (" + v[2] + ")";
@@ -390,18 +393,21 @@ function showPronPairs(groupId) {
     h("p", {class: "muted", text: "Ouça cada par e repita em voz alta, exagerando a diferença. Cada toque usa outra voz."}),
     h("p", {id: "pronVoiceNow", class: "pron-voice muted small-text"}),
     h("div", {class: "pair-list"}, ...g.pairs.map((p, i) => h("div", {class: "pair-row"},
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "a", pronNextVoice(g))}, icon("volume", 16), h("b", {lang: "de", text: p[0]}), h("small", {text: p[2]})),
+      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "a", pronNextVoice(g, p.slice(0, 2)))}, icon("volume", 16), h("b", {lang: "de", text: p[0]}), h("small", {text: p[2]})),
       h("span", {class: "pair-vs", text: "×"}),
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "b", pronNextVoice(g))}, icon("volume", 16), h("b", {lang: "de", text: p[1]}), h("small", {text: p[3]}))))),
+      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "b", pronNextVoice(g, p.slice(0, 2)))}, icon("volume", 16), h("b", {lang: "de", text: p[1]}), h("small", {text: p[3]}))))),
     med.length ? h("section", {class: "pron-med"}, h("h3", {class: "label", text: "No consultório"}),
-      h("div", {class: "pron-med-list"}, ...med.map(([de, pt], i) => h("button", {class: "pair-word", type: "button", onclick: () => playClip(pronMedUrl(g.id, i, pronNextVoice(g)), de)},
+      h("div", {class: "pron-med-list"}, ...med.map(([de, pt], i) => h("button", {class: "pair-word", type: "button", onclick: () => playClip(pronMedUrl(g.id, i, pronNextVoice(g, [de])), de)},
         icon("volume", 16), h("b", {lang: "de", text: de}), h("small", {text: pt}))))) : null,
     h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startPronQuiz(g.id)}, "Agora, treinar o ouvido")));
 }
 /* Treino do ouvido com várias vozes: cada pergunta sorteia a voz (o cérebro aprende o som, não a voz da Katja). */
 function startPronQuiz(groupId) {
-  const g = PRON.find(x => x.id === groupId), vs = pronVoices(g), items = [];
-  for (let k = 0; k < 10; k++) items.push({pair: Math.floor(Math.random() * g.pairs.length), side: Math.random() < .5 ? "a" : "b", voice: vs[Math.floor(Math.random() * vs.length)][0]});
+  const g = PRON.find(x => x.id === groupId), items = [];
+  for (let k = 0; k < 10; k++) {
+    const pair = Math.floor(Math.random() * g.pairs.length), vs = pronVoices(g, g.pairs[pair].slice(0, 2));
+    items.push({pair, side: Math.random() < .5 ? "a" : "b", voice: vs[Math.floor(Math.random() * vs.length)][0]});
+  }
   Object.assign(pron, {group: g, items, i: 0, score: 0, answered: false, answers: []});
   $("pronList").hidden = true;
   $("pronPlayer").hidden = false;
@@ -424,7 +430,7 @@ function renderPronItem() {
 function answerPron(side) {
   if (pron.answered) return;
   pron.answered = true;
-  const g = pron.group, item = pron.items[pron.i], ok = side === item.side, v = pronVoices(g).find(x => x[0] === item.voice);
+  const g = pron.group, item = pron.items[pron.i], ok = side === item.side, v = (typeof PRON_VOICES !== "undefined" ? PRON_VOICES : []).find(x => x[0] === item.voice);
   if (ok) pron.score++;
   pron.answers.push(ok ? "1" : "0");
   all(".pron-option").forEach(b => { b.disabled = true; b.classList.add(b.dataset.side === item.side ? "right" : b.dataset.side === side ? "wrong" : "dim"); });
