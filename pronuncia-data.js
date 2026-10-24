@@ -67,10 +67,13 @@ const PRON_TRACKS = [
   ["ler", "Ler certo", "Letras que em alemão soam diferente do português.", ["eiie", "euau", "vw", "ssch", "zs", "auslaut", "pff", "chk"]],
   ["gramatica", "Gramática que depende do som", "Às vezes só o som separa singular e plural, ou o real do hipotético.", ["er", "aae", "konjii"]],
   ["natural", "Soar natural", "Acabamento: o paciente já entende, mas fica mais natural.", ["ch", "chsch", "ngnk"]]];
-/* Vozes do treino do ouvido (edge-tts, grátis). Katja é a pasta original (sem sufixo); as outras têm o sufixo no nome
-   do arquivo (ui-1-a-conrad.mp3). As da Áustria ficam fora dos grupos de ch (lá -ig e alguns ch soam diferente). */
+/* Vozes do treino do ouvido: edge-tts (grátis) e Google Chirp 3 HD (cota grátis). Katja é a pasta original (sem sufixo);
+   as outras têm o sufixo no nome do arquivo (ui-1-a-conrad.mp3). As da Áustria ficam fora dos grupos de ch (lá -ig e
+   alguns ch soam diferente). Sem as vozes “Multilingual” (Florian, Seraphina): com uma palavra solta elas adivinham
+   inglês (o usuário ouviu; o Whisper confirmou: 17 de 20 palavras detectadas como inglês). */
 const PRON_VOICES = [["katja", "Katja", "Alemanha"], ["conrad", "Conrad", "Alemanha"], ["amala", "Amala", "Alemanha"], ["killian", "Killian", "Alemanha"],
-  ["florian", "Florian", "Alemanha"], ["seraphina", "Seraphina", "Alemanha"], ["ingrid", "Ingrid", "Áustria"], ["jonas", "Jonas", "Áustria"]];
+  ["aoede", "Aoede", "Alemanha"], ["kore", "Kore", "Alemanha"], ["puck", "Puck", "Alemanha"], ["fenrir", "Fenrir", "Alemanha"],
+  ["ingrid", "Ingrid", "Áustria"], ["jonas", "Jonas", "Áustria"]];
 const PRON_NO_AT = ["ch", "chsch", "chk"];
 /* Palavras do consultório com o som de cada grupo (ouvir e repetir; áudio <grupo>-m<n>[-voz].mp3). */
 const PRON_MED = {

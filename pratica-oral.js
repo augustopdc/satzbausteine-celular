@@ -351,9 +351,12 @@ function pronStartCard(g) {
       h("button", {class: "primary small", type: "button", onclick: () => startPronQuiz(g.id)}, "Treinar o ouvido"),
       h("button", {class: "small", type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir e repetir")));
 }
+/* Cada som da trilha: título, um par de exemplo em letra de livro (o que se ouve) e o estado (sem etiqueta enquanto novo). */
 function pronRow(g) {
-  return h("button", {class: "pron-row", type: "button", dataset: {group: g.id}, onclick: () => showPronPairs(g.id)},
-    h("b", {text: g.title}), (st => st.state === "novo" ? null : pronBadge(st))(pronState(g.id)));
+  const st = pronState(g.id), p = g.pairs[0];
+  return h("button", {class: "pron-row s-" + st.state, type: "button", dataset: {group: g.id}, onclick: () => showPronPairs(g.id)},
+    h("span", {class: "pron-row-top"}, h("b", {text: g.title}), st.state === "novo" ? null : pronBadge(st)),
+    h("span", {class: "pron-row-pair", lang: "de"}, p[0], h("i", {text: " × "}), p[1]));
 }
 function renderPron() {
   $("pronList").hidden = false;
@@ -363,7 +366,8 @@ function renderPron() {
     h("section", {class: "pron-zone"}, h("h2", {class: "label", text: "Comece por estes 3"}),
       h("div", {class: "pron-start-grid"}, ...pronPick().map(id => pronStartCard(byId.get(id))))),
     ...tracks.map(([id, title, sub, ids], k) => h("section", {class: "pron-zone pron-track", dataset: {track: id}},
-      h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub}))),
+      h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub})),
+        h("span", {class: "pron-track-count muted small-text", text: ids.filter(x => pronState(x).state === "estavel").length + " de " + ids.length + " estáveis"})),
       h("div", {class: "pron-rows"}, ...ids.map(x => byId.get(x)).filter(Boolean).map(pronRow)))));
 }
 function pronHeader(g) {
