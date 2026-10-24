@@ -54,5 +54,49 @@ const PRONUNCIA = [
     ["hatte", "hätte", "tinha", "teria"], ["konnte", "könnte", "podia", "poderia"], ["wurde", "würde", "ficou, tornou-se", "-ria (würde + infinitivo)"],
     ["war", "wäre", "era, estava", "seria, estaria"], ["mochte", "möchte", "gostava", "gostaria"]]},
   {id: "aae", title: "a × ä", tip: "O a é aberto como em português; o ä soa como o nosso “é” aberto (Äpfel = “épfel”, Väter = “féta”). Muitas vezes o ä marca o plural.", pairs: [
-    ["Apfel", "Äpfel", "maçã", "maçãs"], ["Vater", "Väter", "pai", "pais"], ["Mantel", "Mäntel", "casaco", "casacos"], ["fahre", "Fähre", "dirijo, vou (de veículo)", "balsa"]]}
+    ["Apfel", "Äpfel", "maçã", "maçãs"], ["Vater", "Väter", "pai", "pais"], ["Mantel", "Mäntel", "casaco", "casacos"], ["fahre", "Fähre", "dirijo, vou (de veículo)", "balsa"]]},
+  // 24/10/2026 (rodada 1 da Pronúncia, escritos pelo Claude: revisar com o tutor): os dois erros de brasileiro que mais trocam a palavra.
+  {id: "lfinal", title: "l no fim da sílaba", tip: "No fim da sílaba, o l alemão continua l: a ponta da língua encosta atrás dos dentes de cima. Em português ele vira “u” (Brasil = “Brasiu”); em alemão isso troca a palavra: Hals (garganta) vira Haus (casa).", pairs: [
+    ["Hals", "Haus", "garganta, pescoço", "casa"], ["als", "aus", "quando, como", "de (origem), fora"], ["Halt", "Haut", "parada", "pele"], ["bald", "baut", "logo", "constrói"], ["kalt", "kaut", "frio", "mastiga"]]},
+  {id: "semvogal", title: "Sem vogal no fim", tip: "Termine na consoante, sem soltar um “i” ou “e” depois: Herd, não “Herdi”. A vogal a mais muda a palavra: Tablette é comprimido, Tablett é bandeja; Herde é rebanho, Herd é fogão.", pairs: [
+    ["Tablett", "Tablette", "bandeja", "comprimido"], ["Herd", "Herde", "fogão", "rebanho"], ["Fest", "Feste", "festa", "festas"], ["Brot", "Brote", "pão", "pães"], ["Rat", "Rate", "conselho", "parcela"]]}
 ];
+/* Trilha por inteligibilidade (o que mais faz o paciente não entender vem primeiro). */
+const PRON_TRACKS = [
+  ["entender", "Para ser entendido", "Os erros que trocam a palavra para quem escuta.", ["semvogal", "lfinal", "bp", "dt", "gk", "laenge", "h", "ui", "uue", "oe", "ooe"]],
+  ["ler", "Ler certo", "Letras que em alemão soam diferente do português.", ["eiie", "euau", "vw", "ssch", "zs", "auslaut", "pff", "chk"]],
+  ["gramatica", "Gramática que depende do som", "Às vezes só o som separa singular e plural, ou o real do hipotético.", ["er", "aae", "konjii"]],
+  ["natural", "Soar natural", "Acabamento: o paciente já entende, mas fica mais natural.", ["ch", "chsch", "ngnk"]]];
+/* Vozes do treino do ouvido (edge-tts, grátis). Katja é a pasta original (sem sufixo); as outras têm o sufixo no nome
+   do arquivo (ui-1-a-conrad.mp3). As da Áustria ficam fora dos grupos de ch (lá -ig e alguns ch soam diferente). */
+const PRON_VOICES = [["katja", "Katja", "Alemanha"], ["conrad", "Conrad", "Alemanha"], ["amala", "Amala", "Alemanha"], ["killian", "Killian", "Alemanha"],
+  ["florian", "Florian", "Alemanha"], ["seraphina", "Seraphina", "Alemanha"], ["ingrid", "Ingrid", "Áustria"], ["jonas", "Jonas", "Áustria"]];
+const PRON_NO_AT = ["ch", "chsch", "chk"];
+/* Palavras do consultório com o som de cada grupo (ouvir e repetir; áudio <grupo>-m<n>[-voz].mp3). */
+const PRON_MED = {
+  ui: [["Übelkeit", "náusea"], ["Gefühl", "sensação"], ["Rücken", "costas"]],
+  uue: [["Untersuchung", "exame"], ["Lungenentzündung", "pneumonia"], ["Frühstück", "café da manhã"]],
+  oe: [["Röntgen", "raio X"], ["Störung", "distúrbio"], ["Gehör", "audição"]],
+  ooe: [["Knochen", "osso"], ["Röteln", "rubéola"], ["Ödem", "edema"]],
+  laenge: [["Fieber", "febre (ie longo)"], ["Magen", "estômago (a longo)"], ["Puls", "pulso (u curto)"]],
+  ch: [["Bauch", "barriga (ach)"], ["Gesicht", "rosto (ich)"], ["Knöchel", "tornozelo (ich)"]],
+  h: [["Herz", "coração"], ["Husten", "tosse"], ["Hals", "garganta"]],
+  zs: [["Schmerzen", "dores (z = ts)"], ["Zucker", "açúcar, diabetes"], ["Sodbrennen", "azia (s = z)"]],
+  er: [["Fieber", "febre (-er)"], ["Leber", "fígado (-er)"], ["Niere", "rim (-e)"]],
+  eiie: [["Kreislauf", "circulação (ei)"], ["Niere", "rim (ie)"], ["Übelkeit", "náusea (ei)"]],
+  euau: [["Bauch", "barriga (au)"], ["Haut", "pele (au)"], ["Beule", "galo, inchaço (eu)"]],
+  ssch: [["Schmerzen", "dores"], ["Spritze", "injeção (sp = chp)"], ["Stuhlgang", "evacuação (st = cht)"]],
+  bp: [["Puls", "pulso"], ["Blut", "sangue"], ["Patient", "paciente"]],
+  dt: [["Tablette", "comprimido"], ["Durchfall", "diarreia"], ["Temperatur", "temperatura"]],
+  gk: [["Kopf", "cabeça"], ["Galle", "vesícula biliar"], ["Krankenhaus", "hospital"]],
+  vw: [["Wunde", "ferida (w = v)"], ["Verband", "curativo (v = f)"], ["Vene", "veia (exceção: v = v)"]],
+  auslaut: [["Hand", "mão (d = t)"], ["Mund", "boca (d = t)"], ["Schlaganfall", "AVC (g = k)"]],
+  pff: [["Kopf", "cabeça"], ["Pflaster", "curativo adesivo"], ["Impfung", "vacina"]],
+  ngnk: [["Lunge", "pulmão (ng)"], ["krank", "doente (nk)"], ["Schwangerschaft", "gravidez (ng)"]],
+  chsch: [["Gesicht", "rosto (ch)"], ["Schulter", "ombro (sch)"], ["Brechreiz", "ânsia de vômito (ch)"]],
+  chk: [["Knochen", "osso (ch)"], ["Rachen", "garganta (ch)"], ["Nacken", "nuca (ck)"]],
+  konjii: [["könnten", "poderiam (Könnten Sie …?)"], ["hätten", "teriam"], ["wäre", "seria"]],
+  aae: [["Magen", "estômago (a)"], ["Schädel", "crânio (ä)"], ["Ärztin", "médica (ä)"]],
+  lfinal: [["Hals", "garganta"], ["Puls", "pulso"], ["Schulter", "ombro"]],
+  semvogal: [["Arzt", "médico"], ["Rezept", "receita"], ["Blutdruck", "pressão arterial"]]
+};

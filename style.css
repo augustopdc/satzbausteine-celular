@@ -1940,3 +1940,32 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 .gram-table-de { font: 500 1.08rem/1.45 var(--font-de); }
 .gram-table-de mark { background: var(--accent-soft); color: var(--accent-strong); border-radius: 4px; padding: 0 .15rem; }
 @media (prefers-reduced-motion: no-preference) { .gram-table-ex > * { animation: gram-open .3s var(--ease); } }
+
+/* Pronúncia, rodada 1 (24/10/2026): “Comece por estes 3” e trilha por inteligibilidade no lugar da grade de cartões. */
+.pron-home { display: grid; gap: 1.8rem; }
+.pron-zone { display: grid; gap: .7rem; }
+.pron-zone > .label { margin: 0; }
+.pron-start-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: .9rem; }
+.pron-start { display: grid; gap: .5rem; align-content: start; padding: 1.1rem 1.2rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.pron-start-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+.pron-start .pron-title { margin: 0; }
+.pron-start p { margin: 0; }
+.pron-start .row { margin-top: auto; }
+.pron-track-head { display: flex; align-items: flex-start; gap: .8rem; }
+.pron-track-head h2 { margin: 0; font-size: 1.1rem; }
+.pron-track-head p { margin: .1rem 0 0; }
+.pron-track-n { flex: none; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; font-size: .9rem; }
+.pron-track[data-track="natural"] .pron-track-n, .pron-track[data-track="gramatica"] .pron-track-n { background: var(--surface-2); color: var(--ink-3); }
+.pron-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: .1rem .8rem; padding-left: 2.6rem; }
+.pron-row { justify-content: space-between; gap: .6rem; min-height: 0; padding: .6rem .7rem; border: 0; border-radius: var(--radius); background: transparent; text-align: left; font-weight: 500; }
+.pron-row:hover { background: var(--surface-2); }
+.pron-row b { font-family: var(--font-display); font-size: .98rem; }
+.pron-state { flex: none; padding: .12rem .55rem; border-radius: 99px; font-size: .74rem; font-weight: 600; white-space: nowrap; background: var(--surface-2); color: var(--ink-3); }
+.pron-state.s-treino { background: var(--accent-soft); color: var(--accent-strong); }
+.pron-state.s-estavel { background: var(--accent); color: var(--accent-ink); }
+.pron-state.s-revisar { background: var(--warn-soft); color: var(--warn); }
+.pron-voice { min-height: 1.2em; margin: 0; }
+.pron-med { display: grid; gap: .5rem; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.pron-med .label { margin: 0; }
+.pron-med-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+@media (max-width: 600px) { .pron-rows { padding-left: 0; } }

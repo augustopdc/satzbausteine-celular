@@ -2116,6 +2116,7 @@ function sanitizeProgress(source) {
     if (/^c\d{2,}$/.test(id) && s && typeof s === "object") result.practice.scenes[id] = {best: Math.min(1, Math.max(0, Number(s.best) || 0)), last: Math.min(1, Math.max(0, Number(s.last) || 0)), plays: Math.max(0, Number(s.plays) || 0), at: Number(s.at) || 0};
   }
   for (const [id, v] of Object.entries(practice.pron || {})) if (/^[a-z]{1,10}$/.test(id) && Number.isFinite(Number(v))) result.practice.pron[id] = Math.min(1, Math.max(0, Number(v)));
+  if (practice.pronStat) result.practice.pronStat = sanitizePronStat(practice.pronStat);
   if (practice.diktat) result.practice.diktat = sanitizeDiktat(practice.diktat);
   if (practice.speed) result.practice.speed = sanitizeSpeed(practice.speed);
   if (practice.conversa) result.practice.conversa = sanitizeConversa(practice.conversa);
@@ -2184,6 +2185,7 @@ async function mergeIncoming(parsed, {settings: withSettings}) {
     if (!old || s.best > old.best || s.at > old.at) progress.practice.scenes[id] = {best: Math.max(s.best, old ? old.best : 0), last: s.at >= (old ? old.at : 0) ? s.last : old.last, plays: Math.max(s.plays, old ? old.plays : 0), at: Math.max(s.at, old ? old.at : 0)};
   }
   for (const [id, v] of Object.entries(incoming.practice.pron)) progress.practice.pron[id] = Math.max(progress.practice.pron[id] || 0, v);
+  if (incoming.practice.pronStat) progress.practice.pronStat = mergePronStat(progress.practice.pronStat, incoming.practice.pronStat);
   if (incoming.practice.diktat) progress.practice.diktat = mergeDiktat(progress.practice.diktat, incoming.practice.diktat);
   if (incoming.practice.speed) progress.practice.speed = mergeSpeed(progress.practice.speed, incoming.practice.speed);
   if (incoming.practice.conversa) progress.practice.conversa = mergeConversa(progress.practice.conversa, incoming.practice.conversa);

@@ -277,45 +277,128 @@ function sceneKey(e) {
 
 // ---------- Pronúncia ----------
 const PRON = typeof PRONUNCIA !== "undefined" ? PRONUNCIA : [];
-const pron = {group: null, items: [], i: 0, score: 0, answered: false};
-const pronUrl = (group, pair, side) => "audio-pronuncia/" + group + "-" + (pair + 1) + "-" + side + ".mp3";
-function playPron(groupId, pairIndex, side) {
+const pron = {group: null, items: [], i: 0, score: 0, answered: false, listen: 0};
+/* Áudio: Katja na pasta original (sem sufixo); as outras vozes com -<voz> no nome (treino com várias vozes). */
+const pronUrl = (group, pair, side, voice = "katja") => "audio-pronuncia/" + group + "-" + (pair + 1) + "-" + side + (voice === "katja" ? "" : "-" + voice) + ".mp3";
+const pronMedUrl = (group, n, voice = "katja") => "audio-pronuncia/" + group + "-m" + (n + 1) + (voice === "katja" ? "" : "-" + voice) + ".mp3";
+function pronVoices(g) {
+  const list = typeof PRON_VOICES !== "undefined" ? PRON_VOICES : [["katja", "Katja", "Alemanha"]];
+  return list.filter(v => !(typeof PRON_NO_AT !== "undefined" && PRON_NO_AT.includes(g.id) && v[2] === "Áustria"));
+}
+function playPron(groupId, pairIndex, side, voice) {
   const g = PRON.find(x => x.id === groupId), word = g.pairs[pairIndex][side === "a" ? 0 : 1];
-  return playClip(pronUrl(groupId, pairIndex, side), word);
+  return playClip(pronUrl(groupId, pairIndex, side, voice), word);
+}
+/* ---------- Progresso por grupo (24/10/2026) ----------
+   r = últimas 30 respostas do treino do ouvido ("1" acerto), s = últimas sessões ("1" = 90% ou mais), at = última sessão.
+   O antigo “Melhor: 100%” (practice.pron) continua sendo gravado, mas a tela usa o acerto recente. */
+const PRON_KEEP = 30, PRON_REVIEW_DAYS = [1, 3, 7, 14, 30];
+function pronStats() {
+  progress.practice = progress.practice || {scenes: {}, pron: {}};
+  return progress.practice.pronStat || (progress.practice.pronStat = {});
+}
+function sanitizePronStat(src) {
+  const out = {};
+  if (!src || typeof src !== "object") return out;
+  for (const [id, s] of Object.entries(src)) {
+    if (!/^[a-z]{1,10}$/.test(id) || !s || typeof s !== "object") continue;
+    const r = typeof s.r === "string" && /^[01]*$/.test(s.r) ? s.r.slice(-PRON_KEEP) : "", ses = typeof s.s === "string" && /^[01]*$/.test(s.s) ? s.s.slice(-20) : "";
+    const n = Math.max(0, Math.round(Number(s.n) || 0));
+    if (n) out[id] = {n, r, s: ses, at: Number(s.at) || 0};
+  }
+  return out;
+}
+/* Vale o registro com mais respostas (os contadores só crescem). */
+function mergePronStat(local, incoming) {
+  const out = sanitizePronStat(local);
+  for (const [id, s] of Object.entries(sanitizePronStat(incoming))) if (!out[id] || s.n > out[id].n) out[id] = s;
+  return out;
+}
+function pronRecord(id, answers, pct) {
+  const st = pronStats(), s = st[id] || {n: 0, r: "", s: "", at: 0};
+  st[id] = {n: s.n + answers.length, r: (s.r + answers.join("")).slice(-PRON_KEEP), s: (s.s + (pct >= .9 ? "1" : "0")).slice(-20), at: Date.now()};
+}
+/* Estado do grupo: novo, em treino, estável (90% ou mais nas últimas 20+ respostas) ou revisar (passou o prazo). */
+function pronState(id, now = Date.now()) {
+  const s = pronStats()[id];
+  if (!s || !s.n) return {state: "novo"};
+  const r = s.r || "", recent = r.length ? [...r].filter(x => x === "1").length / r.length : 0;
+  const streak = ((s.s || "").match(/1*$/) || [""])[0].length, wait = PRON_REVIEW_DAYS[Math.min(streak, PRON_REVIEW_DAYS.length - 1)];
+  const days = Math.floor((now - s.at) / 864e5);
+  if (days >= wait) return {state: "revisar", recent, days};
+  return {state: recent >= .9 && r.length >= 20 ? "estavel" : "treino", recent};
+}
+const PRON_STATES = {novo: "Ainda não treinado", treino: "Em treino", estavel: "Estável", revisar: "Revisar"};
+/* “Comece por estes 3”: o que venceu, depois o que está em treino com menor acerto, depois o próximo da trilha. */
+function pronPick(n = 3) {
+  const order = (typeof PRON_TRACKS !== "undefined" ? PRON_TRACKS.flatMap(t => t[3]) : PRON.map(g => g.id)).filter(id => PRON.some(g => g.id === id));
+  const info = order.map((id, k) => ({id, k, ...pronState(id)}));
+  const due = info.filter(x => x.state === "revisar").sort((a, b) => a.k - b.k);
+  const training = info.filter(x => x.state === "treino").sort((a, b) => a.recent - b.recent);
+  const fresh = info.filter(x => x.state === "novo");
+  return [...due, ...training, ...fresh].slice(0, n).map(x => x.id);
+}
+function pronBadge(st) {
+  const text = st.state === "revisar" ? "Revisar" : st.state === "treino" ? Math.round(st.recent * 100) + "% recente" : PRON_STATES[st.state];
+  return h("span", {class: "pron-state s-" + st.state, text});
+}
+function pronStartCard(g) {
+  const st = pronState(g.id);
+  return h("article", {class: "pron-start", dataset: {group: g.id}},
+    h("div", {class: "pron-start-top"}, h("h3", {class: "pron-title", text: g.title}), pronBadge(st)),
+    h("p", {class: "muted small-text", text: st.state === "revisar" ? "Último treino há " + st.days + (st.days === 1 ? " dia." : " dias.") : g.tip}),
+    h("div", {class: "row"},
+      h("button", {class: "primary small", type: "button", onclick: () => startPronQuiz(g.id)}, "Treinar o ouvido"),
+      h("button", {class: "small", type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir e repetir")));
+}
+function pronRow(g) {
+  return h("button", {class: "pron-row", type: "button", dataset: {group: g.id}, onclick: () => showPronPairs(g.id)},
+    h("b", {text: g.title}), (st => st.state === "novo" ? null : pronBadge(st))(pronState(g.id)));
 }
 function renderPron() {
   $("pronList").hidden = false;
   $("pronPlayer").hidden = true;
-  $("pronList").replaceChildren(...PRON.map(g => {
-    const best = ((progress.practice || {}).pron || {})[g.id];
-    return h("article", {class: "scene-card"},
-      h("div", {class: "scene-top"}, h("span", {class: "tag", text: g.pairs.length + " pares"}), best != null ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(best * 100) + "%"}) : h("span", {class: "status s-new", text: "Novo"})),
-      h("h3", {class: "pron-title", text: g.title}),
-      h("p", {class: "muted small-text", text: g.tip}),
-      h("div", {class: "row"},
-        h("button", {class: "primary small", type: "button", onclick: () => startPronQuiz(g.id)}, "Treinar o ouvido"),
-        h("button", {class: "small", type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir e repetir")));
-  }));
+  const byId = new Map(PRON.map(g => [g.id, g])), tracks = typeof PRON_TRACKS !== "undefined" ? PRON_TRACKS : [["todos", "Todos os sons", "", PRON.map(g => g.id)]];
+  fill($("pronList"),
+    h("section", {class: "pron-zone"}, h("h2", {class: "label", text: "Comece por estes 3"}),
+      h("div", {class: "pron-start-grid"}, ...pronPick().map(id => pronStartCard(byId.get(id))))),
+    ...tracks.map(([id, title, sub, ids], k) => h("section", {class: "pron-zone pron-track", dataset: {track: id}},
+      h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub}))),
+      h("div", {class: "pron-rows"}, ...ids.map(x => byId.get(x)).filter(Boolean).map(pronRow)))));
 }
 function pronHeader(g) {
   return [h("button", {class: "quiet small", type: "button", onclick: () => { stopAudio(); renderPron(); }}, "← Todos os sons"), h("h2", {text: g.title}), h("p", {class: "lede", text: g.tip})];
 }
+/* Ouvir e repetir: cada toque toca a próxima voz, para ouvir o mesmo som em gente diferente. */
+function pronNextVoice(g) {
+  const vs = pronVoices(g), v = vs[pron.listen % vs.length];
+  pron.listen++;
+  const lab = $("pronVoiceNow");
+  if (lab) lab.textContent = "Voz: " + v[1] + " (" + v[2] + ")";
+  return v[0];
+}
 function showPronPairs(groupId) {
-  const g = PRON.find(x => x.id === groupId);
+  const g = PRON.find(x => x.id === groupId), med = typeof PRON_MED !== "undefined" ? PRON_MED[g.id] || [] : [];
   $("pronList").hidden = true;
   $("pronPlayer").hidden = false;
+  pron.group = null;
   fill($("pronPlayer"), ...pronHeader(g),
-    h("p", {class: "muted", text: "Ouça cada par e repita em voz alta, exagerando a diferença."}),
+    h("p", {class: "muted", text: "Ouça cada par e repita em voz alta, exagerando a diferença. Cada toque usa outra voz."}),
+    h("p", {id: "pronVoiceNow", class: "pron-voice muted small-text"}),
     h("div", {class: "pair-list"}, ...g.pairs.map((p, i) => h("div", {class: "pair-row"},
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "a")}, icon("volume", 16), h("b", {lang: "de", text: p[0]}), h("small", {text: p[2]})),
+      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "a", pronNextVoice(g))}, icon("volume", 16), h("b", {lang: "de", text: p[0]}), h("small", {text: p[2]})),
       h("span", {class: "pair-vs", text: "×"}),
-      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "b")}, icon("volume", 16), h("b", {lang: "de", text: p[1]}), h("small", {text: p[3]}))))),
+      h("button", {class: "pair-word", type: "button", onclick: () => playPron(g.id, i, "b", pronNextVoice(g))}, icon("volume", 16), h("b", {lang: "de", text: p[1]}), h("small", {text: p[3]}))))),
+    med.length ? h("section", {class: "pron-med"}, h("h3", {class: "label", text: "No consultório"}),
+      h("div", {class: "pron-med-list"}, ...med.map(([de, pt], i) => h("button", {class: "pair-word", type: "button", onclick: () => playClip(pronMedUrl(g.id, i, pronNextVoice(g)), de)},
+        icon("volume", 16), h("b", {lang: "de", text: de}), h("small", {text: pt}))))) : null,
     h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startPronQuiz(g.id)}, "Agora, treinar o ouvido")));
 }
+/* Treino do ouvido com várias vozes: cada pergunta sorteia a voz (o cérebro aprende o som, não a voz da Katja). */
 function startPronQuiz(groupId) {
-  const g = PRON.find(x => x.id === groupId), items = [];
-  for (let k = 0; k < 10; k++) items.push({pair: Math.floor(Math.random() * g.pairs.length), side: Math.random() < .5 ? "a" : "b"});
-  Object.assign(pron, {group: g, items, i: 0, score: 0, answered: false});
+  const g = PRON.find(x => x.id === groupId), vs = pronVoices(g), items = [];
+  for (let k = 0; k < 10; k++) items.push({pair: Math.floor(Math.random() * g.pairs.length), side: Math.random() < .5 ? "a" : "b", voice: vs[Math.floor(Math.random() * vs.length)][0]});
+  Object.assign(pron, {group: g, items, i: 0, score: 0, answered: false, answers: []});
   $("pronList").hidden = true;
   $("pronPlayer").hidden = false;
   renderPronItem();
@@ -327,24 +410,26 @@ function renderPronItem() {
   fill($("pronPlayer"), ...pronHeader(g),
     h("div", {class: "pron-quiz"},
       h("p", {class: "counter", text: "Pergunta " + (pron.i + 1) + " de " + pron.items.length + " · acertos: " + pron.score}),
-      h("button", {class: "play-xl", type: "button", "aria-label": "Ouvir de novo", onclick: () => playPron(g.id, item.pair, item.side)}, icon("play", 36)),
+      h("button", {class: "play-xl", type: "button", "aria-label": "Ouvir de novo", onclick: () => playPron(g.id, item.pair, item.side, item.voice)}, icon("play", 36)),
       h("p", {class: "muted", text: "Qual palavra você ouviu? (teclas 1 e 2)"}),
       h("div", {class: "pron-options"}, ...options.map(([side, word, pt], k) => h("button", {class: "pron-option", type: "button", dataset: {side},
         onclick: () => answerPron(side)}, h("kbd", null, String(k + 1)), h("b", {lang: "de", text: word}), h("small", {text: pt})))),
       h("div", {id: "pronFeedback", class: "pron-feedback"})));
-  playPron(g.id, item.pair, item.side);
+  playPron(g.id, item.pair, item.side, item.voice);
 }
 function answerPron(side) {
   if (pron.answered) return;
   pron.answered = true;
-  const g = pron.group, item = pron.items[pron.i], ok = side === item.side;
+  const g = pron.group, item = pron.items[pron.i], ok = side === item.side, v = pronVoices(g).find(x => x[0] === item.voice);
   if (ok) pron.score++;
+  pron.answers.push(ok ? "1" : "0");
   all(".pron-option").forEach(b => { b.disabled = true; b.classList.add(b.dataset.side === item.side ? "right" : b.dataset.side === side ? "wrong" : "dim"); });
   fill($("pronFeedback"),
-    h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? "Isso!" : "Quase. Ouça os dois de novo:"}),
+    h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? "Isso!" : "Quase. Ouça os dois de novo, na mesma voz:"}),
+    v ? h("p", {class: "muted small-text", text: "Voz: " + v[1] + " (" + v[2] + ")"}) : null,
     h("div", {class: "row center"},
-      h("button", {class: "small", type: "button", onclick: () => playPron(g.id, item.pair, "a")}, icon("volume", 16), g.pairs[item.pair][0]),
-      h("button", {class: "small", type: "button", onclick: () => playPron(g.id, item.pair, "b")}, icon("volume", 16), g.pairs[item.pair][1])),
+      h("button", {class: "small", type: "button", onclick: () => playPron(g.id, item.pair, "a", item.voice)}, icon("volume", 16), g.pairs[item.pair][0]),
+      h("button", {class: "small", type: "button", onclick: () => playPron(g.id, item.pair, "b", item.voice)}, icon("volume", 16), g.pairs[item.pair][1])),
     h("button", {class: "primary", type: "button", onclick: nextPron}, pron.i + 1 < pron.items.length ? "Próxima" : "Ver resultado", h("kbd", null, "Espaço")));
 }
 function nextPron() {
@@ -355,18 +440,22 @@ function nextPron() {
   progress.practice = progress.practice || {scenes: {}, pron: {}};
   progress.practice.pron = progress.practice.pron || {};
   progress.practice.pron[g.id] = Math.max(progress.practice.pron[g.id] || 0, pct);
+  pronRecord(g.id, pron.answers, pct);
   progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1;
   saveProgress();
+  const st = pronState(g.id);
   fill($("pronPlayer"), ...pronHeader(g),
     h("div", {class: "summary"}, h("div", {class: "summary-icon"}, icon("check", 30)), h("h2", {text: pron.score + " de " + pron.items.length + " acertos"}),
-      h("p", {class: "muted", text: pct >= .9 ? "Seu ouvido já distingue bem esse contraste. Agora treine a pronúncia repetindo os pares." : "Ouça os pares mais algumas vezes e repita em voz alta. A distinção vem com a prática."}),
-      h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: () => startPronQuiz(g.id)}, "De novo"), h("button", {type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir os pares"), h("button", {class: "quiet", type: "button", onclick: renderPron}, "Outros sons"))));
+      h("p", {class: "muted", text: (pct >= .9 ? "Seu ouvido já distingue esse contraste em vozes diferentes. Agora repita os pares em voz alta." : "Ouça os pares mais algumas vezes e repita em voz alta. A distinção vem com a prática.")
+        + " Acerto recente: " + Math.round((st.recent || 0) * 100) + "%."}),
+      h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: () => startPronQuiz(g.id)}, "De novo"), h("button", {type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir os pares"), h("button", {class: "quiet", type: "button", onclick: () => { stopAudio(); renderPron(); }}, "Todos os sons"))));
+  pron.group = null;
 }
 function pronKey(e) {
   if (!pron.group || $("pronPlayer").hidden) return false;
   if (e.key === "1" || e.key === "2") { e.preventDefault(); answerPron(e.key === "1" ? "a" : "b"); return true; }
   if (e.code === "Space" || e.key === "Enter") { if (pron.answered) { e.preventDefault(); nextPron(); return true; } }
-  if (e.key.toLowerCase() === "r") { const item = pron.items[pron.i]; if (item) { e.preventDefault(); playPron(pron.group.id, item.pair, item.side); return true; } }
+  if (e.key.toLowerCase() === "r") { const item = pron.items[pron.i]; if (item) { e.preventDefault(); playPron(pron.group.id, item.pair, item.side, item.voice); return true; } }
   if (e.key === "Escape") { e.preventDefault(); stopAudio(); renderPron(); return true; }
   return false;
 }
