@@ -1900,3 +1900,23 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 #grammarDetail .ex-type-input:focus { outline: none; border-bottom-color: var(--accent-strong); background: var(--accent-soft); }
 #grammarDetail .ex-type-input[readonly] { border-bottom-color: var(--line-strong); }
 #grammarDetail .ex-fix-input { width: 100%; min-height: 0; height: auto; font: 500 1.12rem/1.45 var(--font-de); padding: .7rem .9rem; border-radius: var(--radius); resize: vertical; }
+
+/* Gramática, rodada 3: o desenho da frase (campos da Satzklammer) e as palavras indo para o lugar com mola. */
+.gf-diagram { display: grid; gap: .5rem; margin: .4rem 0 1.2rem; }
+.gf-diagram .label { margin: 0; }
+.gf-stage { padding: 1rem 1.1rem .8rem; border-radius: var(--radius-lg); background: var(--surface-2); min-height: 4.6rem; }
+.gf-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .35rem .4rem; font: 500 1.25rem/1.3 var(--font-de); color: var(--ink); }
+.gf-w { display: inline-block; padding: .12rem .3rem; border-radius: 6px; will-change: transform; }
+.gf-w.glue { margin-right: -.5rem; }
+.gf-w.moved { color: var(--vb-1); font-weight: 650; }
+.gf-punct { margin-left: -.55rem; padding-top: .12rem; }
+.gf-field { position: relative; display: inline-flex; flex-wrap: wrap; gap: .3rem .35rem; padding-bottom: 1.3rem; }
+.gf-field::after { content: attr(data-label); position: absolute; left: .15rem; right: .15rem; bottom: 0; padding-top: .15rem; border-top: 2px solid var(--line-strong);
+  font: 600 .68rem/1.2 var(--font); color: var(--ink-3); text-align: center; white-space: nowrap; }
+.gf-field.f-verbo::after, .gf-field.f-fim::after { border-color: var(--vb-1); color: var(--vb-1); }
+.gf-field.f-verbo .gf-w, .gf-field.f-fim .gf-w { background: color-mix(in srgb, var(--vb-1) 12%, transparent); }
+.gf-field.f-conj::after { border-color: var(--warn); color: var(--warn); }
+@media (prefers-reduced-motion: no-preference) { .gf-stage.done .gf-field::after { animation: gf-label .45s .55s var(--ease) both; } }
+@keyframes gf-label { from { opacity: 0; transform: translateY(-3px); } }
+.gf-stage.small { margin: .2rem auto .4rem; max-width: 100%; width: fit-content; background: transparent; padding: .4rem 0 0; min-height: 0; }
+.gf-stage.small .gf-row { font-size: 1.12rem; justify-content: center; }

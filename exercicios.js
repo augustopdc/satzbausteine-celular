@@ -297,9 +297,10 @@ function exPool(topic) {
   return seen.concat(rest);
 }
 function exItems(kind, topic, n = 10) {
-  const out = [], pool = exPool(topic);
+  // O “Transforme” parte de frases comuns (sujeito no começo), que o detector de tópico não marca: usa todas do seu nível.
+  const out = [], pool = exPool(kind === "transform" ? null : topic);
   const weak = kind !== "build" && !topic ? gramWeakTopics().map(w => w.id) : [];
-  const make = (c, t) => kind === "build" ? buildItem(c) : kind === "type" ? typeItem(c, t) : formItem(c, t);
+  const make = (c, t) => kind === "build" ? buildItem(c) : kind === "type" ? typeItem(c, t) : kind === "transform" ? transformItem(c, t) : formItem(c, t);
   // Sem tópico: metade das escolhas vem dos pontos fracos.
   if (weak.length) for (const c of pool) { if (out.length >= n / 2) break; const it = make(c); if (it && weak.includes(it.topic)) out.push(it); }
   for (const c of pool) {
@@ -379,7 +380,7 @@ function gramWeakTopics() {
 
 // ---------- Tela ----------
 function startExercise(kind, topic) {
-  exBegin(kind, topic, exItems(kind, topic), ({build: "Montar a frase", type: "Completar digitando"}[kind] || "Escolha a forma certa") +(topic ? ": " + GRAMMAR_BY_ID.get(topic).title : ""));
+  exBegin(kind, topic, exItems(kind, topic), ({build: "Montar a frase", type: "Completar digitando", transform: "Transforme"}[kind] || "Escolha a forma certa") +(topic ? ": " + GRAMMAR_BY_ID.get(topic).title : ""));
 }
 /* “5 minutos”: escolha e montagem misturadas, só dos tópicos de “Agora” (pontos fracos primeiro). */
 function startGramQuick() {
@@ -409,6 +410,7 @@ function renderExercise() {
   ex.answered = false;
   if (item.kind === "type") { renderTypeItem(item); return; }
   if (item.kind === "fix") { renderFixItem(item); return; }
+  if (item.kind === "transform") { renderTransformItem(item); return; }
   if (item.kind === "build") {
     ex.picked = [];
     const answer = h("div", {class: "ex-answer", id: "exAnswer"}), bank = h("div", {class: "ex-bank", id: "exBank"});
@@ -484,18 +486,19 @@ function exGrade(ok, mine) {
   const topics = item.kind === "build" ? (ex.topic ? [ex.topic] : item.topics) : item.kind === "fix" ? item.topics : [item.topic];
   gramRecord(topics, ok);
   saveProgress();
-  if (item.card) speakCard(item.card);
+  if (item.card && item.kind !== "transform") speakCard(item.card);
   const t = GRAMMAR_BY_ID.get(item.kind === "build" || item.kind === "fix" ? topics[0] : item.topic);
-  const allowOwn = (item.kind === "build" || item.kind === "fix") && !ok && mine;
+  const allowOwn = ["build", "fix", "transform"].includes(item.kind) && !ok && mine;
   fill($("exFeedback"),
     h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? "Isso!" : item.kind === "build" ? "A frase é:" : item.kind === "fix" ? "A frase corrigida:" : "A certa é:"}),
+    typeof gfFeedback === "function" ? gfFeedback(item, ok, mine) : null,
     !ok ? h("p", {class: "ex-right", lang: "de", text: item.correct || item.card.frase}) : null,
     item.kind === "form" && !ok ? h("p", {class: "small-text"}, h("s", {lang: "de", text: item.wrong})) : null,
-    (item.kind === "type" || item.kind === "fix") && !ok && mine ? h("p", {class: "small-text"}, "Você escreveu ", h("s", {lang: "de", text: mine})) : null,
+    ["type", "fix", "transform"].includes(item.kind) && !ok && mine ? h("p", {class: "small-text"}, "Você escreveu ", h("s", {lang: "de", text: mine})) : null,
     item.kind === "fix" && item.explicacao ? h("p", {class: "small-text", text: item.explicacao}) : null,
     t ? h("p", {class: "muted small-text"}, t.short + " ", h("button", {class: "quiet small", type: "button", onclick: () => openGrammarDialog(t.id)}, iconText("book", t.title, 15))) : null,
     h("div", {class: "row center"},
-      allowOwn ? h("button", {class: "small", type: "button", onclick: e => { e.currentTarget.remove(); ex.score++; gramRecord(topics, true); gramUndoMiss(topics); if (item.kind === "fix") gramMarkFixed(item.key); saveProgress(); }}, item.kind === "fix" ? "A minha versão também está certa" : "A minha ordem também está certa") : null,
+      allowOwn ? h("button", {class: "small", type: "button", onclick: e => { e.currentTarget.remove(); ex.score++; gramRecord(topics, true); gramUndoMiss(topics); if (item.kind === "fix") gramMarkFixed(item.key); saveProgress(); }}, item.kind === "build" ? "A minha ordem também está certa" : "A minha versão também está certa") : null,
       h("button", {class: "primary", type: "button", onclick: nextExercise}, ex.i + 1 < ex.items.length ? "Próxima" : "Ver resultado", h("kbd", null, "Espaço"))));
   if (item.kind === "build") drawBuild();
 }
@@ -520,7 +523,7 @@ function nextExercise() {
     h("div", {class: "summary"}, h("div", {class: "summary-icon"}, icon("check", 30)), h("h2", {text: ex.score + " de " + ex.items.length + " acertos"}),
       h("p", {class: "muted", text: pct >= .9 ? "Muito bem! Esse ponto já está firme." : pct >= .6 ? "Bom caminho. Repita daqui a pouco para fixar." : "Leia a nota de gramática e tente de novo: o erro de hoje é o acerto de amanhã."}),
       h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: () => kind === "mix" ? startGramQuick() : kind === "fix" ? startGramFix(topic) : startExercise(kind, topic)}, "De novo"),
-        ["mix", "fix", "type"].includes(kind) ? null : h("button", {type: "button", onclick: () => startExercise(kind === "build" ? "form" : "build", topic && (kind === "build" ? EX_FORM_TOPICS : EX_ORDER_TOPICS).includes(topic) ? topic : null)}, kind === "build" ? "Escolha a forma certa" : "Montar a frase"),
+        ["mix", "fix", "type", "transform"].includes(kind) ? null : h("button", {type: "button", onclick: () => startExercise(kind === "build" ? "form" : "build", topic && (kind === "build" ? EX_FORM_TOPICS : EX_ORDER_TOPICS).includes(topic) ? topic : null)}, kind === "build" ? "Escolha a forma certa" : "Montar a frase"),
         h("button", {class: "quiet", type: "button", onclick: exClose}, "Voltar"))));
   ex.kind = null;
 }
@@ -552,6 +555,7 @@ function renderGrammarTrain() {
       h("button", {type: "button", onclick: () => startExercise("build")}, "Montar a frase"),
       h("button", {type: "button", onclick: () => startExercise("form")}, "Escolha a forma certa"),
       h("button", {type: "button", onclick: () => startExercise("type")}, "Completar digitando"),
+      h("button", {type: "button", onclick: () => startExercise("transform")}, "Transforme"),
       h("button", {class: "quiet", type: "button", onclick: renderGrammarTables}, "Tabelas de consulta")),
     h("p", {class: "muted small-text gram-train-note", text: weak.length ? "Pontos fracos (abaixo de 80% nas últimas 10 respostas) entram primeiro." : total ? "" : "Os exercícios usam as frases do seu nível, primeiro as que você já viu."}));
   box.hidden = false;
@@ -693,6 +697,7 @@ function gramQuickItems(n = 8) {
     return true;
   };
   const pools = new Map(topics.map(id => [id, exPool(id)]));
+  for (const id of topics.filter(x => x === "v2" || x === "nebensatz")) for (const c of exPool(null)) { if (!used.has(c.id) && add(transformItem(c, id))) break; }
   for (let round = 0; round < 3 && out.length < n; round++) {
     for (const id of topics) {
       const pool = pools.get(id);
