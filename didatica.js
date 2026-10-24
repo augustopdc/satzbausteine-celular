@@ -310,10 +310,12 @@ function renderGrammarTopic(id) {
     h("button", {class: "quiet small", type: "button", onclick: renderGrammar}, "← Todos os tópicos"),
     h("h2", {text: t.title}),
     typeof gramInfoLine === "function" ? gramInfoLine(id) : null,
+    typeof gramErrSection === "function" ? gramErrSection(id) : null,
     ...grammarTopicContent(t, true),
     h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startTopicSession(id)}, "Treinar frases deste tópico"),
       typeof startExercise === "function" ? h("button", {type: "button", onclick: () => startExercise("build", id)}, "Montar a frase") : null,
-      hasForm ? h("button", {type: "button", onclick: () => startExercise("form", id)}, "Escolha a forma certa") : null));
+      hasForm ? h("button", {type: "button", onclick: () => startExercise("form", id)}, "Escolha a forma certa") : null,
+      hasForm ? h("button", {type: "button", onclick: () => startExercise("type", id)}, "Completar digitando") : null));
   window.scrollTo({top: 0});
 }
 function startTopicSession(id) {
