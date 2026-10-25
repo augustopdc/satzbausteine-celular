@@ -150,7 +150,7 @@ function levelStats() {
   const stats = {};
   for (const lv of LEVELS) stats[lv] = {total: 0, learned: 0, unseen: 0};
   for (const c of cards) {
-    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c)) continue;
+    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c) || isHiddenCard(c) || isProvaCard(c)) continue;
     const s = stats[tag(c, "Niveau")];
     if (!s) continue;
     s.total++;

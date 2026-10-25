@@ -1,13 +1,14 @@
 "use strict";
 /* Cenas: diálogos curtos para praticar conversas inteiras.
    Cada fala: [quem, alemão, português, tarefa]. quem = "o" (outra pessoa, voz do app) ou "m" (você).
-   A tarefa (só nas suas falas) diz em português o que você deve dizer. Áudio: audio-cenas/<id>-<n>.mp3 */
+   A tarefa (só nas suas falas) diz em português o que você deve dizer. Áudio: audio-cenas/<id>-<n>.mp3
+   (ElevenLabs desde out/2026: suas falas na voz do Otto, a outra pessoa na voz de other.voice). */
 const CENAS = [
-  {id: "c01", level: "A1", theme: "Dia a dia", title: "Conhecer uma vizinha", setting: "Na festa do prédio, uma vizinha puxa conversa com você.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c01", level: "A1", theme: "Dia a dia", title: "Conhecer uma vizinha", setting: "Na festa do prédio, uma vizinha puxa conversa com você.", other: {name: "Anna", voice: "mila"}, register: "du", lines: [
     ["o", "Hallo! Ich bin Anna. Wohnst du auch hier im Haus?", "Oi! Eu sou a Anna. Você também mora aqui no prédio?"],
     ["m", "Hallo, Anna! Ja, ich wohne im dritten Stock. Ich heiße Luiz.", "Oi, Anna! Sim, moro no terceiro andar. Eu me chamo Luiz.", "Cumprimente, diga que mora no terceiro andar e diga seu nome."],
     ["o", "Freut mich, Luiz! Woher kommst du?", "Prazer, Luiz! De onde você é?"],
-    ["m", "Ich komme aus Brasilien, aus São Paulo.", "Sou do Brasil, de São Paulo.", "Diga que é do Brasil, de São Paulo."],
+    ["m", "Ich komme aus Brasilien, aus Curitiba.", "Sou do Brasil, de Curitiba.", "Diga que é do Brasil, de Curitiba."],
     ["o", "Oh, toll! Und was machst du beruflich?", "Que legal! E o que você faz?"],
     ["m", "Ich bin Arzt. Ich lerne gerade Deutsch.", "Sou médico. Estou aprendendo alemão.", "Diga que é médico e que está aprendendo alemão."],
     ["o", "Dein Deutsch ist schon richtig gut!", "Seu alemão já está muito bom!"],
@@ -15,7 +16,7 @@ const CENAS = [
     ["o", "Wenn du Fragen zum Haus hast, klingel einfach bei mir.", "Se tiver dúvidas sobre o prédio, é só tocar a minha campainha."],
     ["m", "Das ist sehr nett. Bis bald, Anna!", "Muito gentil. Até logo, Anna!", "Diga que é muito gentil e despeça-se."]
   ]},
-  {id: "c02", level: "A1", theme: "Compras", title: "Na padaria", setting: "Você compra pão numa padaria de bairro.", other: {name: "Verkäuferin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c02", level: "A1", theme: "Compras", title: "Na padaria", setting: "Você compra pão numa padaria de bairro.", other: {name: "Verkäuferin", voice: "lisa"}, register: "Sie", lines: [
     ["o", "Guten Morgen! Was darf es sein?", "Bom dia! O que vai ser?"],
     ["m", "Guten Morgen! Ich hätte gern zwei Brötchen, bitte.", "Bom dia! Eu queria dois pãezinhos, por favor.", "Cumprimente e peça dois pãezinhos."],
     ["o", "Gern. Sonst noch etwas?", "Claro. Mais alguma coisa?"],
@@ -27,9 +28,9 @@ const CENAS = [
     ["o", "Ja, natürlich. Halten Sie die Karte einfach hier dran.", "Sim, claro. É só aproximar o cartão aqui."],
     ["m", "Danke schön. Einen schönen Tag noch!", "Muito obrigado. Tenha um bom dia!", "Agradeça e deseje um bom dia."]
   ]},
-  {id: "c03", level: "A2", theme: "Saúde", title: "Marcar consulta por telefone", setting: "Você liga para um consultório de clínica geral.", other: {name: "Frau Klein", voice: "katja"}, register: "Sie", lines: [
+  {id: "c03", level: "A2", theme: "Saúde", title: "Marcar consulta por telefone", setting: "Você liga para um consultório de clínica geral.", other: {name: "Frau Klein", voice: "mila"}, register: "Sie", lines: [
     ["o", "Praxis Doktor Weber, Sie sprechen mit Frau Klein. Was kann ich für Sie tun?", "Consultório do Dr. Weber, aqui é a Sra. Klein. Em que posso ajudar?"],
-    ["m", "Guten Tag, mein Name ist Luiz Silva. Ich möchte gern einen Termin vereinbaren.", "Boa tarde, meu nome é Luiz Silva. Gostaria de marcar uma consulta.", "Apresente-se e diga que quer marcar uma consulta."],
+    ["m", "Guten Tag, mein Name ist Luiz Domingues Caspechaque. Ich möchte gern einen Termin vereinbaren.", "Boa tarde, meu nome é Luiz Domingues Caspechaque. Gostaria de marcar uma consulta.", "Apresente-se e diga que quer marcar uma consulta."],
     ["o", "Sind Sie schon Patient bei uns?", "O senhor já é paciente nosso?"],
     ["m", "Nein, ich bin neu in der Stadt.", "Não, sou novo na cidade.", "Diga que não, que é novo na cidade."],
     ["o", "Worum geht es denn?", "Do que se trata?"],
@@ -41,7 +42,7 @@ const CENAS = [
     ["o", "Bitte bringen Sie Ihre Versichertenkarte mit.", "Por favor, traga seu cartão do seguro."],
     ["m", "Alles klar. Vielen Dank und auf Wiederhören!", "Certo. Muito obrigado e até logo!", "Confirme, agradeça e despeça-se como ao telefone."]
   ]},
-  {id: "c04", level: "A2", theme: "Burocracia", title: "Registro no Bürgeramt", setting: "Você vai registrar seu endereço na prefeitura.", other: {name: "Sachbearbeiter", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c04", level: "A2", theme: "Burocracia", title: "Registro no Bürgeramt", setting: "Você vai registrar seu endereço na prefeitura.", other: {name: "Sachbearbeiter", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Tag. Was kann ich für Sie tun?", "Bom dia. Em que posso ajudar?"],
     ["m", "Guten Tag. Ich möchte meinen Wohnsitz anmelden.", "Bom dia. Gostaria de registrar meu endereço.", "Diga que quer registrar seu endereço."],
     ["o", "Haben Sie die Wohnungsgeberbestätigung dabei?", "O senhor trouxe a declaração do locador?"],
@@ -49,13 +50,13 @@ const CENAS = [
     ["o", "Danke. Wann sind Sie eingezogen?", "Obrigado. Quando o senhor se mudou?"],
     ["m", "Am ersten Oktober.", "No dia primeiro de outubro.", "Diga: no dia primeiro de outubro."],
     ["o", "Wohnen Sie allein oder mit Familie?", "O senhor mora sozinho ou com a família?"],
-    ["m", "Ich wohne allein.", "Moro sozinho.", "Diga que mora sozinho."],
+    ["m", "Ich wohne mit meiner Freundin zusammen.", "Moro com a minha namorada.", "Diga que mora com a namorada."],
     ["o", "Gut. Hier ist Ihre Meldebescheinigung. Die Steuer-ID bekommen Sie per Post.", "Certo. Aqui está seu comprovante de registro. O número fiscal chega pelo correio."],
     ["m", "Wie lange dauert das ungefähr?", "Quanto tempo isso demora, mais ou menos?", "Pergunte quanto tempo isso demora."],
     ["o", "Normalerweise zwei bis drei Wochen.", "Normalmente, duas a três semanas."],
     ["m", "Vielen Dank für Ihre Hilfe!", "Muito obrigado pela ajuda!", "Agradeça a ajuda."]
   ]},
-  {id: "c05", level: "A2", theme: "Compras", title: "Na farmácia", setting: "Você está com dor de cabeça e vai à farmácia.", other: {name: "Apothekerin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c05", level: "A2", theme: "Compras", title: "Na farmácia", setting: "Você está com dor de cabeça e vai à farmácia.", other: {name: "Apothekerin", voice: "lisa"}, register: "Sie", lines: [
     ["o", "Guten Tag, wie kann ich Ihnen helfen?", "Boa tarde, como posso ajudar?"],
     ["m", "Guten Tag. Ich habe Kopfschmerzen und brauche ein Schmerzmittel.", "Boa tarde. Estou com dor de cabeça e preciso de um analgésico.", "Diga que está com dor de cabeça e precisa de um analgésico."],
     ["o", "Nehmen Sie noch andere Medikamente ein?", "O senhor toma outros remédios?"],
@@ -67,9 +68,9 @@ const CENAS = [
     ["o", "Nein, das ist rezeptfrei. Das macht fünf Euro neunzig.", "Não, é de venda livre. Fica cinco euros e noventa."],
     ["m", "Danke, auf Wiedersehen!", "Obrigado, até logo!", "Agradeça e despeça-se."]
   ]},
-  {id: "c06", level: "A2", theme: "Vizinhos", title: "O vizinho e o lixo", setting: "Um vizinho percebe que você errou a lixeira.", other: {name: "Herr Krüger", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c06", level: "A2", theme: "Vizinhos", title: "O vizinho e o lixo", setting: "Um vizinho percebe que você errou a lixeira.", other: {name: "Herr Krüger", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Entschuldigung, wohnen Sie neu hier?", "Com licença, o senhor é novo aqui?"],
-    ["m", "Ja, ich bin letzte Woche eingezogen. Ich heiße Silva.", "Sim, me mudei na semana passada. Meu nome é Silva.", "Diga que se mudou na semana passada e diga seu sobrenome."],
+    ["m", "Ja, ich bin letzte Woche eingezogen. Ich heiße Domingues Caspechaque.", "Sim, me mudei na semana passada. Meu nome é Domingues Caspechaque.", "Diga que se mudou na semana passada e diga seu sobrenome."],
     ["o", "Krüger, freut mich. Sie haben Ihren Karton in die falsche Tonne geworfen.", "Krüger, prazer. O senhor jogou sua caixa de papelão na lixeira errada."],
     ["m", "Oh, das tut mir leid! Welche Tonne ist denn für Papier?", "Ah, desculpe! Qual lixeira é para papel?", "Peça desculpas e pergunte qual lixeira é para papel."],
     ["o", "Die blaue. Plastik und Dosen kommen in die gelbe Tonne.", "A azul. Plástico e latas vão na lixeira amarela."],
@@ -79,8 +80,8 @@ const CENAS = [
     ["o", "Das glaube ich. Wenn Sie Fragen haben, klingeln Sie einfach.", "Imagino. Se tiver dúvidas, é só tocar a campainha."],
     ["m", "Das mache ich. Einen schönen Abend noch!", "Farei isso. Tenha uma boa noite!", "Diga que fará isso e deseje uma boa noite."]
   ]},
-  {id: "c07", level: "A2", theme: "Banco", title: "Abrir conta no banco", setting: "Você abre uma conta corrente para receber o salário.", other: {name: "Bankberater", voice: "killian"}, register: "Sie", lines: [
-    ["o", "Guten Tag, Herr Silva. Sie möchten ein Konto eröffnen?", "Boa tarde, Sr. Silva. O senhor quer abrir uma conta?"],
+  {id: "c07", level: "A2", theme: "Banco", title: "Abrir conta no banco", setting: "Você abre uma conta corrente para receber o salário.", other: {name: "Bankberater", voice: "helmut"}, register: "Sie", lines: [
+    ["o", "Guten Tag, Herr Domingues Caspechaque. Sie möchten ein Konto eröffnen?", "Boa tarde, Sr. Domingues Caspechaque. O senhor quer abrir uma conta?"],
     ["m", "Ja, genau. Ich brauche ein Girokonto für mein Gehalt.", "Sim, exatamente. Preciso de uma conta corrente para o meu salário.", "Confirme e diga que precisa de uma conta corrente para o salário."],
     ["o", "Kein Problem. Haben Sie Ihren Pass und die Meldebescheinigung dabei?", "Sem problemas. O senhor trouxe o passaporte e o comprovante de registro?"],
     ["m", "Ja, ich habe beides mitgebracht.", "Sim, trouxe os dois.", "Diga que trouxe os dois."],
@@ -93,7 +94,7 @@ const CENAS = [
     ["o", "Etwa eine Woche. Möchten Sie auch Online-Banking?", "Cerca de uma semana. O senhor também quer banco online?"],
     ["m", "Ja, gern. Vielen Dank!", "Sim, quero. Muito obrigado!", "Diga que sim e agradeça."]
   ]},
-  {id: "c08", level: "B1", theme: "Moradia", title: "Visitar um apartamento", setting: "Você visita um apartamento com a proprietária.", other: {name: "Frau Hoffmann", voice: "katja"}, register: "Sie", lines: [
+  {id: "c08", level: "B1", theme: "Moradia", title: "Visitar um apartamento", setting: "Você visita um apartamento com a proprietária.", other: {name: "Frau Hoffmann", voice: "mila"}, register: "Sie", lines: [
     ["o", "Kommen Sie herein! Das ist die Wohnung. Sie hat zwei Zimmer und einen Balkon.", "Entre! Este é o apartamento. Tem dois quartos e uma varanda."],
     ["m", "Sehr schön hell! Wie hoch ist die Kaltmiete?", "Muito claro! Qual é o aluguel sem despesas?", "Elogie a claridade e pergunte o valor do aluguel sem despesas."],
     ["o", "Die Kaltmiete beträgt 750 Euro, dazu kommen etwa 200 Euro Nebenkosten.", "O aluguel é de 750 euros, mais cerca de 200 euros de despesas."],
@@ -107,9 +108,9 @@ const CENAS = [
     ["o", "Das klingt gut. Schicken Sie mir bitte Ihre Unterlagen per E-Mail.", "Parece bom. Mande seus documentos por e-mail, por favor."],
     ["m", "Mache ich gern. Vielen Dank für die Besichtigung!", "Com prazer. Muito obrigado pela visita!", "Diga que fará isso com prazer e agradeça a visita."]
   ]},
-  {id: "c09", level: "B1", theme: "Hospital", title: "Primeiro dia na enfermaria", setting: "Você chega à enfermaria no seu primeiro dia de trabalho.", other: {name: "Schwester Maria", voice: "katja"}, register: "Sie", lines: [
+  {id: "c09", level: "B1", theme: "Hospital", title: "Primeiro dia na enfermaria", setting: "Você chega à enfermaria no seu primeiro dia de trabalho.", other: {name: "Schwester Maria", voice: "lisa"}, register: "Sie", lines: [
     ["o", "Guten Morgen! Sie müssen der neue Kollege sein.", "Bom dia! O senhor deve ser o colega novo."],
-    ["m", "Guten Morgen! Ja, ich bin Luiz Silva, der neue Assistenzarzt. Ich fange heute hier an.", "Bom dia! Sim, sou Luiz Silva, o novo médico assistente. Começo hoje aqui.", "Confirme, apresente-se como o novo médico assistente e diga que começa hoje."],
+    ["m", "Guten Morgen! Ja, ich bin Luiz Domingues Caspechaque, der neue Assistenzarzt. Ich fange heute hier an.", "Bom dia! Sim, sou Luiz Domingues Caspechaque, o novo médico assistente. Começo hoje aqui.", "Confirme, apresente-se como o novo médico assistente e diga que começa hoje."],
     ["o", "Herzlich willkommen! Ich bin Maria, ich leite heute die Schicht.", "Seja muito bem-vindo! Sou a Maria, hoje coordeno o turno."],
     ["m", "Freut mich. Wann beginnt die Visite?", "Prazer. Quando começa a visita?", "Diga que é um prazer e pergunte quando começa a visita."],
     ["o", "Um halb neun. Vorher ist die Übergabe im Stationszimmer.", "Às oito e meia. Antes há a passagem de plantão na sala da enfermaria."],
@@ -119,8 +120,8 @@ const CENAS = [
     ["o", "Gut. Und wenn Sie etwas nicht finden, fragen Sie einfach.", "Ótimo. E se não encontrar alguma coisa, é só perguntar."],
     ["m", "Danke, das ist sehr nett. Ich freue mich auf die Zusammenarbeit.", "Obrigado, muito gentil. Estou contente em trabalhar com vocês.", "Agradeça e diga que está contente com a parceria de trabalho."]
   ]},
-  {id: "c10", level: "B2", theme: "Medicina", title: "Anamnese: dor no peito", setting: "Você é o médico. O Sr. Becker, 58 anos, chega com pressão no peito.", other: {name: "Herr Becker", voice: "conrad"}, register: "Sie", lines: [
-    ["m", "Guten Tag, Herr Becker. Mein Name ist Silva, ich bin der Stationsarzt. Was führt Sie zu uns?", "Boa tarde, Sr. Becker. Meu nome é Silva, sou o médico da enfermaria. O que o traz aqui?", "Apresente-se como médico da enfermaria e pergunte o que o traz."],
+  {id: "c10", level: "B2", theme: "Medicina", title: "Anamnese: dor no peito", setting: "Você é o médico. O Sr. Becker, 58 anos, chega com pressão no peito.", other: {name: "Herr Becker", voice: "helmut"}, register: "Sie", lines: [
+    ["m", "Guten Tag, Herr Becker. Mein Name ist Domingues Caspechaque, ich bin der Stationsarzt. Was führt Sie zu uns?", "Boa tarde, Sr. Becker. Meu nome é Domingues Caspechaque, sou o médico da enfermaria. O que o traz aqui?", "Apresente-se como médico da enfermaria e pergunte o que o traz."],
     ["o", "Ich habe seit heute Morgen so einen Druck auf der Brust.", "Estou com uma pressão no peito desde hoje de manhã."],
     ["m", "Seit wann genau haben Sie diese Beschwerden?", "Desde quando exatamente o senhor tem essas queixas?", "Pergunte desde quando exatamente ele tem as queixas."],
     ["o", "Seit etwa sieben Uhr, als ich beim Frühstück saß.", "Desde umas sete horas, quando eu estava tomando café."],
@@ -138,8 +139,8 @@ const CENAS = [
     ["o", "Ist das etwas Ernstes, Herr Doktor?", "É algo grave, doutor?"],
     ["m", "Das kann ich noch nicht sagen, aber wir kümmern uns sofort darum.", "Ainda não posso dizer, mas vamos cuidar disso imediatamente.", "Diga que ainda não pode afirmar, mas que vão cuidar disso imediatamente."]
   ]},
-  {id: "c11", level: "B2", theme: "Medicina", title: "Anamnese: dor abdominal", setting: "Você é o médico. A Sra. Schulz, 34 anos, tem dor na barriga desde ontem.", other: {name: "Frau Schulz", voice: "katja"}, register: "Sie", lines: [
-    ["m", "Guten Tag, Frau Schulz. Ich bin Doktor Silva. Wo tut es Ihnen weh?", "Boa tarde, Sra. Schulz. Sou o Dr. Silva. Onde dói?", "Apresente-se e pergunte onde dói."],
+  {id: "c11", level: "B2", theme: "Medicina", title: "Anamnese: dor abdominal", setting: "Você é o médico. A Sra. Schulz, 34 anos, tem dor na barriga desde ontem.", other: {name: "Frau Schulz", voice: "mila"}, register: "Sie", lines: [
+    ["m", "Guten Tag, Frau Schulz. Ich bin Doktor Domingues Caspechaque. Wo tut es Ihnen weh?", "Boa tarde, Sra. Schulz. Sou o Dr. Domingues Caspechaque. Onde dói?", "Apresente-se e pergunte onde dói."],
     ["o", "Hier rechts oben im Bauch. Es hat gestern Abend angefangen.", "Aqui no lado direito, em cima, na barriga. Começou ontem à noite."],
     ["m", "Haben die Schmerzen nach dem Essen begonnen?", "A dor começou depois de comer?", "Pergunte se a dor começou depois de comer."],
     ["o", "Ja, nach dem Abendessen. Wir hatten Schweinebraten.", "Sim, depois do jantar. Comemos assado de porco."],
@@ -155,7 +156,7 @@ const CENAS = [
     ["o", "Muss ich operiert werden?", "Vou ter que ser operada?"],
     ["m", "Das entscheiden wir nach dem Ultraschall. Ich erkläre Ihnen dann alles genau.", "Vamos decidir isso depois do ultrassom. Então eu lhe explico tudo em detalhe.", "Diga que decidirão depois do ultrassom e que então explicará tudo."]
   ]},
-  {id: "c12", level: "B2", theme: "Medicina", title: "Explicar uma endoscopia", setting: "Você explica ao Sr. Yilmaz uma endoscopia digestiva alta.", other: {name: "Herr Yilmaz", voice: "killian"}, register: "Sie", lines: [
+  {id: "c12", level: "B2", theme: "Medicina", title: "Explicar uma endoscopia", setting: "Você explica ao Sr. Yilmaz uma endoscopia digestiva alta.", other: {name: "Herr Yilmaz", voice: "helmut"}, register: "Sie", lines: [
     ["m", "Herr Yilmaz, wir möchten bei Ihnen eine Magenspiegelung machen.", "Sr. Yilmaz, queremos fazer uma endoscopia no senhor.", "Diga que querem fazer uma endoscopia digestiva nele."],
     ["o", "Was ist das genau?", "O que é isso exatamente?"],
     ["m", "Wir schieben einen dünnen Schlauch mit einer kleinen Kamera über den Mund in den Magen und schauen uns die Schleimhaut an.", "Passamos um tubo fino com uma pequena câmera pela boca até o estômago e olhamos a mucosa.", "Explique o procedimento de forma simples."],
@@ -170,8 +171,8 @@ const CENAS = [
     ["o", "Und danach kann ich nach Hause fahren?", "E depois posso ir para casa dirigindo?"],
     ["m", "Nach der Beruhigungsspritze dürfen Sie 24 Stunden nicht selbst Auto fahren. Haben Sie noch Fragen?", "Depois da sedação, o senhor não pode dirigir por 24 horas. Tem mais alguma pergunta?", "Avise que não pode dirigir por 24 horas e pergunte se há dúvidas."]
   ]},
-  {id: "c13", level: "B2", theme: "Medicina", title: "Apresentar o caso à chefe", setting: "Você apresenta o Sr. Becker à médica sênior.", other: {name: "Dr. Brandt", voice: "amala"}, register: "Sie", lines: [
-    ["o", "Guten Morgen, Herr Silva. Was gibt es Neues?", "Bom dia, Sr. Silva. Quais são as novidades?"],
+  {id: "c13", level: "B2", theme: "Medicina", title: "Apresentar o caso à chefe", setting: "Você apresenta o Sr. Becker à médica sênior.", other: {name: "Dr. Brandt", voice: "lisa"}, register: "Sie", lines: [
+    ["o", "Guten Morgen, Herr Domingues Caspechaque. Was gibt es Neues?", "Bom dia, Sr. Domingues Caspechaque. Quais são as novidades?"],
     ["m", "Guten Morgen. Ich möchte Ihnen Herrn Becker vorstellen, einen 58-jährigen Patienten mit akuten Thoraxschmerzen.", "Bom dia. Gostaria de lhe apresentar o Sr. Becker, um paciente de 58 anos com dor torácica aguda.", "Apresente o paciente de 58 anos com dor torácica aguda."],
     ["o", "Erzählen Sie.", "Conte."],
     ["m", "Die Schmerzen sind retrosternal, drückend und strahlen in den linken Arm aus. Sie bestehen seit heute Morgen.", "A dor é retroesternal, em aperto, e irradia para o braço esquerdo. Existe desde hoje de manhã.", "Descreva a dor em termos técnicos e diga desde quando existe."],
@@ -185,7 +186,7 @@ const CENAS = [
     ["m", "Ich würde sofort das Herzkatheterlabor informieren und ihm ASS und Heparin geben.", "Eu acionaria imediatamente a hemodinâmica e daria AAS e heparina.", "Proponha acionar a hemodinâmica e dar AAS e heparina."],
     ["o", "Einverstanden. Rufen Sie gleich an.", "De acordo. Ligue agora mesmo."]
   ]},
-  {id: "c14", level: "B2", theme: "Medicina", title: "Passagem de plantão noturno", setting: "No fim do seu turno, você passa a enfermaria a uma colega.", other: {name: "Dr. Neumann", voice: "katja"}, register: "du", lines: [
+  {id: "c14", level: "B2", theme: "Medicina", title: "Passagem de plantão noturno", setting: "No fim do seu turno, você passa a enfermaria a uma colega.", other: {name: "Dr. Neumann", voice: "mila"}, register: "du", lines: [
     ["m", "Hallo, ich übergebe dir kurz die Station. Es gibt zwei Patienten, auf die du achten solltest.", "Oi, vou te passar a enfermaria rapidinho. Há dois pacientes em que você deveria prestar atenção.", "Diga que vai passar a enfermaria e que há dois pacientes para ficar de olho."],
     ["o", "Okay, schieß los.", "Ok, pode falar."],
     ["m", "In Zimmer 12 liegt Herr Becker mit einem Herzinfarkt. Er hat gestern Nachmittag einen Stent bekommen.", "No quarto 12 está o Sr. Becker, com infarto. Ele recebeu um stent ontem à tarde.", "Diga que no quarto 12 está o Sr. Becker, com infarto, e que recebeu um stent ontem à tarde."],
@@ -199,33 +200,33 @@ const CENAS = [
     ["m", "Nein, sonst ist alles ruhig. Einen ruhigen Dienst!", "Não, fora isso está tudo tranquilo. Bom plantão!", "Diga que o resto está tranquilo e deseje um bom plantão."]
   ]},
   // ---------- Curso Nicos Weg (A1): uma cena por capítulo, só com a gramática vista até ele (nw = capítulo) ----------
-  {id: "c15", nw: 1, level: "A1", theme: "Conhecendo pessoas", title: "Primeiro dia no curso", setting: "No primeiro dia do curso de alemão, um colega puxa conversa.", other: {name: "Lukas", voice: "killian"}, register: "du", lines: [
+  {id: "c15", nw: 1, level: "A1", theme: "Conhecendo pessoas", title: "Primeiro dia no curso", setting: "No primeiro dia do curso de alemão, um colega puxa conversa.", other: {name: "Lukas", voice: "helmut"}, register: "du", lines: [
     ["o", "Hallo! Ich bin Lukas. Und wie heißt du?", "Oi! Eu sou o Lukas. E como você se chama?"],
     ["m", "Hallo, Lukas! Ich heiße Luiz.", "Oi, Lukas! Eu me chamo Luiz.", "Cumprimente o Lukas e diga o seu nome."],
     ["o", "Freut mich, Luiz. Woher kommst du?", "Prazer, Luiz. De onde você é?"],
     ["m", "Ich komme aus Brasilien. Und du?", "Sou do Brasil. E você?", "Diga que é do Brasil e devolva a pergunta."],
-    ["o", "Ich komme aus Österreich, aus Wien. Was machst du hier in Berlin?", "Sou da Áustria, de Viena. O que você faz aqui em Berlim?"],
+    ["o", "Ich komme aus Österreich, aus Wien. Was machst du hier in Deutschland?", "Sou da Áustria, de Viena. O que você está fazendo aqui na Alemanha?"],
     ["m", "Ich lerne Deutsch. Ich bin Arzt.", "Estou aprendendo alemão. Sou médico.", "Diga que está aprendendo alemão e que é médico."],
     ["o", "Toll! Und wo wohnst du?", "Legal! E onde você mora?"],
-    ["m", "Ich wohne in Kreuzberg. Und du?", "Moro em Kreuzberg. E você?", "Diga que mora em Kreuzberg e devolva a pergunta."],
-    ["o", "Ich wohne auch in Kreuzberg! Das ist ja lustig.", "Eu também moro em Kreuzberg! Que engraçado."],
+    ["m", "Ich wohne in der Nähe vom Bahnhof. Und du?", "Moro perto da estação. E você?", "Diga que mora perto da estação e devolva a pergunta."],
+    ["o", "Ich wohne auch in der Nähe vom Bahnhof! Das ist ja lustig.", "Eu também moro perto da estação! Que engraçado."],
     ["m", "Ja, wirklich! Bis morgen im Kurs, Lukas!", "Pois é! Até amanhã no curso, Lukas!", "Concorde e despeça-se até amanhã no curso."]
   ]},
-  {id: "c16", nw: 2, level: "A1", theme: "Contatos", title: "Inscrição no curso", setting: "Na secretaria da escola de idiomas, você faz a inscrição no curso.", other: {name: "Frau Weber", voice: "katja"}, register: "Sie", lines: [
+  {id: "c16", nw: 2, level: "A1", theme: "Contatos", title: "Inscrição no curso", setting: "Na secretaria da escola de idiomas, você faz a inscrição no curso.", other: {name: "Frau Weber", voice: "lisa"}, register: "Sie", lines: [
     ["o", "Guten Tag! Wie heißen Sie, bitte?", "Bom dia! Como o senhor se chama, por favor?"],
     ["m", "Guten Tag! Ich heiße Luiz Augusto.", "Bom dia! Eu me chamo Luiz Augusto.", "Cumprimente e diga o seu nome completo."],
     ["o", "Wie schreibt man Augusto? Buchstabieren Sie bitte.", "Como se escreve Augusto? Soletre, por favor."],
-    ["m", "A, U, G, U, S, T, O.", "A, U, G, U, S, T, O.", "Soletre o sobrenome Augusto."],
+    ["m", "A, U, G, U, S, T, O.", "A, U, G, U, S, T, O.", "Soletre o seu segundo nome, Augusto."],
     ["o", "Danke. Und wie ist Ihre Telefonnummer?", "Obrigada. E qual é o seu telefone?"],
     ["m", "Null eins sieben sechs, zwei drei vier, fünf sechs sieben.", "Zero um sete seis, dois três quatro, cinco seis sete.", "Diga o número 0176 234 567."],
     ["o", "Und die Adresse?", "E o endereço?"],
-    ["m", "Bergstraße zwölf, eins null neun neun neun Berlin.", "Bergstraße, 12, CEP 10999, Berlim.", "Diga o endereço: Bergstraße 12, CEP 10999, Berlim."],
+    ["m", "Bergstraße zwölf, Postleitzahl eins null neun neun neun.", "Rua Berg, 12, CEP 10999.", "Diga o endereço: Bergstraße 12, CEP 10999."],
     ["o", "Wie alt sind Sie?", "Quantos anos o senhor tem?"],
     ["m", "Ich bin dreiunddreißig Jahre alt.", "Tenho trinta e três anos.", "Diga que tem 33 anos."],
     ["o", "Danke schön. Der Kurs beginnt am Montag um neun Uhr.", "Muito obrigada. O curso começa na segunda-feira, às nove horas."],
     ["m", "Vielen Dank! Auf Wiedersehen!", "Muito obrigado! Até logo!", "Agradeça e despeça-se formalmente."]
   ]},
-  {id: "c17", nw: 3, level: "A1", theme: "Em companhia", title: "No café", setting: "Você entra num café e pede algo para beber e comer.", other: {name: "Kellner", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c17", nw: 3, level: "A1", theme: "Em companhia", title: "No café", setting: "Você entra num café e pede algo para beber e comer.", other: {name: "Kellner", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Tag! Was möchten Sie trinken?", "Boa tarde! O que o senhor deseja beber?"],
     ["m", "Einen Kaffee mit Milch, bitte.", "Um café com leite, por favor.", "Peça um café com leite."],
     ["o", "Gern. Möchten Sie auch etwas essen?", "Claro. Deseja comer alguma coisa também?"],
@@ -238,19 +239,19 @@ const CENAS = [
     ["m", "Sieben Euro, bitte. Stimmt so.", "Sete euros, por favor. Pode ficar com o troco.", "Pague sete euros e diga que ele pode ficar com o troco."],
     ["o", "Vielen Dank! Guten Appetit!", "Muito obrigado! Bom apetite!"]
   ]},
-  {id: "c18", nw: 4, level: "A1", theme: "Países e idiomas", title: "Onde fica o Brasil?", setting: "No intervalo do curso, uma colega pergunta sobre o Brasil.", other: {name: "Jana", voice: "katja"}, register: "du", lines: [
-    ["o", "Luiz, wo liegt eigentlich São Paulo?", "Luiz, onde fica São Paulo, afinal?"],
-    ["m", "São Paulo liegt im Südosten von Brasilien.", "São Paulo fica no sudeste do Brasil.", "Diga que São Paulo fica no sudeste do Brasil."],
+  {id: "c18", nw: 4, level: "A1", theme: "Países e idiomas", title: "Onde fica o Brasil?", setting: "No intervalo do curso, uma colega pergunta sobre o Brasil.", other: {name: "Jana", voice: "mila"}, register: "du", lines: [
+    ["o", "Luiz, wo liegt eigentlich Curitiba?", "Luiz, onde fica Curitiba, afinal?"],
+    ["m", "Curitiba liegt im Süden von Brasilien.", "Curitiba fica no sul do Brasil.", "Diga que Curitiba fica no sul do Brasil."],
     ["o", "Und welche Sprache spricht man in Brasilien?", "E que língua se fala no Brasil?"],
     ["m", "Man spricht Portugiesisch.", "Fala-se português.", "Diga que lá se fala português."],
     ["o", "Sprichst du auch Spanisch?", "Você fala espanhol também?"],
-    ["m", "Ein bisschen. Englisch spreche ich gut.", "Um pouco. Inglês eu falo bem.", "Diga que fala um pouco e que fala bem inglês."],
+    ["m", "Ein bisschen. Spanisch ist ähnlich wie Portugiesisch.", "Um pouco. Espanhol é parecido com português.", "Diga que fala um pouco e que espanhol é parecido com português."],
     ["o", "Warst du schon einmal in Deutschland?", "Você já esteve na Alemanha alguma vez?"],
-    ["m", "Ja, ich war schon in Berlin und in München.", "Sim, já estive em Berlim e em Munique.", "Diga que já esteve em Berlim e em Munique."],
-    ["o", "Und wie war es?", "E como foi?"],
-    ["m", "Es war super, aber sehr kalt!", "Foi ótimo, mas muito frio!", "Diga que foi ótimo, mas muito frio."]
+    ["m", "Nein, noch nicht. Aber bald ziehe ich nach Deutschland!", "Não, ainda não. Mas logo vou me mudar para a Alemanha!", "Diga que ainda não, mas que logo vai se mudar para a Alemanha."],
+    ["o", "Toll! In welche Stadt?", "Que legal! Para que cidade?"],
+    ["m", "Das wissen wir noch nicht. Hoffentlich ist es dort nicht so kalt!", "Ainda não sabemos. Espero que lá não seja tão frio!", "Diga que vocês ainda não sabem e que espera que lá não seja tão frio."]
   ]},
-  {id: "c19", nw: 5, level: "A1", theme: "Objetos", title: "Na loja de eletrônicos", setting: "O cabo do carregador do seu celular quebrou. Você vai a uma loja.", other: {name: "Verkäufer", voice: "killian"}, register: "Sie", lines: [
+  {id: "c19", nw: 5, level: "A1", theme: "Objetos", title: "Na loja de eletrônicos", setting: "O cabo do carregador do seu celular quebrou. Você vai a uma loja.", other: {name: "Verkäufer", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Tag! Kann ich Ihnen helfen?", "Bom dia! Posso ajudar?"],
     ["m", "Ja, bitte. Das Ladekabel ist kaputt.", "Sim, por favor. O cabo do carregador está quebrado.", "Diga que o cabo do carregador está quebrado."],
     ["o", "Ist das ein Samsung oder ein iPhone?", "É um Samsung ou um iPhone?"],
@@ -262,7 +263,7 @@ const CENAS = [
     ["o", "Zahlen Sie bar oder mit Karte?", "O senhor paga em dinheiro ou com cartão?"],
     ["m", "Mit Karte, bitte.", "Com cartão, por favor.", "Diga que vai pagar com cartão."]
   ]},
-  {id: "c20", nw: 6, level: "A1", theme: "Moradia", title: "O apartamento novo", setting: "Uma amiga liga para saber do seu apartamento novo.", other: {name: "Paula", voice: "amala"}, register: "du", lines: [
+  {id: "c20", nw: 6, level: "A1", theme: "Moradia", title: "O apartamento novo", setting: "Uma amiga liga para saber do seu apartamento novo.", other: {name: "Paula", voice: "lisa"}, register: "du", lines: [
     ["o", "Hallo Luiz! Und, wie ist die Wohnung?", "Oi, Luiz! E aí, como é o apartamento?"],
     ["m", "Sie ist klein, aber sehr hell.", "É pequeno, mas bem claro.", "Diga que é pequeno, mas bem claro."],
     ["o", "Hat sie einen Balkon?", "Tem varanda?"],
@@ -274,7 +275,7 @@ const CENAS = [
     ["o", "Mein Bruder hat ein Sofa. Er braucht es nicht mehr.", "Meu irmão tem um sofá. Ele não precisa mais dele."],
     ["m", "Wirklich? Das ist toll! Danke, Paula!", "Sério? Que ótimo! Obrigado, Paula!", "Reaja com alegria e agradeça."]
   ]},
-  {id: "c21", nw: 7, level: "A1", theme: "Dias e horários", title: "Como é o seu dia?", setting: "Um colega do curso quer saber como é o seu dia.", other: {name: "Tim", voice: "conrad"}, register: "du", lines: [
+  {id: "c21", nw: 7, level: "A1", theme: "Dias e horários", title: "Como é o seu dia?", setting: "Um colega do curso quer saber como é o seu dia.", other: {name: "Tim", voice: "helmut"}, register: "du", lines: [
     ["o", "Luiz, wann stehst du auf?", "Luiz, a que horas você acorda?"],
     ["m", "Ich stehe um sechs Uhr auf.", "Acordo às seis horas.", "Diga que acorda às seis."],
     ["o", "So früh! Und was machst du dann?", "Tão cedo! E o que você faz depois?"],
@@ -286,7 +287,7 @@ const CENAS = [
     ["o", "Lecker! Was kochst du am Sonntag?", "Que delícia! O que você cozinha no domingo?"],
     ["m", "Feijoada! Das ist ein Gericht aus Brasilien.", "Feijoada! É um prato do Brasil.", "Diga que faz feijoada, um prato do Brasil."]
   ]},
-  {id: "c22", nw: 8, level: "A1", theme: "Compromissos", title: "Marcar a aula", setting: "Você marca a próxima aula com a sua professora particular.", other: {name: "Lisa", voice: "katja"}, register: "du", lines: [
+  {id: "c22", nw: 8, level: "A1", theme: "Compromissos", title: "Marcar a aula", setting: "Você marca a próxima aula com a sua professora particular.", other: {name: "Lisa", voice: "mila"}, register: "du", lines: [
     ["o", "Hallo Luiz! Hast du morgen Zeit?", "Oi, Luiz! Você tem tempo amanhã?"],
     ["m", "Morgen kann ich leider nicht. Ich habe Dienst.", "Amanhã infelizmente não posso. Estou de plantão.", "Diga que amanhã não pode porque está de plantão."],
     ["o", "Schade. Und am Donnerstag?", "Que pena. E na quinta?"],
@@ -298,7 +299,7 @@ const CENAS = [
     ["o", "Super. Dann bis Donnerstag um halb fünf!", "Ótimo. Então até quinta, às quatro e meia!"],
     ["m", "Bis Donnerstag, Lisa! Ich komme nicht zu spät.", "Até quinta, Lisa! Não vou chegar atrasado.", "Despeça-se e prometa não chegar atrasado."]
   ]},
-  {id: "c23", nw: 9, level: "A1", theme: "Vida profissional", title: "Entrevista no hospital", setting: "Você chega a um hospital alemão para uma entrevista de emprego e fala com o porteiro.", other: {name: "Pförtner", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c23", nw: 9, level: "A1", theme: "Vida profissional", title: "Entrevista no hospital", setting: "Você chega a um hospital alemão para uma entrevista de emprego e fala com o porteiro.", other: {name: "Pförtner", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Morgen! Kann ich Ihnen helfen?", "Bom dia! Posso ajudar?"],
     ["m", "Guten Morgen! Ich habe um neun Uhr ein Vorstellungsgespräch.", "Bom dia! Tenho uma entrevista de emprego às nove.", "Diga que tem uma entrevista de emprego às nove."],
     ["o", "Bei wem denn?", "Com quem?"],
@@ -310,7 +311,7 @@ const CENAS = [
     ["o", "Dort, neben der Treppe. Viel Erfolg!", "Ali, ao lado da escada. Boa sorte!"],
     ["m", "Vielen Dank! Einen schönen Tag noch!", "Muito obrigado! Tenha um bom dia!", "Agradeça e deseje um bom dia."]
   ]},
-  {id: "c24", nw: 10, level: "A1", theme: "Orientação", title: "Como chego à estação?", setting: "Na rua, você pergunta a uma senhora como chegar à estação central.", other: {name: "Passantin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c24", nw: 10, level: "A1", theme: "Orientação", title: "Como chego à estação?", setting: "Na rua, você pergunta a uma senhora como chegar à estação central.", other: {name: "Passantin", voice: "elisabeth"}, register: "Sie", lines: [
     ["m", "Entschuldigung, wie komme ich zum Hauptbahnhof?", "Com licença, como chego à estação central?", "Peça licença e pergunte como chegar à estação central."],
     ["o", "Zu Fuß ist es weit. Nehmen Sie am besten den Bus.", "A pé é longe. O melhor é pegar o ônibus."],
     ["m", "Wo ist die Haltestelle?", "Onde fica o ponto?", "Pergunte onde fica o ponto de ônibus."],
@@ -322,7 +323,7 @@ const CENAS = [
     ["m", "Super, vielen Dank für die Hilfe!", "Ótimo, muito obrigado pela ajuda!", "Agradeça pela ajuda."],
     ["o", "Gern geschehen!", "Por nada!"]
   ]},
-  {id: "c25", nw: 11, level: "A1", theme: "Comida e lazer", title: "Planos para o fim de semana", setting: "Um amigo quer combinar algo para o fim de semana.", other: {name: "Jonas", voice: "killian"}, register: "du", lines: [
+  {id: "c25", nw: 11, level: "A1", theme: "Comida e lazer", title: "Planos para o fim de semana", setting: "Um amigo quer combinar algo para o fim de semana.", other: {name: "Jonas", voice: "helmut"}, register: "du", lines: [
     ["o", "Hey Luiz, was machst du gern am Wochenende?", "E aí, Luiz, o que você gosta de fazer no fim de semana?"],
     ["m", "Ich gehe gern schwimmen, und ich koche gern.", "Gosto de nadar e de cozinhar.", "Diga que gosta de ir nadar e de cozinhar."],
     ["o", "Ich gehe lieber wandern. Kommst du am Samstag mit?", "Eu prefiro fazer trilha. Vem junto no sábado?"],
@@ -334,7 +335,7 @@ const CENAS = [
     ["o", "Perfekt! Ich bringe einen Nachtisch mit.", "Perfeito! Eu levo uma sobremesa."],
     ["m", "Super! Bis Samstag!", "Ótimo! Até sábado!", "Comemore e despeça-se até sábado."]
   ]},
-  {id: "c26", nw: 12, level: "A1", theme: "Alimentos", title: "Na feira", setting: "Você compra frutas e verduras numa feira.", other: {name: "Marktverkäufer", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c26", nw: 12, level: "A1", theme: "Alimentos", title: "Na feira", setting: "Você compra frutas e verduras numa feira.", other: {name: "Marktverkäufer", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Morgen! Was darf es sein?", "Bom dia! O que vai ser?"],
     ["m", "Ich möchte ein Kilo Tomaten, bitte.", "Queria um quilo de tomates, por favor.", "Peça um quilo de tomates."],
     ["o", "Gern. Sonst noch etwas?", "Claro. Mais alguma coisa?"],
@@ -347,7 +348,7 @@ const CENAS = [
     ["m", "Hier sind zehn Euro.", "Aqui estão dez euros.", "Entregue dez euros."],
     ["o", "Und siebzig Cent zurück. Schönes Wochenende!", "E setenta centavos de troco. Bom fim de semana!"]
   ]},
-  {id: "c27", nw: 13, level: "A1", theme: "Clima e férias", title: "Como foram as férias?", setting: "Depois das férias, uma colega pergunta como foi a sua viagem.", other: {name: "Sarah", voice: "katja"}, register: "du", lines: [
+  {id: "c27", nw: 13, level: "A1", theme: "Clima e férias", title: "Como foram as férias?", setting: "Depois das férias, uma colega pergunta como foi a sua viagem.", other: {name: "Sarah", voice: "lisa"}, register: "du", lines: [
     ["o", "Hallo Luiz! Wie war dein Urlaub?", "Oi, Luiz! Como foram as suas férias?"],
     ["m", "Sehr schön! Ich bin nach Hamburg gefahren.", "Muito boas! Fui para Hamburgo.", "Diga que foram muito boas e que foi para Hamburgo."],
     ["o", "Toll! Und was hast du dort gemacht?", "Legal! E o que você fez lá?"],
@@ -359,7 +360,7 @@ const CENAS = [
     ["o", "Und im Winter? Wohin fährst du dann?", "E no inverno? Para onde você vai?"],
     ["m", "Im Winter fliege ich nach Brasilien. Dort ist dann Sommer!", "No inverno vou para o Brasil. Lá é verão nessa época!", "Diga que no inverno vai de avião para o Brasil, onde é verão."]
   ]},
-  {id: "c28", nw: 14, level: "A1", theme: "Roupas", title: "Uma jaqueta para o inverno", setting: "Numa loja de roupas, você procura uma jaqueta para o inverno.", other: {name: "Verkäuferin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c28", nw: 14, level: "A1", theme: "Roupas", title: "Uma jaqueta para o inverno", setting: "Numa loja de roupas, você procura uma jaqueta para o inverno.", other: {name: "Verkäuferin", voice: "mila"}, register: "Sie", lines: [
     ["o", "Guten Tag! Suchen Sie etwas Bestimmtes?", "Boa tarde! Procura algo específico?"],
     ["m", "Ja, ich suche eine warme Jacke für den Winter.", "Sim, procuro uma jaqueta quente para o inverno.", "Diga que procura uma jaqueta quente para o inverno."],
     ["o", "Welche Größe haben Sie?", "Qual é o seu tamanho?"],
@@ -371,19 +372,19 @@ const CENAS = [
     ["o", "Neunundachtzig Euro. Heute gibt es zwanzig Prozent Rabatt.", "Oitenta e nove euros. Hoje tem vinte por cento de desconto."],
     ["m", "Prima, dann nehme ich die blaue Jacke.", "Ótimo, então levo a jaqueta azul.", "Diga que então leva a jaqueta azul."]
   ]},
-  {id: "c29", nw: 15, level: "A1", theme: "Família", title: "Fotos da família", setting: "A vizinha Anna vê uma foto no seu celular e pergunta sobre a sua família.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c29", nw: 15, level: "A1", theme: "Família", title: "Fotos da família", setting: "A vizinha Anna vê uma foto no seu celular e pergunta sobre a sua família.", other: {name: "Anna", voice: "lisa"}, register: "du", lines: [
     ["o", "Oh, ein Foto! Wer ist das?", "Ah, uma foto! Quem é?"],
     ["m", "Das ist meine Familie in Brasilien.", "É a minha família no Brasil.", "Diga que é a sua família no Brasil."],
     ["o", "Ist das deine Mutter?", "Essa é a sua mãe?"],
     ["m", "Ja, das ist meine Mutter, und neben ihr steht mein Vater.", "Sim, é minha mãe, e ao lado dela está meu pai.", "Confirme e diga que ao lado dela está o seu pai."],
     ["o", "Und die junge Frau hier?", "E a moça aqui?"],
-    ["m", "Das ist meine Schwester. Sie ist Lehrerin und hat zwei Kinder.", "É minha irmã. Ela é professora e tem dois filhos.", "Diga que é a sua irmã, que é professora e tem dois filhos."],
+    ["m", "Das ist meine Schwester Ariadne. Und das ist mein Bruder Alexandre.", "É a minha irmã Ariadne. E esse é o meu irmão Alexandre.", "Diga que é a sua irmã Ariadne e mostre o seu irmão Alexandre."],
     ["o", "Siehst du deine Familie oft?", "Você vê a sua família com frequência?"],
-    ["m", "Nein, leider nicht. Aber ich rufe sie jeden Sonntag an.", "Não, infelizmente. Mas ligo para eles todo domingo.", "Diga que infelizmente não, mas que liga para eles todo domingo."],
+    ["m", "Nein, leider nicht. Aber wir telefonieren oft per Video.", "Não, infelizmente não. Mas a gente se fala muito por vídeo.", "Diga que infelizmente não, mas que vocês se falam muito por vídeo."],
     ["o", "Und dein Bruder? Besucht er dich mal?", "E o seu irmão? Ele vem te visitar algum dia?"],
-    ["m", "Ja, im Sommer. Meine Mutter sagt, er soll mich besuchen.", "Sim, no verão. Minha mãe diz que ele tem que me visitar.", "Diga que sim, no verão: a sua mãe diz que ele tem que te visitar."]
+    ["m", "Hoffentlich im Sommer! Dann zeige ich ihm die Stadt.", "Espero que no verão! Aí eu mostro a cidade para ele.", "Diga que espera que no verão e que vai mostrar a cidade para ele."]
   ]},
-  {id: "c30", nw: 16, level: "A1", theme: "Esporte e fitness", title: "Primeiro dia na academia", setting: "Primeiro dia na academia: o treinador faz algumas perguntas.", other: {name: "Max", voice: "conrad"}, register: "du", lines: [
+  {id: "c30", nw: 16, level: "A1", theme: "Esporte e fitness", title: "Primeiro dia na academia", setting: "Primeiro dia na academia: o treinador faz algumas perguntas.", other: {name: "Max", voice: "helmut"}, register: "du", lines: [
     ["o", "Hallo! Ich bin Max, dein Trainer. Machst du oft Sport?", "Oi! Sou o Max, seu treinador. Você pratica esporte com frequência?"],
     ["m", "Nicht so oft. Ich arbeite viel und habe wenig Zeit.", "Não muito. Trabalho muito e tenho pouco tempo.", "Diga que não muito: trabalha muito e tem pouco tempo."],
     ["o", "Wann kannst du trainieren?", "Quando você pode treinar?"],
@@ -395,8 +396,8 @@ const CENAS = [
     ["o", "Zuerst zehn Minuten Fahrrad, dann zeige ich dir die Geräte.", "Primeiro dez minutos de bicicleta, depois te mostro os aparelhos."],
     ["m", "Super, dann los!", "Ótimo, então vamos!", "Mostre animação para começar."]
   ]},
-  {id: "c31", nw: 17, level: "A1", theme: "Saúde", title: "Doente no médico de família", setting: "Você está doente e vai ao médico de família — desta vez, como paciente.", other: {name: "Frau Doktor Wagner", voice: "katja"}, register: "Sie", lines: [
-    ["o", "Guten Tag, Herr Augusto. Was fehlt Ihnen?", "Boa tarde, senhor Augusto. O que o senhor tem?"],
+  {id: "c31", nw: 17, level: "A1", theme: "Saúde", title: "Doente no médico de família", setting: "Você está doente e vai ao médico de família — desta vez, como paciente.", other: {name: "Frau Doktor Wagner", voice: "mila"}, register: "Sie", lines: [
+    ["o", "Guten Tag, Herr Domingues Caspechaque. Was fehlt Ihnen?", "Boa tarde, senhor Domingues Caspechaque. O que o senhor tem?"],
     ["m", "Ich habe Halsschmerzen und Fieber.", "Estou com dor de garganta e febre.", "Diga que está com dor de garganta e febre."],
     ["o", "Seit wann haben Sie das?", "Desde quando o senhor está assim?"],
     ["m", "Seit zwei Tagen. Ich bin sehr müde.", "Há dois dias. Estou muito cansado.", "Diga que é há dois dias e que está muito cansado."],
@@ -408,20 +409,20 @@ const CENAS = [
     ["m", "In Ordnung. Vielen Dank, Frau Doktor.", "Está bem. Muito obrigado, doutora.", "Aceite e agradeça à doutora."],
     ["o", "Gute Besserung!", "Melhoras!"]
   ]},
-  {id: "c32", nw: 18, level: "A1", theme: "Uma nova pátria", title: "Um ano na Alemanha", setting: "Um ano depois, o Lukas do curso pergunta como é a sua vida na Alemanha.", other: {name: "Lukas", voice: "killian"}, register: "du", lines: [
+  {id: "c32", nw: 18, level: "A1", theme: "Uma nova pátria", title: "Um ano na Alemanha", setting: "Um ano depois, o Lukas do curso pergunta como é a sua vida na Alemanha.", other: {name: "Lukas", voice: "helmut"}, register: "du", lines: [
     ["o", "Luiz, du wohnst jetzt ein Jahr hier. Wie gefällt dir Deutschland?", "Luiz, você mora aqui há um ano. Está gostando da Alemanha?"],
     ["m", "Es gefällt mir sehr gut. Die Stadt ist schön und sicher.", "Estou gostando muito. A cidade é bonita e segura.", "Diga que está gostando muito: a cidade é bonita e segura."],
     ["o", "Was ist hier anders als in Brasilien?", "O que é diferente aqui em relação ao Brasil?"],
     ["m", "Das Wetter! Und die Leute sind hier ruhiger.", "O clima! E as pessoas aqui são mais calmas.", "Diga que é o clima e que as pessoas aqui são mais calmas."],
     ["o", "Und was fehlt dir?", "E do que você sente falta?"],
-    ["m", "Meine Familie fehlt mir. Und das Essen von meiner Mutter!", "Sinto falta da minha família. E da comida da minha mãe!", "Diga que sente falta da família e da comida da sua mãe."],
+    ["m", "Meine Familie fehlt mir. Und das Churrasco!", "Sinto falta da minha família. E do churrasco!", "Diga que sente falta da família e do churrasco."],
     ["o", "Das verstehe ich. Und was ist dein Traum?", "Entendo. E qual é o seu sonho?"],
     ["m", "Ich würde gern hier in einem Krankenhaus als Arzt arbeiten.", "Eu gostaria de trabalhar como médico num hospital aqui.", "Diga que gostaria de trabalhar como médico num hospital aqui."],
     ["o", "Das schaffst du bestimmt! Dein Deutsch ist schon super.", "Você com certeza consegue! Seu alemão já está ótimo."],
     ["m", "Danke! Ich hätte gern noch mehr Zeit zum Lernen.", "Obrigado! Eu queria ter ainda mais tempo para estudar.", "Agradeça e diga que gostaria de ter mais tempo para estudar."]
   ]},
   // ---------- Nicos Weg A2: uma cena por capítulo (campo nw2), com a gramática vista até ele ----------
-  {id: "c33", nw2: 1, level: "A2", theme: "Dinheiro e banco", title: "Abrir uma conta", setting: "No banco, você abre a sua primeira conta corrente na Alemanha.", other: {name: "Herr Schulz", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c33", nw2: 1, level: "A2", theme: "Dinheiro e banco", title: "Abrir uma conta", setting: "No banco, você abre a sua primeira conta corrente na Alemanha.", other: {name: "Herr Schulz", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Tag! Was kann ich für Sie tun?", "Bom dia! Em que posso ajudar?"],
     ["m", "Guten Tag! Ich möchte ein Girokonto eröffnen, weil ich hier arbeite.", "Bom dia! Quero abrir uma conta corrente, porque trabalho aqui.", "Diga que quer abrir uma conta corrente porque trabalha aqui."],
     ["o", "Gern. Haben Sie Ihren Pass und die Meldebescheinigung dabei?", "Claro. O senhor está com o passaporte e o comprovante de registro de endereço?"],
@@ -436,21 +437,21 @@ const CENAS = [
     ["m", "Vielen Dank! Wann kann ich die erste Überweisung machen?", "Muito obrigado! Quando posso fazer a primeira transferência?", "Agradeça e pergunte quando pode fazer a primeira transferência."],
     ["o", "Sobald Sie die Zugangsdaten für die App haben, also in ein paar Tagen.", "Assim que o senhor tiver os dados de acesso do aplicativo, ou seja, em poucos dias."]
   ]},
-  {id: "c34", nw2: 2, level: "A2", theme: "Família e gerações", title: "Fotos da família", setting: "Uma colega do curso vê uma foto da sua família no celular.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c34", nw2: 2, level: "A2", theme: "Família e gerações", title: "Fotos da família", setting: "Uma colega do curso vê uma foto da sua família no celular.", other: {name: "Anna", voice: "lisa"}, register: "du", lines: [
     ["o", "Ist das ein Foto von deiner Familie?", "Essa é uma foto da sua família?"],
-    ["m", "Ja, das sind meine Eltern und meine jüngere Schwester.", "Sim, são meus pais e minha irmã mais nova.", "Diga que são seus pais e sua irmã mais nova."],
-    ["o", "Deine Schwester sieht dir ähnlich! Was macht sie?", "Sua irmã se parece com você! O que ela faz?"],
-    ["m", "Sie studiert Jura in São Paulo. Sie hat lange dunkle Haare wie meine Mutter.", "Ela estuda Direito em São Paulo. Tem cabelo comprido e escuro, como minha mãe.", "Diga que ela estuda Direito em São Paulo e tem cabelo comprido e escuro como sua mãe."],
+    ["m", "Ja, das sind meine Eltern und meine Großeltern.", "Sim, são os meus pais e os meus avós.", "Diga que são os seus pais e os seus avós."],
+    ["o", "Deine Mutter sieht dir ähnlich! Wie heißt sie?", "Sua mãe se parece com você! Como ela se chama?"],
+    ["m", "Sie heißt Adriana, und mein Vater heißt auch Luiz.", "Ela se chama Adriana, e o meu pai também se chama Luiz.", "Diga que ela se chama Adriana e que o seu pai também se chama Luiz."],
     ["o", "Und wer ist der ältere Mann neben deinem Vater?", "E quem é o senhor ao lado do seu pai?"],
-    ["m", "Das ist mein Opa. Er ist schon achtzig, aber noch sehr fit.", "É o meu avô. Ele já tem oitenta anos, mas ainda está muito em forma.", "Diga que é seu avô, que tem oitenta anos e ainda está em forma."],
-    ["o", "Toll! Wohnt er allein?", "Que legal! Ele mora sozinho?"],
-    ["m", "Nein, er wohnt bei meinen Eltern. In Brasilien wohnen oft drei Generationen zusammen.", "Não, ele mora com meus pais. No Brasil muitas vezes três gerações moram juntas.", "Diga que ele mora com seus pais e que no Brasil muitas vezes três gerações moram juntas."],
+    ["m", "Das ist mein Opa Antônio, und daneben steht meine Oma Irene.", "É o meu avô Antônio, e ao lado está a minha avó Irene.", "Diga que é o seu avô Antônio e que ao lado está a sua avó Irene."],
+    ["o", "Toll! Wohnen sie bei deinen Eltern?", "Que legal! Eles moram com os seus pais?"],
+    ["m", "Nein, sie wohnen in Ponta Grossa. Dort bin ich geboren.", "Não, eles moram em Ponta Grossa. Foi lá que eu nasci.", "Diga que eles moram em Ponta Grossa, onde você nasceu."],
     ["o", "Hier ziehen viele alte Menschen ins Pflegeheim.", "Aqui muitos idosos vão para uma casa de repouso."],
-    ["m", "Ich weiß. Meine Mutter sagt, ich soll Opa jede Woche anrufen.", "Eu sei. Minha mãe diz que eu devo ligar para o vovô toda semana.", "Diga que sabe e que sua mãe diz que você deve ligar para o avô toda semana."],
+    ["m", "Bei uns sagt man: Die Familie soll zusammenhalten.", "Lá em casa se diz: a família deve ficar unida.", "Diga que no Brasil se diz que a família deve ficar unida (use soll)."],
     ["o", "Das ist eine schöne Idee.", "É uma bela ideia."],
-    ["m", "Ja, und Opas Geschichten sind immer lustig!", "Sim, e as histórias do vovô são sempre engraçadas!", "Concorde e diga que as histórias do avô são sempre engraçadas."]
+    ["m", "Ja, und ich vermisse sie jetzt schon!", "Sim, e já estou com saudade deles!", "Concorde e diga que já está com saudade deles."]
   ]},
-  {id: "c35", nw2: 3, level: "A2", theme: "Morar junto e vizinhança", title: "Barulho à noite", setting: "O vizinho de baixo toca a sua campainha: ontem à noite a sua casa estava barulhenta.", other: {name: "Herr Becker", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c35", nw2: 3, level: "A2", theme: "Morar junto e vizinhança", title: "Barulho à noite", setting: "O vizinho de baixo toca a sua campainha: ontem à noite a sua casa estava barulhenta.", other: {name: "Herr Becker", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Entschuldigung, wohnen Sie in der Wohnung über mir?", "Com licença, o senhor mora no apartamento em cima do meu?"],
     ["m", "Ja, genau. Ich bin letzten Monat eingezogen. Gibt es ein Problem?", "Sim, isso. Me mudei no mês passado. Algum problema?", "Confirme, diga que se mudou no mês passado e pergunte se há algum problema."],
     ["o", "Na ja, gestern Abend war es sehr laut. Ich konnte nicht schlafen.", "Bem, ontem à noite estava muito barulhento. Não consegui dormir."],
@@ -463,9 +464,9 @@ const CENAS = [
     ["m", "Gern! Wir planen übrigens ein Hoffest. Machen Sie mit?", "Combinado! Aliás, estamos planejando uma festa no pátio. O senhor participa?", "Aceite e convide-o para a festa no pátio que vocês estão planejando."],
     ["o", "Ein Hoffest? Da bin ich gern dabei!", "Uma festa no pátio? Estou dentro!"]
   ]},
-  {id: "c36", nw2: 4, level: "A2", theme: "Viagens e hotel", title: "Check-in no hotel", setting: "Você chega à noite a um hotel onde reservou um quarto.", other: {name: "Frau Krüger", voice: "amala"}, register: "Sie", lines: [
+  {id: "c36", nw2: 4, level: "A2", theme: "Viagens e hotel", title: "Check-in no hotel", setting: "Você chega à noite a um hotel onde reservou um quarto.", other: {name: "Frau Krüger", voice: "mila"}, register: "Sie", lines: [
     ["o", "Guten Abend! Herzlich willkommen im Hotel am See.", "Boa noite! Seja bem-vindo ao Hotel am See."],
-    ["m", "Guten Abend! Ich habe ein Einzelzimmer für zwei Nächte reserviert. Mein Name ist Augusto.", "Boa noite! Reservei um quarto individual para duas noites. Meu nome é Augusto.", "Cumprimente, diga que reservou um quarto individual para duas noites e diga seu nome."],
+    ["m", "Guten Abend! Ich habe ein Einzelzimmer für zwei Nächte reserviert. Mein Name ist Domingues Caspechaque.", "Boa noite! Reservei um quarto individual para duas noites. Meu nome é Domingues Caspechaque.", "Cumprimente, diga que reservou um quarto individual para duas noites e diga seu nome."],
     ["o", "Einen Moment … Ja, hier ist Ihre Reservierung. Zimmer zweihundertvier, im zweiten Stock.", "Um momento… Sim, aqui está sua reserva. Quarto 204, no segundo andar."],
     ["m", "Danke. Ab wann gibt es Frühstück?", "Obrigado. A partir de que horas tem café da manhã?", "Agradeça e pergunte a partir de que horas tem café da manhã."],
     ["o", "Von sieben bis zehn Uhr, im Restaurant neben der Rezeption.", "Das sete às dez, no restaurante ao lado da recepção."],
@@ -477,21 +478,21 @@ const CENAS = [
     ["o", "Kein Problem. Brauchen Sie sonst noch etwas?", "Sem problema. Precisa de mais alguma coisa?"],
     ["m", "Nein, danke. Das ist alles. Einen schönen Abend noch!", "Não, obrigado. É só isso. Uma boa noite!", "Diga que é só isso e deseje uma boa noite."]
   ]},
-  {id: "c37", nw2: 5, level: "A2", theme: "Rotina e tempo livre", title: "Sem tempo no fim de semana", setting: "Um amigo convida você para um churrasco, mas a sua semana está cheia.", other: {name: "Jonas", voice: "killian"}, register: "du", lines: [
+  {id: "c37", nw2: 5, level: "A2", theme: "Rotina e tempo livre", title: "Sem tempo no fim de semana", setting: "Um amigo convida você para um churrasco, mas a sua semana está cheia.", other: {name: "Jonas", voice: "helmut"}, register: "du", lines: [
     ["o", "Hey Luiz! Hast du am Samstag Zeit? Wir wollen grillen.", "E aí, Luiz! Você tem tempo no sábado? A gente quer fazer churrasco."],
     ["m", "Leider nicht. Am Samstag habe ich Dienst im Krankenhaus.", "Infelizmente não. No sábado estou de plantão no hospital.", "Diga que infelizmente não: no sábado está de plantão no hospital."],
     ["o", "Schade! Und am Sonntag?", "Que pena! E no domingo?"],
     ["m", "Am Sonntag muss ich mich ausruhen. Ich bin total müde.", "No domingo preciso descansar. Estou exausto.", "Diga que no domingo precisa descansar porque está exausto."],
     ["o", "Du arbeitest wirklich zu viel. Wofür interessierst du dich eigentlich in deiner Freizeit?", "Você trabalha demais mesmo. Pelo que você se interessa no tempo livre?"],
-    ["m", "Ich interessiere mich für Musik. Und ich laufe gern im Park.", "Eu me interesso por música. E gosto de correr no parque.", "Diga que se interessa por música e gosta de correr no parque."],
-    ["o", "Ich auch! Wollen wir nächste Woche zusammen laufen gehen?", "Eu também! Vamos correr juntos na semana que vem?"],
+    ["m", "Ich interessiere mich für Fußball und Musik. Und ich spiele gern Brettspiele.", "Eu me interesso por futebol e música. E gosto de jogar jogos de tabuleiro.", "Diga que se interessa por futebol e música e que gosta de jogos de tabuleiro."],
+    ["o", "Ich auch! Wollen wir nächste Woche zusammen ein Spiel spielen?", "Eu também! Vamos jogar alguma coisa juntos semana que vem?"],
     ["m", "Gute Idee! Ich freue mich darauf.", "Boa ideia! Estou animado.", "Aceite e diga que está animado com isso."],
-    ["o", "Am Mittwoch um sieben Uhr morgens?", "Na quarta às sete da manhã?"],
-    ["m", "Das ist mir zu früh! Geht es auch um neun?", "Para mim é cedo demais! Pode ser às nove?", "Diga que é cedo demais e pergunte se pode ser às nove."],
-    ["o", "Klar. Dann treffen wir uns um neun am Eingang vom Park.", "Claro. Então nos encontramos às nove na entrada do parque."],
+    ["o", "Am Mittwoch um sieben Uhr abends?", "Na quarta às sete da noite?"],
+    ["m", "Da habe ich noch Dienst! Geht es auch um neun?", "Nessa hora ainda estou de plantão! Pode ser às nove?", "Diga que ainda está de plantão nesse horário e pergunte se pode ser às nove."],
+    ["o", "Klar. Dann treffen wir uns um neun bei mir.", "Claro. Então a gente se encontra às nove na minha casa."],
     ["m", "Super, bis Mittwoch!", "Ótimo, até quarta!", "Concorde e despeça-se até quarta."]
   ]},
-  {id: "c38", nw2: 6, level: "A2", theme: "Associações e o que importa", title: "Entrar num coral", setting: "Você visita o ensaio de um coral do bairro e conversa com a responsável.", other: {name: "Frau Hoffmann", voice: "katja"}, register: "Sie", lines: [
+  {id: "c38", nw2: 6, level: "A2", theme: "Associações e o que importa", title: "Entrar num coral", setting: "Você visita o ensaio de um coral do bairro e conversa com a responsável.", other: {name: "Frau Hoffmann", voice: "lisa"}, register: "Sie", lines: [
     ["o", "Hallo, Sie sind neu hier, oder? Möchten Sie bei unserem Chor mitmachen?", "Olá, o senhor é novo aqui, não é? Quer participar do nosso coral?"],
     ["m", "Ja, gern. Ich singe gern, aber ich habe noch nie in einem Chor gesungen.", "Sim, com prazer. Gosto de cantar, mas nunca cantei num coral.", "Diga que sim, que gosta de cantar, mas nunca cantou num coral."],
     ["o", "Das macht nichts. Bei uns kann jeder mitsingen.", "Não tem problema. Aqui qualquer um pode cantar junto."],
@@ -505,9 +506,9 @@ const CENAS = [
     ["o", "Zwanzig Euro im Jahr. Sie können aber erst mal zweimal kostenlos kommen.", "Vinte euros por ano. Mas o senhor pode vir duas vezes de graça primeiro."],
     ["m", "Prima, dann komme ich nächsten Donnerstag!", "Ótimo, então venho na próxima quinta!", "Diga que ótimo e que vem na próxima quinta."]
   ]},
-  {id: "c39", nw2: 7, level: "A2", theme: "Internet e reclamações", title: "Reclamar do roteador", setting: "Você liga para o atendimento ao cliente porque o roteador novo não funciona.", other: {name: "Herr Neumann", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c39", nw2: 7, level: "A2", theme: "Internet e reclamações", title: "Reclamar do roteador", setting: "Você liga para o atendimento ao cliente porque o roteador novo não funciona.", other: {name: "Herr Neumann", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Kundenservice, mein Name ist Neumann. Was kann ich für Sie tun?", "Atendimento ao cliente, meu nome é Neumann. Em que posso ajudar?"],
-    ["m", "Guten Tag, hier ist Augusto. Ich habe letzte Woche einen Router bei Ihnen bestellt.", "Bom dia, aqui é o Augusto. Na semana passada encomendei um roteador de vocês.", "Cumprimente, diga seu nome e que encomendou um roteador deles na semana passada."],
+    ["m", "Guten Tag, hier ist Domingues Caspechaque. Ich habe letzte Woche einen Router bei Ihnen bestellt.", "Bom dia, aqui é o Domingues Caspechaque. Na semana passada encomendei um roteador de vocês.", "Cumprimente, diga seu nome e que encomendou um roteador deles na semana passada."],
     ["o", "Ja, und gibt es ein Problem?", "Sim, e há algum problema?"],
     ["m", "Leider funktioniert das Internet nicht. Die Verbindung bricht ständig ab.", "Infelizmente a internet não funciona. A conexão cai o tempo todo.", "Diga que a internet não funciona e que a conexão cai o tempo todo."],
     ["o", "Wie oft passiert das?", "Com que frequência isso acontece?"],
@@ -520,7 +521,7 @@ const CENAS = [
     ["m", "Perfekt. Können Sie mir das bitte per E-Mail bestätigen?", "Perfeito. Pode me confirmar isso por e-mail, por favor?", "Diga que está perfeito e peça a confirmação por e-mail."],
     ["o", "Natürlich. Sie bekommen gleich eine E-Mail.", "Claro. O senhor vai receber um e-mail agora mesmo."]
   ]},
-  {id: "c40", nw2: 8, level: "A2", theme: "Restaurante e cozinha", title: "Jantar fora", setting: "Num restaurante típico, você pergunta pelos pratos e pede a conta.", other: {name: "Kellnerin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c40", nw2: 8, level: "A2", theme: "Restaurante e cozinha", title: "Jantar fora", setting: "Num restaurante típico, você pergunta pelos pratos e pede a conta.", other: {name: "Kellnerin", voice: "mila"}, register: "Sie", lines: [
     ["o", "Guten Abend! Haben Sie schon gewählt?", "Boa noite! Já escolheu?"],
     ["m", "Noch nicht ganz. Was ist das Gericht, das dort auf der Tafel steht?", "Ainda não. Que prato é esse que está ali no quadro?", "Diga que ainda não e pergunte pelo prato que está no quadro."],
     ["o", "Das sind Maultaschen, eine Spezialität aus Schwaben.", "São Maultaschen, uma especialidade da Suábia."],
@@ -536,7 +537,7 @@ const CENAS = [
     ["o", "Zusammen sind das achtzehn Euro fünfzig.", "No total são dezoito euros e cinquenta."],
     ["m", "Zwanzig, bitte. Stimmt so!", "Vinte, por favor. Pode ficar com o troco!", "Pague vinte euros e diga que pode ficar com o troco."]
   ]},
-  {id: "c41", nw2: 9, level: "A2", theme: "Amizades e relacionamentos", title: "Fazer amigos", setting: "Uma amiga pergunta se você já fez amizades na cidade nova.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c41", nw2: 9, level: "A2", theme: "Amizades e relacionamentos", title: "Fazer amigos", setting: "Uma amiga pergunta se você já fez amizades na cidade nova.", other: {name: "Anna", voice: "lisa"}, register: "du", lines: [
     ["o", "Luiz, wie geht es dir? Hast du hier schon Freunde gefunden?", "Luiz, como você está? Já fez amigos aqui?"],
     ["m", "Ehrlich gesagt, noch nicht so viele. Am Anfang war es ziemlich schwer.", "Sinceramente, ainda não muitos. No começo foi bem difícil.", "Diga que sinceramente ainda não muitos e que no começo foi bem difícil."],
     ["o", "Das kenne ich. Deutsche brauchen oft ein bisschen Zeit.", "Sei como é. Os alemães muitas vezes precisam de um pouco de tempo."],
@@ -550,7 +551,7 @@ const CENAS = [
     ["o", "Das ist lieb. Also, am Freitag Kino?", "Que fofo. Então, cinema na sexta?"],
     ["m", "Abgemacht!", "Combinado!", "Diga que está combinado."]
   ]},
-  {id: "c42", nw2: 10, level: "A2", theme: "Cidade, mudança e acidentes", title: "Dia de mudança", setting: "Um amigo ajuda você a arrumar o apartamento novo.", other: {name: "Jonas", voice: "killian"}, register: "du", lines: [
+  {id: "c42", nw2: 10, level: "A2", theme: "Cidade, mudança e acidentes", title: "Dia de mudança", setting: "Um amigo ajuda você a arrumar o apartamento novo.", other: {name: "Jonas", voice: "helmut"}, register: "du", lines: [
     ["o", "Wohin soll ich den Karton stellen?", "Onde eu ponho a caixa?"],
     ["m", "Stell ihn bitte in die Küche, auf den Tisch.", "Põe na cozinha, por favor, em cima da mesa.", "Peça que ele ponha a caixa na cozinha, em cima da mesa."],
     ["o", "Okay. Und das Sofa?", "Certo. E o sofá?"],
@@ -564,7 +565,7 @@ const CENAS = [
     ["o", "Gute Idee. Hängst du das Bild heute noch an die Wand?", "Boa ideia. Você ainda pendura o quadro na parede hoje?"],
     ["m", "Nein, das mache ich morgen. Jetzt bestellen wir eine Pizza!", "Não, isso eu faço amanhã. Agora vamos pedir uma pizza!", "Diga que isso fica para amanhã e que agora vão pedir uma pizza."]
   ]},
-  {id: "c43", nw2: 11, level: "A2", theme: "Antes e hoje", title: "Como era antigamente", setting: "Uma vizinha idosa conta como era a vida quando ela era jovem.", other: {name: "Frau Schmidt", voice: "katja"}, register: "Sie", lines: [
+  {id: "c43", nw2: 11, level: "A2", theme: "Antes e hoje", title: "Como era antigamente", setting: "Uma vizinha idosa conta como era a vida quando ela era jovem.", other: {name: "Frau Schmidt", voice: "elisabeth"}, register: "Sie", lines: [
     ["o", "Als ich jung war, gab es hier keine Supermärkte, nur kleine Läden.", "Quando eu era jovem, aqui não havia supermercados, só lojinhas."],
     ["m", "Wirklich? Wie haben Sie damals eingekauft?", "Sério? Como a senhora fazia compras naquela época?", "Mostre surpresa e pergunte como ela fazia compras naquela época."],
     ["o", "Wir kauften fast jeden Tag frisch ein. Einen Kühlschrank hatten nicht alle.", "Comprávamos coisas frescas quase todo dia. Nem todos tinham geladeira."],
@@ -572,15 +573,15 @@ const CENAS = [
     ["o", "Nein, ich durfte nicht studieren. Mein Vater wollte das nicht.", "Não, não me deixaram estudar. Meu pai não queria."],
     ["m", "Das ist schade. Heute studieren mehr Frauen als Männer, glaube ich.", "Que pena. Hoje mais mulheres do que homens fazem faculdade, acho.", "Lamente e diga que acha que hoje mais mulheres do que homens fazem faculdade."],
     ["o", "Ja, heute ist vieles anders. Und in Brasilien, wie war es früher?", "Sim, hoje muita coisa é diferente. E no Brasil, como era antigamente?"],
-    ["m", "Als meine Oma jung war, musste sie schon mit fünfzehn arbeiten.", "Quando minha avó era jovem, ela já tinha que trabalhar com quinze anos.", "Conte que, quando sua avó era jovem, ela já tinha que trabalhar com quinze anos."],
+    ["m", "Bei uns war es ähnlich. Viele Menschen mussten schon als Kinder arbeiten.", "No Brasil era parecido. Muita gente tinha que trabalhar já criança.", "Diga que no Brasil era parecido: muita gente tinha que trabalhar já criança."],
     ["o", "Das war damals überall so. Das Leben war härter.", "Naquela época era assim em todo lugar. A vida era mais dura."],
     ["m", "Sie erzählen immer so schön von früher!", "A senhora sempre conta coisas tão bonitas de antigamente!", "Elogie o jeito como ela conta as histórias de antigamente."],
     ["o", "Danke! Kommen Sie doch mal auf einen Kaffee vorbei, dann zeige ich Ihnen alte Fotos.", "Obrigada! Passe aqui para um café, aí eu lhe mostro fotos antigas."],
     ["m", "Sehr gern, Frau Schmidt!", "Com muito prazer, dona Schmidt!", "Aceite o convite."]
   ]},
-  {id: "c44", nw2: 12, level: "A2", theme: "Profissão e candidatura", title: "Entrevista no hospital", setting: "Você tem uma entrevista para uma Hospitation (estágio de observação) na clínica médica de um hospital.", other: {name: "Dr. Wagner", voice: "conrad"}, register: "Sie", lines: [
-    ["o", "Guten Tag, Herr Augusto. Bitte setzen Sie sich. Erzählen Sie doch etwas über sich.", "Bom dia, senhor Augusto. Sente-se, por favor. Fale um pouco sobre o senhor."],
-    ["m", "Gern. Ich bin Arzt aus Brasilien und habe fünf Jahre in der Notaufnahme gearbeitet.", "Claro. Sou médico brasileiro e trabalhei cinco anos no pronto-socorro.", "Apresente-se: médico brasileiro, cinco anos de pronto-socorro."],
+  {id: "c44", nw2: 12, level: "A2", theme: "Profissão e candidatura", title: "Entrevista no hospital", setting: "Você tem uma entrevista para uma Hospitation (estágio de observação) na clínica médica de um hospital.", other: {name: "Dr. Wagner", voice: "helmut"}, register: "Sie", lines: [
+    ["o", "Guten Tag, Herr Domingues Caspechaque. Bitte setzen Sie sich. Erzählen Sie doch etwas über sich.", "Bom dia, senhor Domingues Caspechaque. Sente-se, por favor. Fale um pouco sobre o senhor."],
+    ["m", "Gern. Ich bin Arzt aus Brasilien und arbeite seit 2021 als Hausarzt.", "Com prazer. Sou médico brasileiro e trabalho como médico de família desde 2021.", "Apresente-se: médico brasileiro, médico de família desde 2021."],
     ["o", "Warum möchten Sie in Deutschland arbeiten?", "Por que o senhor quer trabalhar na Alemanha?"],
     ["m", "Ich möchte in der Inneren Medizin arbeiten, denn das Fach interessiert mich sehr.", "Quero trabalhar na clínica médica, porque a especialidade me interessa muito.", "Diga que quer trabalhar na clínica médica, porque a especialidade o interessa muito (use denn)."],
     ["o", "Und wie gut ist Ihr Deutsch schon?", "E como está o seu alemão?"],
@@ -594,7 +595,7 @@ const CENAS = [
     ["o", "Natürlich. Wir melden uns nächste Woche bei Ihnen.", "Claro. Entramos em contato com o senhor na semana que vem."],
     ["m", "Vielen Dank für das Gespräch. Auf Wiedersehen!", "Muito obrigado pela conversa. Até logo!", "Agradeça pela conversa e despeça-se."]
   ]},
-  {id: "c45", nw2: 13, level: "A2", theme: "Cultura na cidade", title: "Visita guiada", setting: "Numa visita guiada por Halle, a guia mostra a casa onde nasceu o compositor Händel.", other: {name: "Stadtführerin", voice: "amala"}, register: "Sie", lines: [
+  {id: "c45", nw2: 13, level: "A2", theme: "Cultura na cidade", title: "Visita guiada", setting: "Numa visita guiada por Halle, a guia mostra a casa onde nasceu o compositor Händel.", other: {name: "Stadtführerin", voice: "mila"}, register: "Sie", lines: [
     ["o", "Und hier sehen Sie das Geburtshaus von Georg Friedrich Händel.", "E aqui os senhores veem a casa onde nasceu Georg Friedrich Händel."],
     ["m", "Händel? Der Komponist? Wann wurde er geboren?", "Händel? O compositor? Quando ele nasceu?", "Pergunte se é o compositor e quando ele nasceu."],
     ["o", "Im Jahr sechzehnhundertfünfundachtzig. Später lebte er lange in London.", "Em 1685. Mais tarde ele viveu muito tempo em Londres."],
@@ -608,7 +609,7 @@ const CENAS = [
     ["o", "Jetzt gehen wir zum Marktplatz. Dort machen wir eine kleine Pause.", "Agora vamos para a praça do mercado. Lá fazemos uma pausa."],
     ["m", "Super, ich brauche einen Kaffee!", "Ótimo, preciso de um café!", "Comemore a pausa e diga que precisa de um café."]
   ]},
-  {id: "c46", nw2: 14, level: "A2", theme: "Festas e feriados", title: "Réveillon", setting: "Uma amiga pergunta o que você vai fazer no Ano-Novo.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c46", nw2: 14, level: "A2", theme: "Festas e feriados", title: "Réveillon", setting: "Uma amiga pergunta o que você vai fazer no Ano-Novo.", other: {name: "Anna", voice: "lisa"}, register: "du", lines: [
     ["o", "Was machst du an Silvester?", "O que você vai fazer no Réveillon?"],
     ["m", "Ich weiß noch nicht. Wie feiert man hier Silvester?", "Ainda não sei. Como se comemora o Réveillon aqui?", "Diga que ainda não sabe e pergunte como se comemora o Réveillon aqui."],
     ["o", "Viele feiern mit Freunden zu Hause. Um Mitternacht gibt es ein Feuerwerk.", "Muita gente comemora com amigos em casa. À meia-noite tem fogos."],
@@ -622,7 +623,7 @@ const CENAS = [
     ["o", "Bring einfach etwas zu trinken mit.", "Traz só alguma coisa para beber."],
     ["m", "Mache ich! Ich freue mich schon darauf.", "Pode deixar! Já estou animado.", "Confirme e diga que já está animado com isso."]
   ]},
-  {id: "c47", nw2: 15, level: "A2", theme: "Presentes e roupas", title: "Presente para a colega", setting: "Um colega de trabalho e você combinam o presente de aniversário de uma colega.", other: {name: "Jonas", voice: "killian"}, register: "du", lines: [
+  {id: "c47", nw2: 15, level: "A2", theme: "Presentes e roupas", title: "Presente para a colega", setting: "Um colega de trabalho e você combinam o presente de aniversário de uma colega.", other: {name: "Jonas", voice: "helmut"}, register: "du", lines: [
     ["o", "Sabine hat am Freitag Geburtstag. Was schenken wir ihr?", "A Sabine faz aniversário na sexta. O que vamos dar para ela?"],
     ["m", "Wie wäre es mit einem Buch? Sie liest doch so gern.", "Que tal um livro? Ela gosta tanto de ler.", "Sugira um livro, porque ela gosta muito de ler (use Wie wäre es mit…)."],
     ["o", "Hm, Bücher hat sie schon viele. Wir könnten ihr einen Gutschein schenken.", "Hum, livros ela já tem muitos. Poderíamos dar um vale-presente."],
@@ -636,7 +637,7 @@ const CENAS = [
     ["o", "Und Blumen? Wollen wir ihr auch einen Blumenstrauß mitbringen?", "E flores? Levamos também um buquê para ela?"],
     ["m", "Ja, warum nicht? Den bringe ich ihr am Freitag mit.", "Sim, por que não? Esse eu levo para ela na sexta.", "Concorde e diga que você leva o buquê para ela na sexta."]
   ]},
-  {id: "c48", nw2: 16, level: "A2", theme: "Cinema", title: "Conversa sobre um filme", setting: "Uma amiga quer saber como foi o filme que você viu ontem.", other: {name: "Anna", voice: "katja"}, register: "du", lines: [
+  {id: "c48", nw2: 16, level: "A2", theme: "Cinema", title: "Conversa sobre um filme", setting: "Uma amiga quer saber como foi o filme que você viu ontem.", other: {name: "Anna", voice: "mila"}, register: "du", lines: [
     ["o", "Wie war der Film gestern?", "Como foi o filme ontem?"],
     ["m", "Super! Es ist ein Film über eine Ärztin, die in einem kleinen Dorf arbeitet.", "Ótimo! É um filme sobre uma médica que trabalha numa cidadezinha.", "Diga que foi ótimo: é um filme sobre uma médica que trabalha numa cidadezinha."],
     ["o", "Klingt interessant. Wer spielt die Hauptrolle?", "Parece interessante. Quem faz o papel principal?"],
@@ -651,7 +652,7 @@ const CENAS = [
     ["m", "Nein, einmal reicht! Aber nächste Woche kommt eine Komödie, die ich sehen möchte.", "Não, uma vez basta! Mas semana que vem estreia uma comédia que eu quero ver.", "Recuse (uma vez basta) e conte que na semana que vem estreia uma comédia que quer ver."],
     ["o", "Gut, dann gehen wir zusammen in die Komödie!", "Tá bom, então vamos juntos ver a comédia!"]
   ]},
-  {id: "c49", nw2: 17, level: "A2", theme: "Emoções, opinião e futebol", title: "O jogo de ontem", setting: "Um amigo torcedor comenta com você o jogo do time da cidade.", other: {name: "Jonas", voice: "killian"}, register: "du", lines: [
+  {id: "c49", nw2: 17, level: "A2", theme: "Emoções, opinião e futebol", title: "O jogo de ontem", setting: "Um amigo torcedor comenta com você o jogo do time da cidade.", other: {name: "Jonas", voice: "helmut"}, register: "du", lines: [
     ["o", "Hast du das Spiel gestern gesehen?", "Você viu o jogo ontem?"],
     ["m", "Ja! Ich bin immer noch sauer auf den Schiedsrichter.", "Vi! Ainda estou bravo com o juiz.", "Diga que viu e que ainda está bravo com o juiz."],
     ["o", "Ich auch! Das war nie im Leben ein Elfmeter!", "Eu também! Aquilo nunca foi pênalti!"],
@@ -665,7 +666,7 @@ const CENAS = [
     ["o", "Hoffentlich! Gehen wir am Samstag zusammen ins Stadion?", "Tomara! Vamos juntos ao estádio no sábado?"],
     ["m", "Klar! Ich bin schon gespannt auf das Spiel.", "Claro! Já estou ansioso pelo jogo.", "Aceite e diga que já está ansioso pelo jogo."]
   ]},
-  {id: "c50", nw2: 18, level: "A2", theme: "Tecnologia e invenções", title: "Comprar um aspirador robô", setting: "Numa loja de eletrônicos, você pede informações sobre um aspirador robô.", other: {name: "Herr Yilmaz", voice: "conrad"}, register: "Sie", lines: [
+  {id: "c50", nw2: 18, level: "A2", theme: "Tecnologia e invenções", title: "Comprar um aspirador robô", setting: "Numa loja de eletrônicos, você pede informações sobre um aspirador robô.", other: {name: "Herr Yilmaz", voice: "helmut"}, register: "Sie", lines: [
     ["o", "Guten Tag! Kann ich Ihnen helfen?", "Bom dia! Posso ajudar?"],
     ["m", "Ja, ich suche einen Saugroboter, der auch wischen kann.", "Sim, procuro um aspirador robô que também passe pano.", "Diga que procura um aspirador robô que também passe pano."],
     ["o", "Dieser hier ist sehr beliebt. Er saugt und wischt, und er wird per App gesteuert.", "Este aqui é muito procurado. Aspira e passa pano, e é controlado pelo aplicativo."],
@@ -679,5 +680,113 @@ const CENAS = [
     ["o", "Zweihundertneunundneunzig Euro. Diese Woche gibt es zehn Prozent Rabatt.", "Duzentos e noventa e nove euros. Esta semana tem dez por cento de desconto."],
     ["m", "Gut, ich nehme ihn. Kann er auch nach Hause geliefert werden?", "Certo, vou levar. Ele pode ser entregue em casa?", "Diga que vai levar e pergunte se pode ser entregue em casa (passiva)."],
     ["o", "Natürlich. Ab hundert Euro ist die Lieferung kostenlos.", "Claro. Acima de cem euros a entrega é grátis."]
+  ]},
+  /* Cenas da auditoria do catálogo (out/2026), escritas pelo Claude: revisar com o tutor. Vozes do ElevenLabs. */
+  {id: "c51", nw: 2, level: "A1", theme: "Contatos", title: "Registro no Bürgeramt com a Helena", setting: "Primeira semana na Alemanha. Você e a Helena vão ao Bürgeramt registrar o endereço.", other: {name: "Frau Krämer", voice: "lisa"}, register: "Sie", lines: [
+    ["o", "Guten Tag! Was kann ich für Sie tun?", "Bom dia! Em que posso ajudar?"],
+    ["m", "Guten Tag! Wir möchten uns anmelden. Wir sind neu in der Stadt.", "Bom dia! Queremos fazer o registro. Somos novos na cidade.", "Cumprimente e diga que vocês querem se registrar e são novos na cidade."],
+    ["o", "Willkommen! Ihre Pässe, bitte. Ist das Ihre Frau?", "Bem-vindos! Os passaportes, por favor. Esta é a sua esposa?"],
+    ["m", "Nein, Helena ist meine Freundin. Hier sind unsere Pässe.", "Não, a Helena é minha namorada. Aqui estão nossos passaportes.", "Diga que a Helena é sua namorada e entregue os passaportes."],
+    ["o", "Danke. Wie ist Ihr Familienname?", "Obrigada. Qual é o seu sobrenome?"],
+    ["m", "Domingues Caspechaque. Ich buchstabiere: D, O, M, I, N, G, U, E, S.", "Domingues Caspechaque. Vou soletrar: D, O, M, I, N, G, U, E, S.", "Diga o sobrenome e soletre a primeira parte."],
+    ["o", "Danke. Und der zweite Teil?", "Obrigada. E a segunda parte?"],
+    ["m", "C, A, S, P, E, C, H, A, Q, U, E.", "C, A, S, P, E, C, H, A, Q, U, E.", "Soletre a segunda parte do sobrenome."],
+    ["o", "Das ist ein schöner Name! Haben Sie das Formular vom Vermieter?", "Que nome bonito! Vocês têm o formulário do locador?"],
+    ["m", "Ja, hier ist es. Brauchen Sie auch eine Kopie?", "Sim, aqui está. A senhora precisa também de uma cópia?", "Entregue o formulário e pergunte se ela precisa de uma cópia."],
+    ["o", "Nein, das ist alles. Hier sind Ihre Meldebescheinigungen.", "Não, é só isso. Aqui estão os comprovantes de registro de vocês."],
+    ["m", "Super, vielen Dank! Auf Wiedersehen!", "Ótimo, muito obrigado! Até logo!", "Agradeça e despeça-se."]
+  ]},
+  {id: "c52", nw: 6, level: "A1", theme: "Moradia", title: "Visita ao apartamento com a Eduarda", setting: "Você leva a Eduarda à visita de um apartamento com jardim. O locador não esperava um cachorro.", other: {name: "Herr Brandt", voice: "helmut"}, register: "Sie", lines: [
+    ["o", "Guten Tag! Sind Sie Herr Domingues Caspechaque?", "Bom dia! O senhor é o senhor Domingues Caspechaque?"],
+    ["m", "Ja, guten Tag! Und das ist Eduarda, unser Hund.", "Sim, bom dia! E esta é a Eduarda, nossa cachorra.", "Confirme, cumprimente e apresente a Eduarda."],
+    ["o", "Oh, ein Hund! Ist sie groß?", "Ah, um cachorro! Ela é grande?"],
+    ["m", "Nein, sie ist nicht groß, und sie ist sehr ruhig.", "Não, ela não é grande e é muito tranquila.", "Diga que ela não é grande e é muito tranquila."],
+    ["o", "Na gut. Kommen Sie rein. Hier ist das Wohnzimmer.", "Está bem. Entrem. Aqui é a sala."],
+    ["m", "Das Wohnzimmer ist schön hell! Wie groß ist die Wohnung?", "A sala é bem clara! Qual é o tamanho do apartamento?", "Elogie a sala e pergunte o tamanho do apartamento."],
+    ["o", "Siebzig Quadratmeter: drei Zimmer, Küche, Bad und Balkon.", "Setenta metros quadrados: três cômodos, cozinha, banheiro e varanda."],
+    ["m", "Gibt es auch einen Garten?", "Também tem jardim?", "Pergunte se também tem jardim."],
+    ["o", "Ja, hinten ist ein kleiner Garten. Er ist für alle im Haus.", "Sim, nos fundos há um jardim pequeno. É para todos do prédio."],
+    ["m", "Super! Eduarda liebt Gärten. Wie hoch ist die Miete?", "Ótimo! A Eduarda ama jardins. Quanto é o aluguel?", "Comemore e pergunte o valor do aluguel."],
+    ["o", "Neunhundert Euro warm.", "Novecentos euros, com as despesas."],
+    ["m", "Das ist nicht billig, aber die Wohnung ist toll. Wir möchten sie gern mieten!", "Não é barato, mas o apartamento é ótimo. Queremos alugar!", "Diga que não é barato, mas que vocês querem alugar."],
+    ["o", "Schön! Ich schicke Ihnen den Vertrag.", "Que bom! Vou lhe mandar o contrato."],
+    ["m", "Vielen Dank! Eduarda sagt auch Danke!", "Muito obrigado! A Eduarda também agradece!", "Agradeça (e agradeça pela Eduarda também)."]
+  ]},
+  {id: "c53", nw2: 9, level: "A2", theme: "Trabalho", title: "Primeiro dia na enfermaria", setting: "Seu primeiro dia num hospital alemão. A enfermeira-chefe mostra a enfermaria.", other: {name: "Schwester Petra", voice: "lisa"}, register: "Sie", lines: [
+    ["o", "Guten Morgen! Sie sind bestimmt der neue Assistenzarzt?", "Bom dia! O senhor deve ser o novo médico assistente?"],
+    ["m", "Guten Morgen! Ja, mein Name ist Domingues Caspechaque. Ich fange heute an.", "Bom dia! Sim, meu nome é Domingues Caspechaque. Começo hoje.", "Cumprimente, diga seu nome e que começa hoje."],
+    ["o", "Herzlich willkommen! Ich bin Petra, die Stationsleitung. Kommen Sie, ich zeige Ihnen alles.", "Seja bem-vindo! Sou a Petra, chefe da enfermagem. Venha, vou te mostrar tudo."],
+    ["m", "Vielen Dank. Wo finde ich das Arztzimmer?", "Muito obrigado. Onde fica a sala dos médicos?", "Agradeça e pergunte onde fica a sala dos médicos."],
+    ["o", "Gleich hier links. Die Visite fängt um halb acht an.", "Logo aqui à esquerda. A visita começa às sete e meia."],
+    ["m", "Gut. Wer kann mir am Anfang bei Fragen helfen?", "Certo. Quem pode me ajudar com dúvidas no começo?", "Pergunte quem pode te ajudar com dúvidas no começo."],
+    ["o", "Dr. Yilmaz ist Ihr Mentor. Er arbeitet schon seit zehn Jahren hier.", "O Dr. Yilmaz é o seu mentor. Ele já trabalha aqui há dez anos."],
+    ["m", "Super. Ich spreche noch nicht perfekt Deutsch. Bitte sagen Sie mir, wenn ich etwas falsch mache.", "Ótimo. Ainda não falo alemão perfeitamente. Por favor, me diga se eu fizer algo errado.", "Diga que seu alemão ainda não é perfeito e peça que te avisem se errar."],
+    ["o", "Keine Sorge, das machen wir gern. Ihr Deutsch ist schon richtig gut!", "Não se preocupe, faremos isso com prazer. Seu alemão já está muito bom!"],
+    ["m", "Danke, das freut mich. Ich freue mich auf die Zusammenarbeit!", "Obrigado, fico feliz. Estou animado para trabalharmos juntos!", "Agradeça e diga que está animado para trabalharem juntos."]
+  ]},
+  {id: "c54", nw2: 8, level: "A2", theme: "Vizinhos", title: "Churrasco com os vizinhos", setting: "Você convidou os vizinhos alemães para o seu primeiro churrasco na Alemanha.", other: {name: "Thomas", voice: "helmut"}, register: "du", lines: [
+    ["o", "Hallo Luiz! Danke für die Einladung. Hier riecht es ja fantastisch!", "Oi, Luiz! Obrigado pelo convite. Que cheiro fantástico!"],
+    ["m", "Hallo, Thomas! Schön, dass du da bist. Das ist ein brasilianisches Churrasco.", "Oi, Thomas! Que bom que você veio. Isso é um churrasco brasileiro.", "Cumprimente, diga que é bom ele ter vindo e explique que é um churrasco brasileiro."],
+    ["o", "Und was ist der Unterschied zu einem deutschen Grillabend?", "E qual é a diferença de um churrasco alemão?"],
+    ["m", "Bei uns gibt es viel mehr Fleisch und fast keine Würstchen!", "Lá tem muito mais carne e quase nenhuma salsicha!", "Diga que no Brasil tem muito mais carne e quase nenhuma salsicha."],
+    ["o", "Ha! Und was ist das hier, das Fleisch mit dem Fett?", "Ha! E o que é isso aqui, a carne com gordura?"],
+    ["m", "Das ist Picanha, das Fleisch, das wir in Brasilien am liebsten essen.", "É picanha, a carne que mais gostamos de comer no Brasil.", "Explique que é picanha, a carne que vocês mais gostam no Brasil."],
+    ["o", "Lecker! Und was trinkt man dazu?", "Delícia! E o que se bebe junto?"],
+    ["m", "Caipirinha! Aber Vorsicht, die ist stärker, als sie aussieht.", "Caipirinha! Mas cuidado, ela é mais forte do que parece.", "Ofereça caipirinha e avise que é mais forte do que parece."],
+    ["o", "Ich bin vorsichtig, versprochen. Wann machen wir das wieder?", "Vou com calma, prometo. Quando a gente faz isso de novo?"],
+    ["m", "Wenn das Wetter schön bleibt, gern nächsten Monat!", "Se o tempo continuar bom, com prazer no mês que vem!", "Diga que, se o tempo continuar bom, vocês repetem no mês que vem."]
+  ]},
+  {id: "c55", level: "B1", theme: "Trabalho", title: "Passagem de plantão difícil", setting: "Sete da manhã. Você termina o plantão noturno e passa os pacientes ao Dr. Becker, que acabou de chegar.", other: {name: "Dr. Becker", voice: "helmut"}, register: "Sie", lines: [
+    ["o", "Guten Morgen! Na, wie war die Nacht? Sie sehen müde aus.", "Bom dia! E aí, como foi a noite? O senhor parece cansado."],
+    ["m", "Guten Morgen! Ehrlich gesagt war es anstrengend. Zwei Patienten haben mir Sorgen gemacht.", "Bom dia! Para ser sincero, foi pesado. Dois pacientes me preocuparam.", "Diga que foi cansativo e que dois pacientes te preocuparam."],
+    ["o", "Dann fangen wir mit dem wichtigsten an.", "Então vamos começar pelo mais importante."],
+    ["m", "Herr Fischer in Zimmer drei hatte um zwei Uhr Brustschmerzen. Das EKG war unauffällig, das Troponin kommt gleich.", "O senhor Fischer, do quarto três, teve dor no peito às duas. O ECG estava normal, a troponina sai já.", "Relate a dor no peito do quarto três: ECG normal, troponina pendente."],
+    ["o", "Gut. Hat er etwas gegen die Schmerzen bekommen?", "Certo. Ele recebeu algo para a dor?"],
+    ["m", "Ja, Nitro, danach ging es ihm besser. Ich würde das Troponin in drei Stunden wiederholen.", "Sim, nitrato, depois ele melhorou. Eu repetiria a troponina em três horas.", "Diga que deu nitrato, que ele melhorou e proponha repetir a troponina."],
+    ["o", "Einverstanden. Und der zweite Patient?", "De acordo. E o segundo paciente?"],
+    ["m", "Frau Becker war sehr verwirrt und wollte nach Hause. Ich vermute ein Delir, aber das Fieber ist neu.", "A senhora Becker estava muito confusa e queria ir para casa. Suspeito de delirium, mas a febre é nova.", "Conte da paciente confusa: suspeita de delirium, mas com febre nova."],
+    ["o", "Dann nehmen wir Blutkulturen ab und schauen uns den Urin an. Gute Arbeit, übrigens.", "Então colhemos hemoculturas e olhamos a urina. Bom trabalho, aliás."],
+    ["m", "Danke! Dann gehe ich jetzt schlafen. Rufen Sie mich an, falls etwas unklar ist.", "Obrigado! Então vou dormir agora. Me ligue se algo não estiver claro.", "Agradeça, despeça-se e ofereça ser chamado se algo estiver obscuro."]
+  ]},
+  {id: "c56", level: "B1", theme: "Moradia", title: "O aquecimento quebrou em janeiro", setting: "Janeiro, menos cinco graus lá fora. O aquecimento parou há dois dias e você liga para a proprietária, Frau Krüger.", other: {name: "Frau Krüger", voice: "elisabeth"}, register: "Sie", lines: [
+    ["o", "Krüger, guten Tag?", "Krüger, boa tarde?"],
+    ["m", "Guten Tag, Frau Krüger, hier ist Domingues Caspechaque aus der Gartenstraße. Unsere Heizung funktioniert seit zwei Tagen nicht.", "Boa tarde, senhora Krüger, aqui é Domingues Caspechaque, da Gartenstraße. O nosso aquecimento não funciona há dois dias.", "Apresente-se e diga que o aquecimento não funciona há dois dias."],
+    ["o", "Oh je, bei dieser Kälte! Haben Sie schon nachgeschaut, ob genug Wasser im System ist?", "Ai, com esse frio! O senhor já olhou se tem água suficiente no sistema?"],
+    ["m", "Ja, das habe ich gemacht, und ich habe die Heizung auch neu gestartet. Leider hat es nichts gebracht.", "Sim, fiz isso, e também reiniciei o aquecimento. Infelizmente não adiantou nada.", "Diga que já conferiu e reiniciou, mas não adiantou."],
+    ["o", "Dann muss ein Techniker kommen. Wann sind Sie zu Hause?", "Então tem que vir um técnico. Quando o senhor está em casa?"],
+    ["m", "Morgen habe ich Dienst, aber meine Partnerin ist den ganzen Tag da.", "Amanhã tenho plantão, mas a minha companheira fica o dia todo em casa.", "Diga que amanhã você trabalha, mas a Helena está em casa o dia inteiro."],
+    ["o", "Gut, ich rufe die Firma gleich an. Brauchen Sie bis dahin einen Heizlüfter?", "Certo, ligo já para a empresa. O senhor precisa de um aquecedor elétrico até lá?"],
+    ["m", "Das wäre sehr nett! Unsere Hündin friert auch schon.", "Seria muito gentil! A nossa cachorra também já está com frio.", "Aceite o aquecedor e brinque que a Eduarda também está com frio."],
+    ["o", "Ach, die arme Hündin! Ich bringe Ihnen heute Abend einen vorbei.", "Ah, coitada da cachorra! Levo um para vocês hoje à noite."],
+    ["m", "Vielen Dank, Frau Krüger. Und bitte sagen Sie mir Bescheid, wann der Techniker kommt.", "Muito obrigado, senhora Krüger. E, por favor, me avise quando o técnico vier.", "Agradeça e peça que ela avise o horário do técnico."]
+  ]},
+  {id: "c57", level: "B2", theme: "Medicina", title: "Esclarecimento antes da colonoscopia", setting: "Enfermaria de clínica médica. O senhor Neumann, 67 anos, com anemia, faz colonoscopia amanhã. Você explica o exame e colhe o consentimento.", other: {name: "Herr Neumann", voice: "helmut"}, register: "Sie", lines: [
+    ["m", "Guten Tag, Herr Neumann. Ich möchte mit Ihnen über die Darmspiegelung morgen sprechen. Haben Sie gerade einen Moment Zeit?", "Boa tarde, senhor Neumann. Quero conversar com o senhor sobre a colonoscopia de amanhã. O senhor tem um momento agora?", "Cumprimente e anuncie que vai explicar a colonoscopia de amanhã."],
+    ["o", "Ja, natürlich. Ehrlich gesagt habe ich ein bisschen Angst davor.", "Sim, claro. Para ser sincero, estou com um pouco de medo."],
+    ["m", "Das ist verständlich. Wir machen die Untersuchung, weil Ihr Blutwert zu niedrig ist und wir eine Blutungsquelle im Darm ausschließen möchten.", "É compreensível. Fazemos o exame porque o seu exame de sangue está baixo e queremos descartar uma fonte de sangramento no intestino.", "Acolha o medo e explique o motivo: anemia, descartar sangramento no intestino."],
+    ["o", "Und wie läuft das ab? Bekomme ich davon etwas mit?", "E como funciona? Vou sentir alguma coisa?"],
+    ["m", "Sie bekommen eine Beruhigungsspritze und schlafen in der Regel. Dann führen wir einen dünnen Schlauch mit einer Kamera über den After ein.", "O senhor recebe uma sedação e normalmente dorme. Aí introduzimos um tubo fino com uma câmera pelo ânus.", "Explique a sedação e o exame em linguagem simples."],
+    ["o", "Muss ich vorher etwas beachten?", "Preciso tomar algum cuidado antes?"],
+    ["m", "Heute Abend und morgen früh trinken Sie die Abführlösung. Ab jetzt bitte nur noch klare Flüssigkeiten, nichts mehr essen.", "Hoje à noite e amanhã cedo o senhor toma a solução laxativa. A partir de agora, só líquidos claros, nada mais de comida.", "Explique o preparo: laxativo hoje à noite e amanhã cedo, só líquidos claros."],
+    ["o", "Gibt es Risiken? Mein Nachbar hatte danach Probleme.", "Tem riscos? O meu vizinho teve problemas depois."],
+    ["m", "Die Untersuchung ist sehr sicher. Selten kann es zu einer Blutung oder einer Verletzung der Darmwand kommen, besonders wenn wir einen Polypen entfernen.", "O exame é muito seguro. Raramente pode haver um sangramento ou uma lesão da parede do intestino, sobretudo quando tiramos um pólipo.", "Diga que é seguro e cite os riscos raros sem assustar."],
+    ["o", "Und wenn Sie etwas finden?", "E se o senhor encontrar alguma coisa?"],
+    ["m", "Kleine Polypen entfernen wir gleich mit. Falls wir eine Gewebeprobe nehmen, besprechen wir das Ergebnis gemeinsam, sobald es vorliegt.", "Pólipos pequenos tiramos na hora. Se colhermos uma biópsia, conversamos juntos sobre o resultado assim que ele sair.", "Explique o que acontece com pólipos e biópsias."],
+    ["o", "Gut. Das beruhigt mich. Wo muss ich unterschreiben?", "Certo. Isso me tranquiliza. Onde eu assino?"],
+    ["m", "Hier unten, bitte. Wenn Ihnen heute Abend noch eine Frage einfällt, sagen Sie einfach der Pflege Bescheid.", "Aqui embaixo, por favor. Se o senhor lembrar de alguma pergunta hoje à noite, é só avisar a enfermagem.", "Mostre onde assinar e deixe a porta aberta para dúvidas."]
+  ]},
+  {id: "c58", level: "B2", theme: "Profissão e candidatura", title: "Entrevista de emprego na clínica médica", setting: "Entrevista para uma vaga de Assistenzarzt na clínica médica de um hospital alemão. Quem conduz é a Chefärztin Dr. Lange.", other: {name: "Dr. Lange", voice: "lisa"}, register: "Sie", lines: [
+    ["o", "Herr Domingues, schön, dass Sie da sind. Erzählen Sie doch kurz etwas über sich.", "Senhor Domingues, que bom que o senhor veio. Conte um pouco sobre o senhor."],
+    ["m", "Gern. Ich komme aus Brasilien und arbeite seit 2021 als Hausarzt. Jetzt möchte ich mich in der Inneren Medizin weiterbilden.", "Com prazer. Sou do Brasil e trabalho desde 2021 como médico de família. Agora quero fazer a especialização em clínica médica.", "Apresente-se: Brasil, médico de família desde 2021, quer se especializar em clínica médica."],
+    ["o", "Warum gerade die Innere?", "Por que justamente a clínica médica?"],
+    ["m", "In der hausärztlichen Versorgung habe ich viele chronisch kranke Patienten betreut. Mich interessiert, wie man komplexe Fälle im Zusammenhang betrachtet.", "Na atenção primária eu acompanhei muitos pacientes crônicos. Me interessa ver casos complexos de forma integrada.", "Justifique a escolha com a sua experiência com pacientes crônicos."],
+    ["o", "Wie schätzen Sie Ihr Deutsch im Klinikalltag ein?", "Como o senhor avalia o seu alemão no dia a dia do hospital?"],
+    ["m", "Ich habe die Fachsprachprüfung bestanden, aber bei schnellen Telefonaten frage ich manchmal noch nach. Das sehe ich nicht als Schwäche, sondern als Sicherheit.", "Passei na prova de linguagem técnica, mas em telefonemas rápidos às vezes ainda peço para repetir. Não vejo isso como fraqueza, e sim como segurança.", "Avalie o seu alemão com honestidade e transforme o limite em cuidado."],
+    ["o", "Das ist eine gute Haltung. Wie gehen Sie mit Stress in Nachtdiensten um?", "É uma boa atitude. Como o senhor lida com o estresse nos plantões noturnos?"],
+    ["m", "Ich bin an Dienste gewöhnt. Wichtig ist für mich, Prioritäten zu setzen und rechtzeitig Hilfe zu holen, wenn ich unsicher bin.", "Estou acostumado com plantões. Para mim o importante é priorizar e pedir ajuda a tempo quando tenho dúvida.", "Fale da sua experiência com plantões: priorizar e chamar ajuda a tempo."],
+    ["o", "Haben Sie noch Fragen an uns?", "O senhor tem alguma pergunta para nós?"],
+    ["m", "Ja. Wie ist die Einarbeitung neuer Assistenzärzte bei Ihnen organisiert, und gibt es feste Ansprechpartner?", "Sim. Como é organizada a integração dos novos residentes aqui, e há pessoas de referência fixas?", "Pergunte como é a integração dos novos médicos e se há uma pessoa de referência."],
+    ["o", "In den ersten Wochen laufen Sie mit einem erfahrenen Kollegen mit, bevor Sie allein Dienste übernehmen.", "Nas primeiras semanas o senhor acompanha um colega experiente antes de assumir plantões sozinho."],
+    ["m", "Das klingt sehr gut. Vielen Dank für das Gespräch, ich würde mich freuen, von Ihnen zu hören.", "Parece muito bom. Muito obrigado pela conversa, ficaria feliz em ter notícias suas.", "Agradeça e encerre a entrevista com educação."]
   ]}
 ];

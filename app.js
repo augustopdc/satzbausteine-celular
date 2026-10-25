@@ -2,8 +2,8 @@
 /* Satzbausteine · lógica do aplicativo.
    Carregados antes: fsrs.js (FSRS), catalog*.js (frases) e audio-index.js (áudios embutidos). */
 
-const APP_VERSION = "1.8.0";
-const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867";
+const APP_VERSION = "1.9.0";
+const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1";
 const KEY_PROGRESS = "satzbausteine.progress.v1";
 const KEY_SETTINGS = "satzbausteine.settings.v1";
 const KEY_CATALOG_FALLBACK = "satzbausteine.catalog.v1";
@@ -20,8 +20,9 @@ const BUNDLED_CARDS = [
   ...(typeof FRASES_FACH !== "undefined" ? FRASES_FACH : []),
   ...(typeof FRASES_ANKUNFT !== "undefined" ? FRASES_ANKUNFT : []),
   ...(typeof FRASES_NICOSWEG !== "undefined" ? FRASES_NICOSWEG : []),
-  ...(typeof FRASES_NICOSWEG_A2 !== "undefined" ? FRASES_NICOSWEG_A2 : [])
-];
+  ...(typeof FRASES_NICOSWEG_A2 !== "undefined" ? FRASES_NICOSWEG_A2 : []),
+  ...(typeof FRASES_ETAPA4 !== "undefined" ? FRASES_ETAPA4 : [])
+].map(c => typeof aplicarAjustes === "function" ? aplicarAjustes(c) : c);
 
 const REF_GROUPS = [
   {title: "QECR · interação, produção e mediação", items: [
@@ -97,8 +98,8 @@ const CARD_ID = /^(K[123]-\d{4,}|M-[a-z0-9]{6,20})$/;
 let db = null, dataDb = null, cards = [], byId = new Map(), currentView = "home";
 const tagIndex = new Map(), searchIndex = new Map();
 let progress = emptyProgress();
-let settings = {newLimit: 6, reviewLimit: "", newOrder: "priority", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
-  welcomeDismissed: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
+let settings = {newLimit: 6, reviewLimit: "", newOrder: "recommended", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
+  welcomeDismissed: false, provaPack: false, orderV2: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
   presentNew: true, levelGate: true, nwChapter: 7, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
   convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado"};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
@@ -257,7 +258,7 @@ function safeWrite(key, value) {
 }
 /* Configurações que valem em todos os aparelhos (vão junto na sincronização pelo GitHub). Tema, voz e afins ficam em cada um.
    `syncAt` só muda quando uma destas muda: assim, trocar o tema no PC não “ganha” de um capítulo novo marcado no celular. */
-const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal"];
+const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal", "provaPack"];
 function syncedSettings(s = settings) { const out = {}; for (const k of SYNCED_SETTINGS) if (s[k] !== undefined) out[k] = s[k]; return out; }
 // Valores de fábrica (lidos antes de init carregar as configurações salvas): um aparelho novo não “ganha” do outro.
 const SYNCED_DEFAULT = JSON.stringify(syncedSettings());
@@ -385,6 +386,10 @@ function tagsOf(card) {
 function tagValues(card, key) { return tagsOf(card)[key] || []; }
 function tag(card, key) { return tagValues(card, key)[0] || ""; }
 function hasTag(card, key, value) { return tagValues(card, key).includes(value); }
+/* Auditoria do catálogo (out/2026): escondidos não entram como novos (os já estudados seguem nas revisões);
+   o pacote Prova Goethe B2 (formato da prova: debate, Vortrag, resumo de texto…) só entra com a opção ligada. */
+function isHiddenCard(card) { return hasTag(card, "Ausblenden", "1"); }
+function isProvaCard(card) { return hasTag(card, "Paket", "Prova"); }
 function isMedical(card) { return tagValues(card, "Thema").some(t => MEDICAL_THEMES.has(t)); }
 function functionLabel(value) {
   if (FUNCTION_FIXES[value]) return FUNCTION_FIXES[value];
@@ -941,6 +946,11 @@ const themeChipsOpen = {};
 function sortNew(a, b) {
   const aLayer = Number(tag(a, "Schicht")), bLayer = Number(tag(b, "Schicht")), aPrio = Number(tag(a, "Prio")), bPrio = Number(tag(b, "Prio"));
   const byIdOrder = a.id.localeCompare(b.id, "en", {numeric: true});
+  if (settings.newOrder === "recommended") {
+    // Ordem revisada na auditoria: dentro de cada nível, as frases mais úteis primeiro.
+    const ao = Number(tag(a, "Ordem")) || Infinity, bo = Number(tag(b, "Ordem")) || Infinity;
+    if (ao !== bo) return ao - bo;
+  }
   if (settings.newOrder === "priority") return aPrio - bPrio || aLayer - bLayer || byIdOrder;
   if (settings.newOrder === "id") return byIdOrder;
   return aLayer - bLayer || aPrio - bPrio || byIdOrder;
@@ -995,7 +1005,7 @@ function buildSessionQueue() {
 function orderNew(unseen, gated) {
   const nwRank = c => { const ch = nwChapter(c); return ch === null ? 99 : ch; };
   unseen.sort((a, b) => isMine(b) - isMine(a) || nwRank(a) - nwRank(b) || sortNew(a, b));
-  for (let i = unseen.length - 1; i >= 0; i--) if (nwLocked(unseen[i])) unseen.splice(i, 1);
+  for (let i = unseen.length - 1; i >= 0; i--) if (nwLocked(unseen[i]) || isHiddenCard(unseen[i]) || (!settings.provaPack && isProvaCard(unseen[i]))) unseen.splice(i, 1);
   const open = gated ? unlockedLevels() : null;
   // O reforço do curso já liberado pelo capítulo (“Estou no capítulo”) não espera a progressão por nível.
   return open ? unseen.filter(c => isMine(c) || nwChapter(c) !== null || open.has(tag(c, "Niveau"))) : unseen;
@@ -1936,7 +1946,10 @@ const AUDIO_VOICES = (() => {
   return out;
 })();
 const PRIMARY_VOICE = Object.keys(AUDIO_VOICES)[0] || "";
-const NEURAL_AUDIO = PRIMARY_VOICE ? AUDIO_VOICES[PRIMARY_VOICE].ids : new Set();
+const NEURAL_AUDIO = new Set(Object.values(AUDIO_VOICES).flatMap(v => [...v.ids]));
+/* A voz de cada cartão é a primeira do índice que tem o áudio dele: as do ElevenLabs (Otto, Helmut, Mila, Lisa, Elisabeth)
+   vêm antes; o Charon fica com os cartões que não ganharam voz nova. */
+function mainVoice(card) { for (const [key, v] of Object.entries(AUDIO_VOICES)) if (v.ids.has(card.id)) return key; return PRIMARY_VOICE; }
 const audioCache = new Map();
 let audioPlayer = null;
 function voiceLabel(voice) { return (AUDIO_VOICES[voice] || {}).label || ""; }
@@ -1953,7 +1966,7 @@ function voiceForSession(card, peek) {
   }
   return PRIMARY_VOICE;
 }
-function audioUrl(card, voice) { const v = AUDIO_VOICES[voice] && AUDIO_VOICES[voice].ids.has(card.id) ? voice : PRIMARY_VOICE; return AUDIO_VOICES[v].dir + "/" + card.id + ".mp3"; }
+function audioUrl(card, voice) { const v = AUDIO_VOICES[voice] && AUDIO_VOICES[voice].ids.has(card.id) ? voice : mainVoice(card); return AUDIO_VOICES[v].dir + "/" + card.id + ".mp3"; }
 function cachedPlayer(url) {
   let player = audioCache.get(url);
   if (!player) {
@@ -2134,7 +2147,8 @@ function applyImportedSettings(s) {
   if (!s || typeof s !== "object") return;
   if (Number.isInteger(Number(s.newLimit))) settings.newLimit = Math.max(0, Math.min(100, Number(s.newLimit)));
   if (s.reviewLimit === "" || Number.isInteger(Number(s.reviewLimit))) settings.reviewLimit = s.reviewLimit === "" ? "" : Math.max(0, Number(s.reviewLimit));
-  if (["layer", "priority", "id"].includes(s.newOrder)) settings.newOrder = s.newOrder;
+  if (["recommended", "layer", "priority", "id"].includes(s.newOrder)) settings.newOrder = s.newOrder;
+  if (typeof s.provaPack === "boolean") settings.provaPack = s.provaPack;
   if (Number(s.rate) >= .6 && Number(s.rate) <= 1.3) settings.rate = Number(s.rate);
   if (Number(s.retention) >= .8 && Number(s.retention) <= .97) settings.retention = Number(s.retention);
   if (["auto", "light", "dark"].includes(s.theme)) settings.theme = s.theme;
@@ -2357,6 +2371,7 @@ function renderSettings() {
     : "Áudio neural não encontrado nesta instalação; usando a voz do Windows.";
   $("alternateVoices").checked = !!settings.alternateVoices;
   $("setLevelGate").checked = !!settings.levelGate;
+  $("setProvaPack").checked = !!settings.provaPack;
   $("setPresentNew").checked = settings.presentNew !== false;
   $("setGermanSituations").checked = !!settings.germanSituations;
   $("setGenderColors").checked = !!settings.genderColors;
@@ -2444,7 +2459,7 @@ function bindEvents() {
   $("sceneMiss").addEventListener("click", () => gradeSceneLine(false));
   $("sceneShowOther").addEventListener("change", e => { settings.sceneShowOther = e.target.checked; saveSettings(); });
   $("sceneHelp").addEventListener("change", e => { settings.sceneHelp = e.target.value; saveSettings(); setSceneHelp(); });
-  for (const [id, key] of [["setLevelGate", "levelGate"], ["setPresentNew", "presentNew"], ["setGermanSituations", "germanSituations"], ["setGenderColors", "genderColors"]]) {
+  for (const [id, key] of [["setLevelGate", "levelGate"], ["setPresentNew", "presentNew"], ["setGermanSituations", "germanSituations"], ["setGenderColors", "genderColors"], ["setProvaPack", "provaPack"]]) {
     $(id).addEventListener("change", e => { settings[key] = e.target.checked; saveSettings(); });
   }
   $("setRubric").addEventListener("change", e => { settings.showRubric = e.target.value; saveSettings(); });
@@ -2628,6 +2643,8 @@ async function loadProgress() {
 async function init() {
   const savedSettings = safeRead(KEY_SETTINGS, null);
   if (savedSettings && typeof savedSettings === "object") settings = {...settings, ...savedSettings};
+  // Auditoria do catálogo (out/2026): quem estava na ordem padrão antiga passa para a ordem revisada (uma vez só).
+  if (!settings.orderV2) { if (settings.newOrder === "priority") settings.newOrder = "recommended"; settings.orderV2 = true; }
   applyTheme();
   await loadProgress();
   db = await openCatalogDB();
@@ -2643,7 +2660,7 @@ async function init() {
     } catch (e) { setStatus("Não foi possível armazenar as frases embutidas.", "error"); }
   }
   if (!cards.length && BUNDLED_CARDS.length) cards = BUNDLED_CARDS.slice();
-  cards = cards.filter(c => !isMine(c)).concat(mineCards());
+  cards = cards.filter(c => !isMine(c) && (!isHiddenCard(c) || cardProgress(c.id))).concat(mineCards());
   refreshCards();
   populateExams();
   bindEvents();

@@ -409,7 +409,7 @@
     <div class="grid two">
      <div class="field"><label for="newLimit">Frases novas por dia</label><input id="newLimit" type="number" min="0" max="100" value="6"></div>
      <div class="field"><label for="reviewLimit">Limite diário de revisões</label><input id="reviewLimit" type="number" min="0" max="10000" placeholder="Sem limite"></div>
-     <div class="field"><label for="newOrder">Ordem das novas</label><select id="newOrder"><option value="priority">Prioridade → camada → ID</option><option value="layer">Camada → prioridade → ID</option><option value="id">ID</option></select></div>
+     <div class="field"><label for="newOrder">Ordem das novas</label><select id="newOrder"><option value="recommended">Recomendada (revisada)</option><option value="priority">Prioridade → camada → ID</option><option value="layer">Camada → prioridade → ID</option><option value="id">ID</option></select></div>
      <div class="field"><label for="retention">Retenção desejada</label><select id="retention"><option value="0.85">85% · menos revisões</option><option value="0.9">90% · recomendado</option><option value="0.95">95% · mais revisões</option></select></div>
     </div>
     <div class="subpanel spaced">
@@ -417,6 +417,7 @@
      <div class="settings-switches">
       <label class="switch"><input id="setPresentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Frase nova → apresentação → lacuna → frase inteira.</small></span></label>
       <label class="switch"><input id="setLevelGate" type="checkbox"><span><b>Progressão por nível</b><small>As novas vêm só de níveis abertos; o próximo abre com 60% do atual.</small></span></label>
+      <label class="switch"><input id="setProvaPack" type="checkbox"><span><b>Pacote Prova Goethe B2</b><small>843 frases no formato da prova (debate, apresentação, resumo de texto, redação de fórum). Ligue perto da prova.</small></span></label>
       <label class="switch"><input id="setGermanSituations" type="checkbox"><span><b>Situações em alemão</b><small>Recomendado a partir do B1. Vale para o módulo médico, os termos técnicos e a chegada.</small></span></label>
       <label class="switch"><input id="setGenderColors" type="checkbox"><span><b>Cores de gênero</b><small>der em azul, die em vermelho, das em verde (termos médicos e notas de gênero).</small></span></label>
      </div>
@@ -504,6 +505,8 @@
 <script src="catalog-ankunft.js"></script>
   <script src="catalog-nicosweg.js"></script>
   <script src="catalog-nicosweg-a2.js"></script>
+  <script src="catalog-etapa4.js"></script>
+  <script src="catalog-ajustes.js"></script>
 <script src="situacoes-de.js"></script>
 <script src="cenas-data.js"></script>
 <script src="gramatica-data.js"></script>
