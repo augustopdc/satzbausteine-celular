@@ -9,7 +9,8 @@
   if (!window.satzDesktop) document.documentElement.classList.add("web");
   // Windows 11 com a barra de título do app: abre espaço em cima para os botões da janela (e some em tela cheia).
   const wco = navigator.windowControlsOverlay;
-  const setWco = () => document.documentElement.classList.toggle("wco", !!(wco && wco.visible));
+  // Só no app do PC: num navegador com barra própria (Chrome instalado, painel do Claude) o botão ☰ não teria o que abrir.
+  const setWco = () => document.documentElement.classList.toggle("wco", !!(window.satzDesktop && wco && wco.visible));
   setWco();
   if (wco) wco.addEventListener("geometrychange", setWco);
 })();

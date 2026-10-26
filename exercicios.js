@@ -21,7 +21,7 @@ const EX_SEIN_PART = ["gegangen", "gefahren", "gekommen", "geflogen", "gelaufen"
   "gestürzt", "gefolgt", "begegnet", "gesprungen", "eingetreten", "ausgegangen", "weggegangen", "hingegangen", "spazieren gegangen"];
 const EX_SEIN_TO_HABEN = {bin: "habe", bist: "hast", ist: "hat", sind: "haben", seid: "habt"};
 const EX_ORDER_TOPICS = ["v2", "nebensatz", "trennbar", "modal", "perfekt", "konnektoren", "wfragen", "imperativ", "reflexiv",
-  "indirekt", "relativ", "deshalb", "umzu", "zweiobjekt", "doppelkonj"];
+  "indirekt", "relativ", "deshalb", "umzu", "zweiobjekt", "doppelkonj", "obwohl", "temporal", "indem", "zuinf", "futur", "plusquam", "konj2verg", "passiv2", "lassen", "konnektb2", "konj1", "vermutung", "passivers", "nominal"];
 const ex = {kind: null, topic: null, items: [], i: 0, score: 0, answered: false, picked: [], label: ""};
 
 // ---------- Utilidades de texto ----------
@@ -231,11 +231,160 @@ const EX_RULES = {
     return {topic: "indirekt", wrong: t.slice(0, c).concat(exTokens(exJoin(moved, punct)))};
   }
 };
+// ---------- B1 (25/10/2026) ----------
+const EX_N_NOUNS = {Patienten: "Patient", Kollegen: "Kollege", Kunden: "Kunde", Studenten: "Student", Praktikanten: "Praktikant", Assistenten: "Assistent",
+  Touristen: "Tourist", Polizisten: "Polizist", Nachbarn: "Nachbar", Menschen: "Mensch", Zeugen: "Zeuge", Experten: "Experte", Neffen: "Neffe"};
+const EX_N_DET = /^(den|dem|des|einen|einem|eines|diesen|diesem|jeden|jedem|keinen|keinem|meinen|meinem|deinen|deinem|seinen|seinem|ihren|ihrem|unseren|unserem)$/i;
+/* Subordinada (no meio, depois de vírgula, ou abrindo a frase até a vírgula) com sujeito pronome: o verbo do fim vai para
+   logo depois do sujeito, o erro típico (“obwohl ich bin müde”). */
+function exSubMove(t, conjs, topic) {
+  let c = t.findIndex((x, i) => i > 0 && /,$/.test(t[i - 1]) && conjs.includes(exLow(x)));
+  let end = c < 0 ? -1 : t.length - 1;
+  if (c >= 0 && t.slice(c, -1).some(x => /[,;]$/.test(x))) return null;
+  if (c < 0 && conjs.includes(exLow(t[0]))) { c = 0; end = t.findIndex(x => /,$/.test(x)); if (end < 2 || t.slice(0, end).some(x => /[;.!?]$/.test(x))) return null; }
+  if (c < 0) return null;
+  const clause = t.slice(c, end + 1), last = clause.length - 1;
+  if (clause.length < 4 || !EX_PRON.includes(exLow(clause[1])) || !/^[a-zäöü]/.test(exCore(clause[last]))) return null;
+  // Com duas orações coordenadas (und, oder, aber) a versão errada sairia embaralhada.
+  if (clause.some(x => ["und", "oder", "aber", "sowie"].includes(exLow(x)))) return null;
+  const tail =(clause[last].match(/[.!?…,]+$/) || [""])[0], body = clause.map(x => x.replace(/[.!?…,]+$/, ""));
+  const moved = [body[0], body[1], body[last], ...body.slice(2, last)];
+  moved[moved.length - 1] += tail;
+  return {topic, wrong: t.slice(0, c).concat(moved, t.slice(end + 1))};
+}
+const EX_PLUS_STOP = ["und", "aber", "oder", "denn", "bin", "bist", "ist", "sind", "seid", "habe", "hast", "hat", "haben", "habt", "hatte", "hatten", "hätte", "hätten", "wird", "werden"];
+const EX_RULES_B1 = {
+  obwohl(t) { return exSubMove(t, ["obwohl"], "obwohl"); },
+  temporal(t) { return exSubMove(t, ["nachdem", "bevor", "seitdem", "sobald", "während", "bis", "seit"], "temporal"); },
+  indem(t) { return exSubMove(t, ["indem", "sodass"], "indem"); },
+  plusquam(t) {
+    // “war … abgefahren” → “hatte … abgefahren”: com verbo de sein, o Plusquamperfekt usa war.
+    const words = t.map(exLow), swap = {war: "hatte", waren: "hatten", warst: "hattest"};
+    const p = words.findIndex(w => EX_SEIN_PART.includes(w));
+    if (p < 0 || words.some(w => ["worden", "wurde", "wurden"].includes(w))) return null;
+    // O war tem de ser o auxiliar desse particípio: para em vírgula, conjunção ou outro auxiliar no caminho.
+    let k = -1;
+    for (let i = p - 1; i >= 0; i--) {
+      if (swap[words[i]]) { k = i; break; }
+      if (/[,;]$/.test(t[i]) || EX_PLUS_STOP.includes(words[i])) break;
+    }
+    if (k < 0) return null;
+    const out = t.slice(); out[k] = exSwap(t[k], swap[words[k]]);
+    return {topic: "plusquam", wrong: out};
+  },
+  konj2verg(t) {
+    // “wären … gekommen” → “hätten … gekommen”.
+    const words = t.map(exLow), swap = {wäre: "hätte", wären: "hätten", wärst: "hättest"};
+    const p = words.findIndex(w => EX_SEIN_PART.includes(w));
+    if (p < 0 || words.some(w => ["worden", "geworden"].includes(w))) return null;
+    let k = -1;
+    for (let i = p - 1; i >= 0; i--) {
+      if (swap[words[i]]) { k = i; break; }
+      if (/[,;]$/.test(t[i]) || EX_PLUS_STOP.includes(words[i])) break;
+    }
+    if (k < 0) return null;
+    const out = t.slice(); out[k] = exSwap(t[k], swap[words[k]]);
+    return {topic: "konj2verg", wrong: out};
+  },
+  passiv2(t) {
+    // “ist … operiert worden” → “… operiert geworden”: na passiva, o Perfekt de werden é worden.
+    const k = t.findIndex((x, i) => i > 1 && exLow(x) === "worden" && /^(\p{Ll}*ge\p{Ll}+(t|en)|\p{Ll}+iert)$/u.test(exCore(t[i - 1])));
+    if (k < 0) return null;
+    const out = t.slice(); out[k] = exSwap(t[k], "geworden");
+    return {topic: "passiv2", wrong: out};
+  },
+  ndekl(t) {
+    // “den Patienten” → “den Patient”: fora do nominativo, esses masculinos levam -(e)n.
+    for (let k = 1; k < t.length; k++) {
+      const w = exCore(t[k]);
+      if (w === "Herrn") { const out = t.slice(); out[k] = t[k].replace("Herrn", "Herr"); return {topic: "ndekl", wrong: out}; }
+      if (!EX_N_NOUNS[w]) continue;
+      const d = EX_N_DET.test(exCore(t[k - 1])) ? k - 1 : (k > 1 && EX_N_DET.test(exCore(t[k - 2])) && /^\p{Ll}+en$/u.test(exCore(t[k - 1])) ? k - 2 : -1);
+      if (d < 0 || /[,;.!?]$/.test(t[k - 1])) continue;
+      const out = t.slice(); out[k] = t[k].replace(w, EX_N_NOUNS[w]);
+      return {topic: "ndekl", wrong: out};
+    }
+    return null;
+  },
+  zuinf(t) {
+    // “…, die Tabletten zu nehmen.” → “…, die Tabletten nehmen.”; “mitzubringen” → “mitbringen”. Fora do um … zu (tópico próprio).
+    if (t.some((x, i) => exLow(x) === "um" && (i === 0 || /,$/.test(t[i - 1])))) return null;
+    for (let k = 0; k < t.length; k++) {
+      const w = exCore(t[k]), m = w.match(/^(an|auf|aus|ein|mit|ab|vor|zurück|nach|weg|teil|fest|los|vorbei)zu(\p{Ll}{2,}en)$/u);
+      if (m && !["zuzu"].includes(w)) { const out = t.slice(); out[k] = t[k].replace(w, m[1] + m[2]); return {topic: "zuinf", wrong: out}; }
+    }
+    for (let k = 1; k < t.length - 1; k++) {
+      if (exLow(t[k]) !== "zu" || /[,.!?;]$/.test(t[k])) continue;
+      const inf = t[k + 1];
+      if (!/^\p{Ll}+(en|ern|eln)[.!?,…]*$/u.test(inf) || !(k + 1 === t.length - 1 || /,$/.test(inf))) continue;
+      // Só dentro de uma oração de infinitivo aberta por vírgula (ou ohne/statt), sem sujeito: senão “zu” pode ser outra coisa.
+      let s = k; while (s > 0 && !/,$/.test(t[s - 1])) s--;
+      const clause = t.slice(s, k).map(exLow);
+      if (s === 0 || clause.some(w => EX_PRON.includes(w) || EX_SUB.includes(w) || ["und", "aber", "oder", "denn", "sondern"].includes(w))) continue;
+      const out = t.slice(); out.splice(k, 1);
+      return {topic: "zuinf", wrong: out};
+    }
+    return null;
+  },
+  lassen(t) {
+    // “Ich lasse das Auto reparieren.” → “… zu reparieren.”: com lassen o infinitivo vem sem zu.
+    if (t.some(x => /[,;]$/.test(x)) || t.length < 3) return null;
+    const words = t.map(exLow), l = words.findIndex((w, i) => i <= 2 && /^(lass|lasse|lässt|lasst|lassen|ließ|ließen)$/.test(w));
+    const last = t.length - 1, inf = exCore(t[last]);
+    if (l < 0 || l === last || !/^\p{Ll}{3,}en$/u.test(inf) || /^(lassen|offen|liegen|stehen|eben)$/.test(inf) || /^ge/.test(inf)) return null;
+    const out = t.slice(); out.splice(last, 0, "zu");
+    return {topic: "lassen", wrong: out};
+  },
+  futur(t) {
+    // “Ich werde dich morgen anrufen.” → “Ich werde anrufen dich morgen.”: o infinitivo vai para o fim.
+    if (t.some(x => /,$/.test(x)) || t.length < 4 || t.some(x => ["und", "oder", "aber"].includes(exLow(x)))) return null;
+    const words = t.map(exLow), w = ["werde", "wirst", "wird", "werden", "werdet"].includes(words[1]) ? 1 : -1;
+    const last = t.length - 1, inf = exCore(t[last]);
+    if (w < 0 || last < 3 || !/^\p{Ll}{3,}en$/u.test(inf) || (/^ge/.test(inf) && !["gehen", "geben"].includes(inf)) || /\?$/.test(t[last])) return null;
+    const punct = exEndPunct(t), body = t.map(x => x.replace(/[.!?…]+$/, ""));
+    return {topic: "futur", wrong: exTokens(exJoin([body[0], body[1], body[last], ...body.slice(2, last)], punct))};
+  }
+};
+Object.assign(EX_RULES, EX_RULES_B1);
+// ---------- B2 (25/10/2026) ----------
+const EX_RULES_B2 = {
+  konnektb2(t) { return exSubMove(t, ["sofern", "zumal", "wohingegen", "wenngleich"], "konnektb2"); },
+  partizip(t) {
+    // “der gestern aufgenommene Patient” → “der gestern aufgenommen Patient”: antes do substantivo, o particípio leva terminação.
+    const det = /^(der|die|das|den|dem|des|ein|eine|einen|einem|einer|eines|bei|mit)$/i;
+    for (let k = 1; k < t.length - 1; k++) {
+      const w = exCore(t[k]), m = w.match(/^(\p{Ll}+end|\p{Ll}*ge\p{Ll}+t|\p{Ll}*ge\p{Ll}+en|\p{Ll}+iert|(be|ver|er|ent|emp|zer)\p{Ll}{3,}t)(e|en|er|es|em)$/u);
+      if (!m || !/^\p{Lu}/u.test(exCore(t[k + 1])) || /^(Sie|Ihnen|Ihr|Ihre)$/.test(exCore(t[k + 1])) || /[,.;!?]$/.test(t[k])) continue;
+      // Artigo até 4 palavras antes, sem pontuação no caminho; só particípio estendido (com algo no meio) ou particípio I.
+      let d = -1;
+      for (let i = k - 1; i >= Math.max(0, k - 5); i--) { if (/[,.;!?]$/.test(t[i])) break; if (det.test(exCore(t[i]))) { d = i; break; } }
+      if (d < 0 || (k - d < 2 && !/end$/.test(m[1]))) continue;
+      const out = t.slice(); out[k] = t[k].replace(w, m[1]);
+      return {topic: "partizip", wrong: out};
+    }
+    return null;
+  },
+  passivers(t) {
+    // “Die Tabletten sind nüchtern einzunehmen.” → “… einnehmen.”: sein + zu + infinitivo sem o zu fica agramatical.
+    const words = t.map(exLow);
+    if (!words.some(w => ["ist", "sind", "war", "waren"].includes(w)) || t.some(x => /,$/.test(x)) || words.slice(-4).includes("als")) return null;
+    const last = t.length - 1, end = exCore(t[last]), m = end.match(/^(an|auf|aus|ein|mit|ab|vor|zurück|nach|weg|teil|fest|los|vorbei)zu(\p{Ll}{2,}en)$/u);
+    if (m) { const out = t.slice(); out[last] = t[last].replace(end, m[1] + m[2]); return {topic: "passivers", wrong: out}; }
+    if (last > 1 && words[last - 1] === "zu" && /^\p{Ll}{3,}en$/u.test(end) && !/^(offen|eben|eigen)$/.test(end)) {
+      const out = t.slice(); out.splice(last - 1, 1);
+      return {topic: "passivers", wrong: out};
+    }
+    return null;
+  }
+};
+Object.assign(EX_RULES, EX_RULES_B2);
 const EX_GIVE = /^(gebe|gibst|gibt|geben|gib|schenke|schenkst|schenkt|schenken|zeige|zeigst|zeigt|zeigen|schicke|schickst|schickt|schicken|bringe|bringst|bringt|bringen|erkläre|erklärst|erklärt|erklären|empfehle|empfiehlt|empfehlen|leihe|leihst|leiht|leihen|gegeben|geschenkt|gezeigt|geschickt|gebracht|empfohlen|geliehen)$/;
 const EX_ASK = /^(weiß|weißt|wissen|wisst|frage|fragst|fragt|fragen|sagen|sag|sagst|erklären|zeigen|verstehe|verstehen|ahnung|mitteilen|beschreiben|erzählen)$/;
 const EX_RULE_TOPICS = {artigo: ["akkusativ", "dativ"], perfekt: ["perfekt"], negacao: ["negacao"], modal: ["modal"], nebensatz: ["nebensatz"], trennbar: ["trennbar"],
   v2: ["v2"], konnektoren: ["konnektoren"], komparativ: ["komparativ"], adjektiv: ["adjektiv"], possessiv: ["possessiv"], wfragen: ["wfragen"], imperativ: ["imperativ"],
-  reflexiv: ["reflexiv"], praeteritum: ["praeteritum"], zweiobjekt: ["zweiobjekt"], umzu: ["umzu"], deshalb: ["deshalb"], indirekt: ["indirekt"]};
+  reflexiv: ["reflexiv"], praeteritum: ["praeteritum"], zweiobjekt: ["zweiobjekt"], umzu: ["umzu"], deshalb: ["deshalb"], indirekt: ["indirekt"],
+  obwohl: ["obwohl"], temporal: ["temporal"], indem: ["indem"], plusquam: ["plusquam"], konj2verg: ["konj2verg"], passiv2: ["passiv2"], ndekl: ["ndekl"],
+  zuinf: ["zuinf"], lassen: ["lassen"], futur: ["futur"], konnektb2: ["konnektb2"], partizip: ["partizip"], passivers: ["passivers"]};
 /* Tópicos que têm exercício de escolha. */
 const EX_FORM_TOPICS = [...new Set(Object.values(EX_RULE_TOPICS).flat())];
 const exFormCounts = new Map();
@@ -566,16 +715,23 @@ function renderGrammarTrain() {
 const GRAM_CHAPTER = {genero: 1, falsos: 1, sie: 2, konnektoren: 3, negacao: 5, akkusativ: 5, possessiv: 6, v2: 7, trennbar: 7,
   modal: 8, praeteritum: 8, dativ: 9, praep: 10, wfragen: 10, komparativ: 11, perfekt: 13, adjektiv: 14, imperativ: 16, konjunktiv: 18,
   nebensatz: 19, indirekt: 19, doppelkonj: 19, daworter: 22, reflexiv: 24, deshalb: 25, relativ: 27, alswenn: 30, zweiobjekt: 34,
-  genitiv: 35, passiv: 37, umzu: 37};
+  genitiv: 35, passiv: 37, umzu: 37,
+  // B1: não há curso; 38–40 vêm depois do fim do Nicos Weg A2 (o “capítulo” passa a ser o nível aberto, ver gramCurrentChapter).
+  obwohl: 38, temporal: 38, zuinf: 38, futur: 38, plusquam: 39, ndekl: 39, lassen: 39, konj2verg: 40, passiv2: 40, indem: 40,
+  // B2: 41–43, depois do B1.
+  konnektb2: 41, genpraep: 41, vermutung: 41, konj1: 42, passivers: 42, fvg: 42, partizip: 43, nominal: 43};
+const GRAM_B1_BASE = 38, GRAM_B2_BASE = 41;
 const GRAM_FAMILIES = [
-  ["ordem", "Ordem das palavras", ["v2", "trennbar", "modal", "negacao", "konnektoren", "nebensatz", "indirekt", "deshalb", "relativ", "umzu", "doppelkonj"]],
-  ["verbo", "Verbo e tempo", ["praeteritum", "perfekt", "imperativ", "konjunktiv", "reflexiv", "alswenn", "passiv"]],
-  ["caso", "Casos e artigos", ["genero", "akkusativ", "possessiv", "dativ", "praep", "adjektiv", "daworter", "zweiobjekt", "genitiv"]],
-  ["palavras", "Palavras e tratamento", ["sie", "falsos", "wfragen", "komparativ"]]];
+  ["ordem", "Ordem das palavras", ["v2", "trennbar", "modal", "negacao", "konnektoren", "nebensatz", "indirekt", "deshalb", "relativ", "umzu", "doppelkonj", "obwohl", "temporal", "zuinf", "indem", "konnektb2", "partizip"]],
+  ["verbo", "Verbo e tempo", ["praeteritum", "perfekt", "imperativ", "konjunktiv", "reflexiv", "alswenn", "passiv", "futur", "plusquam", "lassen", "konj2verg", "passiv2", "konj1", "vermutung", "passivers"]],
+  ["caso", "Casos e artigos", ["genero", "akkusativ", "possessiv", "dativ", "praep", "adjektiv", "daworter", "zweiobjekt", "genitiv", "ndekl", "genpraep"]],
+  ["palavras", "Palavras e tratamento", ["sie", "falsos", "wfragen", "komparativ", "fvg", "nominal"]]];
 const GRAM_STATES = {novo: "Ainda não visto", contato: "Em contato", firmando: "Firmando", firme: "Firme", revisar: "Revisar"};
 function gramCurrentChapter() {
-  const n = Number(settings.nwChapter);
-  return Number.isFinite(n) ? n : 7;
+  const n = Number(settings.nwChapter), cur = Number.isFinite(n) ? n : 7;
+  // Com o B1 aberto (60% do A2 dominado), os tópicos do B1 (38–40) passam a ser “o seu capítulo”.
+  const open = typeof unlockedLevels === "function" ? unlockedLevels() : new Set();
+  return open.has("B2") ? Math.max(cur, 43) : open.has("B1") ? Math.max(cur, 40) : cur;
 }
 /* Estado de um tópico pelo que é do seu nível (nunca pelo catálogo inteiro): frases liberadas que você já estudou
    e o acerto recente nos exercícios. “Ainda não visto” é um fato, não um fracasso. */
@@ -623,6 +779,8 @@ function gramZones(infos, cur) {
   return {now, next};
 }
 function gramChapterText(ch) {
+  if (ch >= GRAM_B2_BASE) return "B2";
+  if (ch >= GRAM_B1_BASE) return "B1";
   const a2 = ch >= NW_A2_BASE, n = a2 ? ch - NW_A2_BASE : ch;
   return (n ? "cap. " + n + " do " : "início do ") + (a2 ? "A2" : "A1");
 }

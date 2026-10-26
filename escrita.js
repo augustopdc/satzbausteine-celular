@@ -117,7 +117,7 @@ function escritaRegister(text) {
 function escritaChecks(text, spec, pontos) {
   const out = [], words = escritaWords(text), n = words.length, [min, max] = spec.palavras || [0, 0];
   if (max) out.push({k: "palavras", ok: n >= min && n <= Math.round(max * 1.25), n, min, max, label: n + (n === 1 ? " palavra" : " palavras") + ", alvo " + min + " a " + max});
-  else out.push({k: "palavras", ok: null, label: n + " palavras"});
+  else out.push({k: "palavras", ok: null, label: plural(n, "palavra", "palavras")});
   if (spec.minFrases) { const f = escritaSentences(text).length; out.push({k: "frases", ok: f >= spec.minFrases, label: f + (f === 1 ? " frase" : " frases") + " (pedido: " + spec.minFrases + " ou mais)"}); }
   const letter = ["mensagem", "email", "formal"].includes(spec.formato);
   if (letter) {

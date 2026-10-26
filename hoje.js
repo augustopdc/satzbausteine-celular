@@ -27,7 +27,7 @@ function hojeRoute(load) {
   const doneMin = Math.round((stats.ms || 0) / 60000);
   return [
     {id: "cards", title: "Cartões", done: !total, min: cardsMin,
-      meta: total ? (load.dueProd + load.dueListen) + " revisões e " + load.fresh + " novas" : stats.reviews ? stats.reviews + " avaliações hoje" : "Nada pendente",
+      meta: total ? plural(load.dueProd + load.dueListen, "revisão", "revisões") + " e " + plural(load.fresh, "nova", "novas") : stats.reviews ? plural(stats.reviews, "avaliação", "avaliações") + " hoje" : "Nada pendente",
       time: total ? "~" + cardsMin + " min" : doneMin ? doneMin + " min" : ""},
     {id: "reading", title: "Leitura com áudio", done: readMin >= HOJE_READ_MIN, optional: rest, min: Math.max(0, HOJE_READ_MIN - readMin),
       meta: rest && !readMin ? "Opcional hoje" : readMin ? readMin + " de " + HOJE_READ_MIN + " min" : HOJE_READ_MIN + " min de livro",
@@ -143,7 +143,7 @@ function hojeTiles() {
     hojeTile("target", "Rumo à Approbation", lv.level, lv.pct + "% dominado", trail,
       (b2 > 0 ? "B2 em " + formatDate(plan.b2, {month: "long", year: "numeric"}) : "Meta do B2 no Meu plano") + (move > 0 ? ", mudança em " + move.toLocaleString("pt-BR") + " dias." : ".")),
     hojeTile("book", "Aprendidas", learned.toLocaleString("pt-BR"), learned === 1 ? "frase" : "frases", null,
-      acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + acc.reviews + " avaliações)"),
+      acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + plural(acc.reviews, "avaliação", "avaliações") + ")"),
     // Precisão (palavras sem erro) em vez de “erros por 100 palavras”: o número absoluto fica na tela da Escrita.
     hojeTile("pen", "Escrita", es && es.rate != null ? Math.max(0, Math.round(100 - es.rate)) + "%" : "—", es && es.rate != null ? "de precisão" : "",
       rates.length >= 5 ? hojeSpark(rates.map(r => 100 - r)) : null,

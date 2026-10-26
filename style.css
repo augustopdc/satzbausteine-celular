@@ -97,7 +97,7 @@ kbd {
   font: 600 .7rem/1 var(--mono); border: 1px solid currentColor; border-bottom-width: 2px; border-radius: 5px;
   padding: .16rem .34rem; opacity: .55; margin-left: .15rem; white-space: nowrap;
 }
-.field { display: grid; gap: .35rem; }
+.field { display: grid; gap: .35rem; align-content: start; }
 .field.grow { flex: 1; }
 .field label { font-weight: 600; font-size: .86rem; color: var(--ink-2); }
 input[type="text"], input[type="search"], input[type="number"], select, textarea {
@@ -1946,11 +1946,11 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 .pron-zone { display: grid; gap: .7rem; }
 .pron-zone > .label { margin: 0; }
 .pron-start-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: .9rem; }
-.pron-start { display: grid; gap: .5rem; align-content: start; padding: 1.1rem 1.2rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.pron-start { display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1.2rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
 .pron-start-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
 .pron-start .pron-title { margin: 0; }
 .pron-start p { margin: 0; }
-.pron-start .row { margin-top: auto; }
+.pron-start .row { margin-top: auto; padding-top: .25rem; }
 .pron-track-head { display: flex; align-items: flex-start; gap: .8rem; }
 .pron-track-head h2 { margin: 0; font-size: 1.1rem; }
 .pron-track-head p { margin: .1rem 0 0; }

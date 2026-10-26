@@ -140,6 +140,8 @@ function h(tag, props, ...children) {
   return el;
 }
 /* replaceChildren sem transformar null/false em texto. */
+/* “1 avaliação”, “2 avaliações” (número no formato brasileiro). */
+function plural(n, um, varios) { return Number(n).toLocaleString("pt-BR") + " " + (Number(n) === 1 ? um : varios); }
 function fill(el, ...nodes) { el.replaceChildren(...nodes.flat().filter(n => n != null && n !== false)); return el; }
 function node(tag, className, value) { return h(tag, className || null, value === undefined ? null : String(value)); }
 function setWidth(el, pct) { el.style.width = Math.max(0, Math.min(100, pct)) + "%"; }
@@ -432,10 +434,16 @@ function cardStatus(card) {
   if (!records.some(r => r.lastGrade !== "again")) return {key: "learning", label: "Aprendendo"};
   return {key: "learned", label: "Revisão " + relativeDay(Math.min(...records.map(r => r.due)))};
 }
-function introducedToday() {
+/* Quantas frases foram apresentadas hoje, por modo do cartão (a cota da Produção não gasta com a compreensão, e vice-versa). */
+const LISTEN_NEW_PER_DAY = 3;
+function introducedToday(modus = "Produktion") {
   let n = 0;
   const today = dateKey();
-  for (const p of Object.values(progress.cards)) if (p && p.introducedAt && dateKey(new Date(p.introducedAt)) === today) n++;
+  for (const [id, p] of Object.entries(progress.cards)) {
+    if (!p || !p.introducedAt || dateKey(new Date(p.introducedAt)) !== today) continue;
+    const c = byId.get(id);
+    if ((c ? tag(c, "Modus") : "Produktion") === modus) n++;
+  }
   return n;
 }
 
@@ -564,6 +572,8 @@ async function importTSV(files) {
 const VIEWS = ["home", "hub", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
 function showView(view) {
   if (!VIEWS.includes(view)) return;
+  // Trocar de tela pelo menu ou por atalho fecha o diálogo aberto (senão ele fica por cima da tela nova).
+  if (view !== currentView) document.querySelectorAll("dialog[open]").forEach(d => d.close());
   if (session.active && view !== "practice") endSession();
   if (!$("contPlayer").hidden && view !== "practice") stopContinuous();
   if (speedOpen() && view !== "practice") stopSpeedRound();
@@ -879,7 +889,7 @@ function renderNicosWeg() {
   const nw = cards.filter(c => nwChapter(c) !== null);
   const open = nw.filter(c => !nwLocked(c)), seen = open.filter(c => cardProgress(c.id) && cardProgress(c.id).introducedAt).length;
   const later = nw.length - open.length;
-  $("nwInfo").textContent = open.length + " frases liberadas, " + seen + " já apresentadas" + (later ? " · " + later + " esperam os próximos capítulos." : " · todos os capítulos liberados.");
+  $("nwInfo").textContent = plural(open.length, "frase liberada", "frases liberadas") + ", " + plural(seen, "já apresentada", "já apresentadas") + (later ? " · " + plural(later, "espera", "esperam") + " os próximos capítulos." : " · todos os capítulos liberados.");
 }
 function renderTimeline(plan) {
   const today = dateKey(), points = [["Hoje", today, "now"], ["B1", plan.b1, "b1"], ["Certificado B2", plan.b2, "b2"], ["Mudança", plan.move, "move"], ["FSP", plan.fsp, "fsp"]]
@@ -986,12 +996,16 @@ function buildSessionQueue() {
   else due.sort((a, b) => modeProgress(a.id, mode).due - modeProgress(b.id, mode).due);
   known.sort(sortNew);
   if (plan.type === "plantao" || plan.type === "pos") known.length = 0;
-  const newLimit = mode === "production" ? Math.max(0, freshLimitToday(plan) + session.extraNew - introducedToday()) : 0;
+  // Escuta: os cartões de compreensão (o que você vai ouvir dos outros) entram aos poucos, até LISTEN_NEW_PER_DAY por dia;
+  // os de produção entram pela Produção e só depois aparecem na escuta.
+  const newLimit = mode === "production" ? Math.max(0, freshLimitToday(plan) + session.extraNew - introducedToday())
+    : restrictedToday(plan) ? 0 : Math.max(0, LISTEN_NEW_PER_DAY - introducedToday("Verstehen"));
+  const pool = mode === "listening" ? unseen.filter(c => tag(c, "Modus") === "Verstehen") : unseen;
   // Progressão por nível: sem filtro de nível ou tema, as novas vêm só dos níveis já abertos.
-  const allowed = orderNew(unseen, settings.levelGate && !filters.session.Niveau && !filters.session.Thema);
+  const allowed = orderNew(pool, settings.levelGate && !filters.session.Niveau && !filters.session.Thema);
   let fresh;
   const share = Math.min(.5, Math.max(0, Number(settings.medShare) || 0));
-  if (share && !filters.session.Thema && newLimit) {
+  if (mode === "production" && share && !filters.session.Thema && newLimit) {
     const med = unseen.filter(isMedical), general = allowed.filter(c => !isMedical(c));
     const nMed = Math.min(med.length, Math.round(newLimit * share));
     fresh = [...general.slice(0, newLimit - nMed), ...med.slice(0, nMed)];
@@ -1751,7 +1765,7 @@ function countExamWords() {
 function renderExamLinked() {
   if (!activeExam) return;
   const linked = cards.filter(c => hasTag(c, "Bezug", activeExam.ref));
-  $("examLinkedCount").textContent = linked.length + " frases ligadas a " + (REF_LABELS.get(activeExam.ref) || activeExam.ref);
+  $("examLinkedCount").textContent = plural(linked.length, "frase ligada", "frases ligadas") + " a " + (REF_LABELS.get(activeExam.ref) || activeExam.ref);
   const limit = (examLinkedPage + 1) * 50;
   $("examLinked").replaceChildren(...linked.slice(0, limit).map(catalogItem));
   $("moreExamLinked").hidden = linked.length <= limit;
@@ -2367,7 +2381,7 @@ function renderSettings() {
   $("audioSource").disabled = !NEURAL_AUDIO.size;
   const voiceNames = Object.values(AUDIO_VOICES).map(v => v.label);
   $("audioSourceInfo").textContent = NEURAL_AUDIO.size
-    ? NEURAL_AUDIO.size.toLocaleString("pt-BR") + " frases com áudio neural embutido (" + voiceNames.join(" e ") + "). Frases importadas depois usam a voz do Windows."
+    ? NEURAL_AUDIO.size.toLocaleString("pt-BR") + " frases com áudio neural embutido (vozes " + new Intl.ListFormat("pt-BR", {type: "conjunction"}).format(voiceNames) + "). Frases importadas depois usam a voz do Windows."
     : "Áudio neural não encontrado nesta instalação; usando a voz do Windows.";
   $("alternateVoices").checked = !!settings.alternateVoices;
   $("setLevelGate").checked = !!settings.levelGate;

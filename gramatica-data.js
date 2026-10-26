@@ -4,6 +4,27 @@
 const GRAMATICA = (() => {
   const low = c => c.frase.toLocaleLowerCase("de");
   const alvo = c => (c.alvo || "").toLocaleLowerCase("pt-BR");
+  /* Alguma oração (entre vírgulas) termina em particípio (ou em infinitivo + modal, com modals) e o auxiliar mais próximo
+     antes dele é um de `aux`? Usado no Plusquamperfekt e no Konjunktiv II do passado: “waren wir im Konzert und sind …
+     gekommen” não conta, porque o auxiliar de gekommen é sind. */
+  const AUXES = /^(bin|bist|ist|sind|seid|habe|hast|hat|haben|habt|hatte|hattest|hatten|hattet|war|warst|waren|wart|hätte|hättest|hätten|hättet|wäre|wärst|wären|wärt|wird|werden|wurde|wurden)$/;
+  const lastAux = (s, aux, modals) => s.split(/[,;]/).some(part => {
+    const w = part.replace(/[.!?…„“"]/g, " ").trim().split(/\s+/), end = w[w.length - 1] || "";
+    const sein = x => /^(war|warst|waren|wart|wäre|wärst|wären|wärt)$/.test(x), sp = x => typeof EX_SEIN_PART !== "undefined" && EX_SEIN_PART.includes(x);
+    // Subordinada: o auxiliar fecha a oração (“…, nachdem wir gegessen hatten”).
+    const prev = w[w.length - 2] || "";
+    if (aux.test(end) && /^(\p{Ll}*ge\p{Ll}+(t|en)|\p{Ll}+iert)$/u.test(prev)) return !sein(end) || sp(prev);
+    const ok =/^(\p{Ll}*ge\p{Ll}+(t|en)|\p{Ll}+iert)$/u.test(end) || (modals && /^(sollen|müssen|können|dürfen|wollen)$/.test(end) && /en$/.test(w[w.length - 2] || ""));
+    if (!ok || w.includes("worden")) return false;
+    for (let i = w.length - 2; i >= 0; i--) {
+      if (!AUXES.test(w[i])) continue;
+      if (!aux.test(w[i])) return false;
+      // war/wäre + particípio só conta com verbo de sein (gegangen, gekommen…): “war ausgezeichnet” é adjetivo.
+      const sein = /^(war|warst|waren|wart|wäre|wärst|wären|wärt)$/.test(w[i]);
+      return !sein || (typeof EX_SEIN_PART !== "undefined" && EX_SEIN_PART.includes(end));
+    }
+    return false;
+  });
   return [
     {id: "v2", title: "Verbo na 2ª posição", short: "Na oração principal, o verbo conjugado é sempre o segundo elemento.",
       body: ["Em alemão, o verbo conjugado ocupa a segunda posição da oração principal. Se a frase começa por outra coisa que não o sujeito (tempo, lugar, objeto), o sujeito passa para depois do verbo.",
@@ -238,7 +259,149 @@ const GRAMATICA = (() => {
         "Compare: Ich bin krank, deshalb bleibe ich zu Hause (advérbio: inversão) × …, weil ich krank bin (verbo no fim) × …, denn ich bin krank (ordem normal). trotzdem é o par de obwohl: Es regnet, trotzdem gehen wir spazieren = Obwohl es regnet, gehen wir spazieren."],
       trap: ["Ich bin müde, deshalb ich gehe ins Bett.", "Ich bin müde, deshalb gehe ich ins Bett."],
       examples: [["Es war spät, trotzdem hat er noch gearbeitet.", "Era tarde; mesmo assim ele ainda trabalhou."], ["Der Bus kam nicht, deswegen bin ich zu Fuß gegangen.", "O ônibus não veio; por isso fui a pé."]],
-      detect: c => /deshalb|trotzdem|deswegen/.test(alvo(c)) || /\b(deshalb|deswegen|daher|trotzdem|sonst)\s+\p{L}+/u.test(low(c))}
+      detect: c => /deshalb|trotzdem|deswegen/.test(alvo(c)) || /\b(deshalb|deswegen|daher|trotzdem|sonst)\s+\p{L}+/u.test(low(c))},
+    // ---------- B1 (25/10/2026, escrito pelo Claude: revisar com o tutor) ----------
+    {id: "obwohl", title: "obwohl × trotzdem (embora × mesmo assim)", short: "obwohl abre oração com o verbo no fim; trotzdem é advérbio e puxa o verbo para logo depois dele.",
+      body: ["obwohl = embora, apesar de que. É conjunção de subordinada: o verbo conjugado vai para o fim. Obwohl ich müde bin, lerne ich noch. Se a oração com obwohl vem primeiro, a principal começa pelo verbo (…, lerne ich noch).",
+        "trotzdem diz a mesma coisa pelo outro lado: Ich bin müde. Trotzdem lerne ich noch. É advérbio: ocupa a 1ª posição e o verbo vem logo depois. Em português “embora” pede subjuntivo; em alemão o verbo fica no indicativo, só muda de lugar."],
+      trap: ["Obwohl ich bin müde, ich lerne noch.", "Obwohl ich müde bin, lerne ich noch."],
+      examples: [["Obwohl es regnet, gehen wir spazieren.", "Embora esteja chovendo, vamos passear."], ["Er hat Fieber. Trotzdem will er arbeiten.", "Ele está com febre. Mesmo assim quer trabalhar."]],
+      detect: c => /obwohl/.test(alvo(c)) || /\bobwohl\b/.test(low(c))},
+    {id: "temporal", title: "nachdem, bevor, während, seitdem, sobald", short: "Conjunções de tempo: abrem oração com o verbo no fim. Com nachdem, o que veio antes vai num tempo anterior.",
+      body: ["Todas mandam o verbo conjugado para o fim: bevor (antes que), nachdem (depois que), während (enquanto), seitdem ou seit (desde que), sobald (assim que), bis (até que). Bevor wir essen, waschen wir die Hände.",
+        "nachdem fala do que aconteceu antes: com a principal no presente, use o Perfekt (Nachdem ich gegessen habe, gehe ich los); com a principal no passado, o Plusquamperfekt (Nachdem ich gegessen hatte, ging ich los). Em português dizemos “antes de comer”; em alemão é uma oração completa, com sujeito. während e bis também são preposições (während der Arbeit, bis morgen)."],
+      trap: ["Bevor ich gehe ins Bett, lese ich noch.", "Bevor ich ins Bett gehe, lese ich noch."],
+      examples: [["Sobald ich zu Hause bin, rufe ich dich an.", "Assim que eu chegar em casa, te ligo."], ["Während Sie warten, können Sie den Fragebogen ausfüllen.", "Enquanto o senhor espera, pode preencher o questionário."]],
+      detect: c => /\b(nachdem|bevor|seitdem|sobald)\b|während \(conjun/.test(alvo(c))
+        || /(^|,\s*)(nachdem|bevor|seitdem|sobald)\s/.test(low(c)) || /(^|,\s*)(während|seit|bis)\s+(ich|du|er|sie|es|wir|ihr|man)\s/.test(low(c))},
+    {id: "plusquam", title: "Plusquamperfekt: o passado antes do passado", short: "hatte/war + particípio: o que já tinha acontecido antes de outro fato no passado.",
+      body: ["Forma-se como o Perfekt, mas com haben e sein no Präteritum: ich hatte gegessen (eu tinha comido), ich war gegangen (eu tinha ido). Quem usa sein no Perfekt usa war no Plusquamperfekt.",
+        "Serve para o que aconteceu antes de outro fato passado, muito com nachdem e als: Als ich ankam, hatte die Besprechung schon angefangen. É o nosso “tinha feito”; o erro comum é trocar hatte e war (ich hatte gegangen)."],
+      trap: ["Als wir ankamen, hatte der Zug schon abgefahren.", "Als wir ankamen, war der Zug schon abgefahren."],
+      examples: [["Nachdem ich gegessen hatte, bin ich spazieren gegangen.", "Depois de comer, fui passear."], ["Der Patient hatte die Tabletten schon genommen.", "O paciente já tinha tomado os comprimidos."]],
+      detect: c => /plusquamperfekt/.test(alvo(c)) || lastAux(low(c), /^(hatte|hattest|hatten|hattet|war|warst|waren|wart)$/)},
+    {id: "zuinf", title: "zu + infinitivo", short: "Depois de muitos verbos e expressões, o infinitivo vai para o fim com zu: Ich versuche, pünktlich zu sein.",
+      body: ["Verbos como versuchen, vergessen, anfangen, aufhören, vorhaben e hoffen, e expressões como Zeit haben, Lust haben, es ist wichtig, es fällt mir schwer, pedem zu + infinitivo no fim: Ich habe keine Zeit, heute zu kochen. Com verbo separável, o zu entra no meio: anzurufen, mitzubringen.",
+        "Modais (können, müssen, wollen…), werden e lassen nunca levam zu. ohne … zu (sem) e statt … zu (em vez de) seguem a mesma regra: Er ist gegangen, ohne zu bezahlen. brauchen + nicht/nur … zu = não precisar / só precisar: Sie brauchen nicht zu warten. Em português o infinitivo vem logo depois (tento chegar cedo); em alemão vai para o fim."],
+      trap: ["Ich habe vergessen dich anrufen.", "Ich habe vergessen, dich anzurufen."],
+      examples: [["Es ist wichtig, genug zu trinken.", "É importante beber o suficiente."], ["Sie brauchen nichts mitzubringen.", "O senhor não precisa trazer nada."]],
+      detect: c => /infinitiv mit zu|\+ zu\b|ohne … zu|statt … zu|brauchen … zu/.test(alvo(c))
+        || (!/(^|,\s*)um\s/.test(low(c)) && /\bzu\s+\p{Ll}+(en|ern|eln)\s*($|[,.!?])|\b(an|auf|aus|ein|mit|ab|vor|zurück|nach|weg|teil|fest|los|vorbei|her|hin)zu\p{Ll}+en\b/u.test(c.frase))},
+    {id: "futur", title: "Futur I: werden + infinitivo", short: "werden no 2º lugar e o infinitivo no fim: Ich werde morgen anrufen. Também serve para suposições.",
+      body: ["O futuro com werden: werden conjugado no 2º lugar e o infinitivo no fim. Nächstes Jahr werde ich nach Deutschland ziehen. No dia a dia o alemão usa muito o presente com uma palavra de tempo (Morgen rufe ich an); o Futur deixa o plano, a promessa ou o aviso mais claros.",
+        "Com wohl ou wahrscheinlich, vira suposição sobre o agora: Er wird wohl krank sein (ele deve estar doente). Não confunda: werden + substantivo ou adjetivo = tornar-se (Ich werde Arzt); werden + particípio = passiva (Sie werden operiert)."],
+      trap: ["Ich werde anrufen dich morgen.", "Ich werde dich morgen anrufen."],
+      examples: [["Es wird ein bisschen wehtun.", "Vai doer um pouco."], ["Wir werden Sie morgen früh operieren.", "Vamos operar o senhor amanhã cedo."]],
+      detect: c => {
+        if (/futur i\b|futur 1|werden \+ inf/.test(alvo(c))) return true;
+        // Oração principal: werden no 1º ou 2º lugar e infinitivo no fim (sem modal no fim, que seria passiva: “geklärt werden müssen”).
+        return c.frase.split(/[,;]/).some(part => {
+          const w = part.replace(/[.!?…„“"]/g, " ").trim().split(/\s+/), end = w[w.length - 1] || "", k = w.findIndex(x => /^(werde|wirst|wird|werden|werdet)$/i.test(x));
+          // Sujeito pronome logo antes ou depois de werden (a passiva costuma ter substantivo: “wird eine Kontrolle empfohlen”),
+          // e o fim não pode ser particípio forte com prefixo inseparável (empfohlen, entschieden, beschrieben).
+          const pron = /^(ich|du|er|sie|es|wir|ihr|man)$/i;
+          if (k < 0 || !(pron.test(w[k - 1] || "") || pron.test(w[k + 1] || ""))) return false;
+          if (/^(be|emp|ent|er|ver|zer)\p{Ll}*(ieben|ieden|ochen|ohlen|ossen|unden|ungen|iehen|ogen|orben|ommen|eben|essen|alten|angen|assen|oren)$/u.test(end)) return false;
+          return k >= 0 && k <= 3 && w.length >= 3 && /^\p{Ll}{3,}en$/u.test(end) && !/^(können|müssen|sollen|dürfen|wollen|werden)$/.test(end)
+            && (!/^ge/.test(end) || ["gehen", "geben"].includes(end)) && !/^(ab|an|auf|aus|ein|mit|vor|zu|nach|weg|zurück|fest|los|vorbei)ge\p{Ll}+en$/u.test(end);
+        });
+      }},
+    {id: "konj2verg", title: "Konjunktiv II no passado: hätte/wäre + particípio", short: "O que teria acontecido: Ich hätte angerufen · Ich wäre gekommen · Ich hätte kommen sollen.",
+      body: ["Para o que não aconteceu (irreal no passado): hätte ou wäre + particípio no fim. A escolha entre hätte e wäre é a mesma do Perfekt: Ich hätte dich angerufen · Wir wären früher gekommen. Wenn ich das gewusst hätte, … = se eu tivesse sabido, …",
+        "Com modal, aparecem dois infinitivos no fim e o auxiliar é sempre hätte: Ich hätte früher kommen sollen (eu devia ter vindo antes) · Sie hätten mich anrufen können (o senhor podia ter me ligado). É o “teria feito” e o “devia ter feito” do português."],
+      trap: ["Wir hätten früher gekommen.", "Wir wären früher gekommen."],
+      examples: [["Hätten Sie früher angerufen, hätten wir einen Termin gehabt.", "Se o senhor tivesse ligado antes, teríamos tido um horário."], ["Du hättest mir das sagen sollen.", "Você devia ter me dito isso."]],
+      detect: c => /konjunktiv ii no passado|konjunktiv ii passado/.test(alvo(c)) || lastAux(low(c), /^(hätte|hättest|hätten|hättet|wäre|wärst|wären|wärt)$/, true)},
+    {id: "passiv2", title: "Passiva com modal e no Perfekt", short: "muss gemacht werden · ist gemacht worden: werden vai para o fim, e no Perfekt vira worden (sem ge-).",
+      body: ["Com modal, a passiva termina em particípio + werden: Der Verband muss gewechselt werden · Das kann morgen gemacht werden. O modal fica no 2º lugar, como sempre.",
+        "No Perfekt, a passiva usa sein + particípio + worden: Der Befund ist schon geschrieben worden. É worden, nunca geworden (geworden é o Perfekt de werden = tornar-se: Er ist Arzt geworden). No Arztbrief isso aparece o tempo todo."],
+      trap: ["Der Patient ist gestern operiert geworden.", "Der Patient ist gestern operiert worden."],
+      examples: [["Die Wunde muss jeden Tag kontrolliert werden.", "A ferida precisa ser controlada todo dia."], ["Ihr Antrag ist schon bearbeitet worden.", "O seu pedido já foi processado."]],
+      detect: c => /passiv com modal|passiv perfekt|passiva com modal/.test(alvo(c)) || /\bworden\b/.test(low(c))
+        || /\b(muss|müssen|musst|kann|können|kannst|darf|dürfen|soll|sollen|sollte|sollten|musste|mussten|konnte|konnten)\b[^,.!?]*\s(\p{Ll}*ge\p{Ll}+(t|en)|\p{Ll}+iert)\s+werden\b/u.test(low(c))},
+    {id: "ndekl", title: "n-Deklination: den Patienten, dem Kollegen", short: "Alguns masculinos ganham -n ou -en fora do nominativo: der Patient → den, dem, des Patienten.",
+      body: ["Um grupo de masculinos ganha -(e)n em todos os casos, menos no nominativo singular: der Patient → den Patienten, dem Patienten, des Patienten. São sobretudo pessoas e animais: der Kollege, der Kunde, der Junge, der Nachbar, der Mensch, der Student, der Praktikant, der Assistent, der Tourist, der Zeuge.",
+        "der Herr ganha só -n no singular (Ich habe Herrn Becker angerufen) e -en no plural (meine Herren). No hospital é constante: Ich untersuche den Patienten · Ich spreche mit dem Kollegen. Em português nada muda, por isso é fácil esquecer o -en."],
+      trap: ["Ich untersuche jetzt den Patient.", "Ich untersuche jetzt den Patienten."],
+      examples: [["Kennen Sie Herrn Wagner?", "O senhor conhece o senhor Wagner?"], ["Ich frage mal den Kollegen.", "Vou perguntar ao colega."]],
+      detect: c => /n-deklination/.test(alvo(c)) || /\bHerrn\b/.test(c.frase)
+        || /\b(den|dem|des|einen|einem|eines|diesen|diesem|jeden|jedem|keinen|keinem|meinen|meinem|deinen|deinem|seinen|seinem|ihren|ihrem|Ihren|Ihrem|unseren|unserem)\s+(\p{Ll}+en\s+)?(Patienten|Kollegen|Kunden|Studenten|Praktikanten|Assistenten|Touristen|Polizisten|Nachbarn|Menschen|Jungen|Zeugen|Experten|Neffen)\b/u.test(c.frase)},
+    {id: "lassen", title: "lassen + infinitivo: mandar fazer", short: "lassen + infinitivo no fim (sem zu) = mandar fazer ou deixar: Ich lasse das Auto reparieren.",
+      body: ["lassen com outro verbo no infinitivo, sem zu, quer dizer mandar fazer (Ich lasse mir die Haare schneiden = corto o cabelo no salão) ou deixar (Lass mich das machen = deixa que eu faço). O infinitivo vai para o fim. Lass uns … = vamos …",
+        "No Perfekt, aparecem dois infinitivos no fim: Ich habe das Auto reparieren lassen. sich lassen + infinitivo = dá para fazer: Das lässt sich leicht erklären. Em português dizemos “mandei consertar”; em alemão o erro típico é pôr zu antes do infinitivo."],
+      trap: ["Ich lasse das Auto zu reparieren.", "Ich lasse das Auto reparieren."],
+      examples: [["Lassen Sie Ihren Blutdruck regelmäßig kontrollieren.", "Mande medir a sua pressão regularmente."], ["Lass uns morgen weiterreden.", "Vamos continuar a conversa amanhã."]],
+      detect: c => /lassen \+ inf|mandar fazer|sich lassen/.test(alvo(c))
+        || /\s\p{Ll}+en\s+lassen\s*[.!?]?$/u.test(c.frase)
+        || (/\b(lass|lasse|lässt|lasst|lassen|ließ|ließen)\b[^,.!?;]*\s\p{Ll}+en\s*[.!?]?$/iu.test(c.frase) && !/\s(offen|liegen|stehen)\s*[.!?]?$/.test(c.frase))},
+    {id: "indem", title: "indem e sodass: como e com que resultado", short: "indem = fazendo (o meio); sodass = de modo que (a consequência). Os dois mandam o verbo para o fim.",
+      body: ["indem responde “como?”: Sie können den Blutdruck senken, indem Sie weniger Salz essen (comendo menos sal). Em português usamos o gerúndio; em alemão é uma oração com sujeito e o verbo no fim.",
+        "sodass (ou so …, dass) responde “e o que aconteceu?”: Es hat stark geregnet, sodass das Spiel ausgefallen ist. Com so + adjetivo: Ich war so müde, dass ich sofort eingeschlafen bin. As duas são conjunções de subordinada: verbo conjugado no fim."],
+      trap: ["Sie lernen schneller, indem Sie sprechen jeden Tag.", "Sie lernen schneller, indem Sie jeden Tag sprechen."],
+      examples: [["Ich lerne Vokabeln, indem ich sie laut wiederhole.", "Aprendo vocabulário repetindo em voz alta."], ["Er hatte hohes Fieber, sodass wir ihn aufgenommen haben.", "Ele estava com febre alta, de modo que o internamos."]],
+      detect: c => /indem|sodass|so …, dass/.test(alvo(c)) || /\bindem\b|\bsodass\b|\bso\s+\p{L}+,\s*dass\b/u.test(low(c))},
+    // ---------- B2 (25/10/2026, escrito pelo Claude: revisar com o tutor) ----------
+    {id: "konj1", title: "Konjunktiv I: o que outra pessoa disse", short: "er sei, er habe, man werde: o discurso indireto do jornal, do laudo e da passagem de caso.",
+      body: ["Para contar o que outra pessoa disse sem assumir que é verdade, o alemão escrito usa o Konjunktiv I: Der Patient gibt an, er habe seit gestern Fieber. Laut Bericht sei die Operation gut verlaufen. Forma-se com a raiz do infinitivo + e: er habe, er komme, er könne, man werde; sein é irregular: ich sei, er sei, sie seien.",
+        "Onde o Konjunktiv I é igual ao presente (sie haben, wir kommen), usa-se o Konjunktiv II (sie hätten, wir kämen) ou würde. Na fala, muita gente usa o indicativo (Er sagt, er hat Fieber); no Arztbrief, no jornal e na prova escrita, o Konjunktiv I é o esperado. Em português usamos só “disse que tinha”."],
+      trap: ["Der Patient berichtet, er hat seit drei Tagen Fieber.", "Der Patient berichtet, er habe seit drei Tagen Fieber."],
+      examples: [["Die Patientin gibt an, sie sei gestern gestürzt.", "A paciente relata que caiu ontem."], ["Der Minister sagte, man werde die Wartezeiten verkürzen.", "O ministro disse que vão reduzir as filas."]],
+      detect: c => /konjunktiv i\b|discurso indireto/.test(alvo(c)) && !/konjunktiv ii/.test(alvo(c))
+        || (/(?<!\b(ich|du|wir|ihr)\s)\b(er|sie|es|man)\s+(sei|habe|werde|könne|müsse|solle|dürfe|wolle|nehme|komme|gebe)\b/.test(low(c)) && !/\bes sei denn\b/.test(low(c)))
+        || /(^|,\s*|\bdass\s+)(der|die|das|ihr|sein|mein)\s+\p{Lu}\p{Ll}+\s+(sei|seien|habe|werde|könne|müsse|nehme)\b(?!\s+ich\b)/u.test(c.frase)},
+    {id: "partizip", title: "Partizipialattribut: o adjetivo que vira oração", short: "der gestern aufgenommene Patient = o paciente que foi internado ontem. Tudo fica entre o artigo e o substantivo.",
+      body: ["O alemão escrito põe uma oração inteira antes do substantivo, usando o particípio como adjetivo: der gestern aufgenommene Patient (o paciente que foi internado ontem), die seit Tagen zunehmende Luftnot (a falta de ar que aumenta há dias). O particípio leva a terminação de adjetivo (-e, -en, -er…).",
+        "Particípio II (aufgenommen) = algo que foi feito; particípio I (zunehmend, do infinitivo + d) = algo que está acontecendo. Para ler, comece pelo artigo, pule até o substantivo e depois volte: der … Patient → que paciente? o … aufgenommene. Em português isso vira oração com “que”; no Arztbrief e nos textos da prova é muito comum."],
+      trap: ["Der gestern aufgenommen Patient hat Fieber.", "Der gestern aufgenommene Patient hat Fieber."],
+      examples: [["Die vom Hausarzt verordneten Tabletten haben nicht geholfen.", "Os comprimidos receitados pelo médico de família não ajudaram."], ["Bei zunehmender Luftnot melden Sie sich bitte sofort.", "Se a falta de ar aumentar, avise imediatamente."]],
+      detect: c => /partizipialattribut|particípio como adjetivo/.test(alvo(c))
+        || /\b([Dd]er|[Dd]ie|[Dd]as|[Dd]en|[Dd]em|[Dd]es|[Ee]in|[Ee]ine|[Ee]inen|[Ee]inem|[Ee]iner|[Ee]ines|[Bb]ei|[Mm]it)\s+([\p{L}\d-]+\s+){0,4}(\p{Ll}+end|\p{Ll}*ge\p{Ll}+t|\p{Ll}*ge\p{Ll}+en|\p{Ll}+iert|(be|ver|er|ent|emp|zer)\p{Ll}{3,}t)(e|en|er|es|em)\s+(?!Sie\b|Ihnen\b|Ihr\b|Ihre\b)\p{Lu}/u.test(c.frase)
+          && /\b([Dd]er|[Dd]ie|[Dd]as|[Dd]en|[Dd]em|[Dd]es|[Ee]in|[Ee]ine|[Ee]inen|[Ee]inem|[Ee]iner|[Ee]ines|[Bb]ei|[Mm]it)\s+(([\p{L}\d-]+\s+){1,4}(\p{Ll}*ge\p{Ll}+t|\p{Ll}*ge\p{Ll}+en|\p{Ll}+iert|(be|ver|er|ent|emp|zer)\p{Ll}{3,}t)|\p{Ll}+end)(e|en|er|es|em)\s+(?!Sie\b|Ihnen\b|Ihr\b|Ihre\b)\p{Lu}/u.test(c.frase)},
+    {id: "nominal", title: "Nominalização: o estilo do laudo", short: "zur Abklärung (para esclarecer), nach Normalisierung (depois que normalizou), bei Verschlechterung (se piorar).",
+      body: ["O alemão formal troca orações por substantivos: em vez de um … zu abzuklären, zur Abklärung; em vez de nachdem sich die Werte normalisiert hatten, nach Normalisierung der Werte; em vez de wenn es schlechter wird, bei Verschlechterung. O verbo vira substantivo em -ung (quase sempre feminino) e o que era objeto vai para o genitivo.",
+        "Pares úteis: zur (um … zu), nach (nachdem), bei (wenn), vor (bevor), wegen ou aufgrund (weil), trotz (obwohl). No Arztbrief e na apresentação do caso isso é o normal: Die Aufnahme erfolgte zur Abklärung von Thoraxschmerzen. Na conversa com o paciente, volte às orações: é mais claro."],
+      trap: ["Die Aufnahme erfolgte für abzuklären die Schmerzen.", "Die Aufnahme erfolgte zur Abklärung der Schmerzen."],
+      examples: [["Nach Rücksprache mit dem Oberarzt wurde die Therapie angepasst.", "Depois de conversar com o Oberarzt, a terapia foi ajustada."], ["Bei Verschlechterung des Zustands bitte sofort den Arzt rufen.", "Se o estado piorar, chamar o médico imediatamente."]],
+      // Só o padrão do laudo, sem artigo: “zur Abklärung”, “nach Rücksprache”, “bei Verschlechterung” (não “bei der Planung”).
+      detect: c => /nominaliza/.test(alvo(c))
+        || /\b(zur|nach|bei|vor|aufgrund)\s+(?!Verfügung\b|Sprache\b|Kenntnis\b|Diskussion\b)\p{Lu}\p{Ll}*(ung|ierung)\s+(des|der|eines|einer|von)\b/u.test(c.frase)
+        || /\b(zur Abklärung|zur Überwachung|zur Behandlung|zur Kontrolle von|nach Rücksprache|nach Absprache|bei Verschlechterung|bei Bedarf|nach Normalisierung|nach Entlassung|bei Aufnahme|vor Beginn|nach Abschluss)\b/.test(c.frase)},
+    {id: "vermutung", title: "Suposição e relato: dürfte, muss, soll, will, wird … haben", short: "Modais que dizem o quanto você tem certeza (muss, dürfte, könnte) ou de quem é a informação (soll, will).",
+      body: ["Suposição, da mais certa à menos certa: muss (com certeza: Er muss krank sein), dürfte (provavelmente: Das dürfte die Ursache sein), wird wohl (deve ser: Er wird wohl schlafen), könnte (talvez: Es könnte eine Allergie sein). Sobre o passado, o infinitivo vira particípio + haben/sein: Er muss gestürzt sein · Er wird den Termin vergessen haben (Futur II).",
+        "Relato: soll = dizem que (Der neue Chefarzt soll sehr streng sein); will = ele afirma, sem prova (Er will nichts gegessen haben). Em português dizemos “deve ter caído”, “dizem que é”, “ele diz que não comeu”; em alemão o modal faz isso sozinho."],
+      trap: ["Er muss sein gestürzt.", "Er muss gestürzt sein."],
+      examples: [["Bei der Temperatur muss er mehrere Stunden draußen gelegen haben.", "Com essa temperatura, ele deve ter ficado horas lá fora."], ["Der Infarkt dürfte schon einige Jahre zurückliegen.", "O infarto deve ter sido há alguns anos."]],
+      detect: c => /futur ii|suposição|boato|afirma \(sem|dedução/.test(alvo(c)) || /\bdürften?\b/.test(low(c))
+        || /\b(muss|müssen|soll|sollen|will|wollen|könnte|könnten|wird|werden)\b[^,.;!?]*\s(\p{Ll}*ge\p{Ll}+(t|en)|\p{Ll}+iert)\s+(haben|sein)\s*[.!?,;]?\s*$/u.test(low(c).split(/[,;]/).pop())},
+    {id: "passivers", title: "Substitutos da passiva: lässt sich, ist zu, -bar", short: "Das lässt sich erklären · Das ist zu beachten · Das ist behandelbar: três jeitos de dizer “pode/deve ser feito”.",
+      body: ["Além de werden + particípio, o alemão tem atalhos para “pode ser feito”: sich lassen + infinitivo (Das lässt sich leicht erklären = isso pode ser explicado facilmente) e adjetivos em -bar (behandelbar = tratável, erreichbar = alcançável, sichtbar = visível).",
+        "sein + zu + infinitivo diz “pode” ou “deve ser feito”, conforme o contexto: Die Tabletten sind nüchtern einzunehmen (devem ser tomados em jejum) · Das ist kaum zu glauben (é difícil de acreditar). Com verbo separável, o zu entra no meio (einzunehmen). Nas bulas, avisos e laudos isso aparece o tempo todo."],
+      trap: ["Die Tabletten sind nüchtern einnehmen.", "Die Tabletten sind nüchtern einzunehmen."],
+      examples: [["Das Problem lässt sich leider nicht schnell lösen.", "O problema infelizmente não pode ser resolvido rápido."], ["Der Tumor ist gut behandelbar.", "O tumor é bem tratável."]],
+      detect: c => /passiversatz|sich lassen|sein \+ zu|ist zu \+|-bar/.test(alvo(c)) || /\b(lässt|lassen)\s+sich\b/.test(low(c))
+        || /\b(ist|sind|war|waren)\b[^,.;!?]*\s(zu\s+\p{Ll}+en|\p{Ll}+zu\p{Ll}+en)\s*[.!?,]/u.test(c.frase)
+        || (/\b\p{Ll}{3,}bar(e|en|er|es|em)?\b/u.test(low(c)) && !/\b(vereinbar|dankbar|wunderbar|offenbar|scheinbar|unmittelbar|sonderbar|furchtbar|nachbar|fruchtbar|kostbar|unfehlbar)\p{Ll}*\b/u.test(low(c)))},
+    {id: "genpraep", title: "Preposições com genitivo: aufgrund, infolge, hinsichtlich", short: "aufgrund des Befunds, innerhalb einer Woche, hinsichtlich der Therapie: o registro formal pede genitivo.",
+      body: ["Algumas preposições pedem genitivo: aufgrund (por causa de), infolge (em consequência de), hinsichtlich e bezüglich (quanto a), angesichts (diante de), innerhalb e außerhalb (dentro/fora de), anhand (com base em), anstelle (no lugar de), mithilfe (com a ajuda de). Também trotz, wegen, statt e während, que na fala às vezes vão com dativo.",
+        "No genitivo, o artigo vira des (masculino e neutro, e o substantivo ganha -s/-es) ou der (feminino e plural): aufgrund des Befundes, innerhalb der nächsten Tage. Em textos formais, no Arztbrief e em cartas a órgãos, use o genitivo; aufgrund e infolge nunca vão com dativo."],
+      trap: ["Aufgrund dem schlechten Wetter fällt der Ausflug aus.", "Aufgrund des schlechten Wetters fällt der Ausflug aus."],
+      examples: [["Innerhalb einer Woche erhalten Sie den Befund.", "Em até uma semana o senhor recebe o laudo."], ["Angesichts der Laborwerte empfehle ich eine stationäre Aufnahme.", "Diante dos exames, recomendo internação."]],
+      detect: c => /\+ genitivo/.test(alvo(c)) && /aufgrund|infolge|hinsichtlich|bezüglich|angesichts|anhand|innerhalb|außerhalb|trotz|wegen|statt|während|mithilfe|anstelle/.test(alvo(c))
+        || /\b(aufgrund|infolge|hinsichtlich|bezüglich|angesichts|anhand|innerhalb|außerhalb|anstelle|mithilfe|zugunsten)\s+(des|der|eines|einer|meines|meiner|seines|seiner|ihres|ihrer|unseres|unserer|dieses|dieser|jedes|jeder)\b/i.test(c.frase)},
+    {id: "fvg", title: "Funktionsverbgefüge: in Frage kommen, zur Verfügung stehen", short: "Substantivo + verbo “vazio” que juntos dizem uma coisa só: in Anspruch nehmen = usar, zur Verfügung stehen = estar disponível.",
+      body: ["No alemão formal, muitos verbos simples viram um substantivo + um verbo de apoio: in Frage kommen (ser possível, ser opção), zur Verfügung stehen (estar disponível), in Anspruch nehmen (usar, recorrer a), zum Ausdruck bringen (expressar), Rücksicht nehmen auf (levar em conta), eine Entscheidung treffen (decidir), in Kauf nehmen (aceitar um custo).",
+        "O sentido está no substantivo; o verbo só “carrega”. Por isso não dá para traduzir palavra por palavra nem trocar o verbo: é eine Entscheidung treffen, não machen. Aprenda como bloco, com a preposição. Na FSP: Differenzialdiagnostisch kommen eine Lungenembolie und eine Aortendissektion in Frage."],
+      trap: ["Wir müssen heute eine Entscheidung machen.", "Wir müssen heute eine Entscheidung treffen."],
+      examples: [["Für Rückfragen stehen wir Ihnen jederzeit zur Verfügung.", "Para dúvidas, estamos à disposição a qualquer momento."], ["Welche Ursachen kommen in Frage?", "Que causas são possíveis?"]],
+      detect: c => /funktionsverb/.test(alvo(c))
+        || /\b(in frage|infrage|zur verfügung|in anspruch|zum ausdruck|zur sprache|in kauf|zur kenntnis|in betracht|in kraft|zum einsatz|zur diskussion|in verbindung|unter druck|rücksicht nehmen|rücksicht auf|stellung nehmen|stellung zu|bezug nehmen|entscheidung treffen|entscheidung getroffen|maßnahmen ergreifen|kritik üben|in angriff)\b/.test(low(c))},
+    {id: "konnektb2", title: "Conectores do B2: sofern, es sei denn, je nachdem, zumal", short: "sofern (desde que), es sei denn (a não ser que), je nachdem (dependendo de), zumal (ainda mais porque), wohingegen (ao passo que).",
+      body: ["Esses conectores deixam o argumento preciso: sofern = desde que, contanto que (Ich komme, sofern ich frei habe); zumal = ainda mais porque (Ich bleibe zu Hause, zumal es regnet); wohingegen = ao passo que (Er ist ruhig, wohingegen sie sehr spontan ist). Os três mandam o verbo para o fim, como weil.",
+        "es sei denn = a não ser que, mas depois da vírgula a ordem é a de oração principal: Wir operieren morgen, es sei denn, die Werte verschlechtern sich. je nachdem (ob/wie/wann…) = depende de: Je nachdem, wie es Ihnen geht, entlassen wir Sie morgen. geschweige denn = muito menos, depois de negação: Ich kann kaum laufen, geschweige denn rennen."],
+      trap: ["Ich komme mit, sofern habe ich Zeit.", "Ich komme mit, sofern ich Zeit habe."],
+      examples: [["Sofern keine Komplikationen auftreten, können Sie am Freitag nach Hause.", "Desde que não haja complicações, o senhor pode ir para casa na sexta."], ["Je nachdem, wie die Werte morgen sind, passen wir die Dosis an.", "Dependendo dos exames de amanhã, ajustamos a dose."]],
+      detect: c => /sofern|es sei denn|je nachdem|zumal|wohingegen|insofern|geschweige|wenngleich/.test(alvo(c))
+        || /\b(sofern|es sei denn|je nachdem|zumal|wohingegen|insofern|geschweige denn|wenngleich|infolgedessen)\b/.test(low(c))}
   ];
 })();
 /* Tabelas de consulta (tela Gramática → Tabelas). Primeira coluna = rótulo; as demais em alemão. */
@@ -288,15 +451,38 @@ const GRAM_TABLES = [
       ["passieren", "ist passiert", "acontecer"], ["machen", "hat gemacht", "fazer"], ["arbeiten", "hat gearbeitet", "trabalhar"], ["kaufen", "hat gekauft", "comprar"],
       ["trinken", "hat getrunken", "beber"], ["schreiben", "hat geschrieben", "escrever"], ["finden", "hat gefunden", "achar"], ["bringen", "hat gebracht", "trazer"],
       ["denken", "hat gedacht", "pensar"], ["anrufen", "hat angerufen", "telefonar"], ["bekommen", "hat bekommen", "receber"], ["verstehen", "hat verstanden", "entender"],
-      ["studieren", "hat studiert", "estudar (faculdade)"]]}
+      ["studieren", "hat studiert", "estudar (faculdade)"]]},
+  // B1 (25/10/2026)
+  {title: "Conjunções que mandam o verbo para o fim (B1)", note: "Todas abrem oração subordinada. während, seit e bis também são preposições (während der Arbeit, seit gestern, bis morgen).",
+    head: ["", "Conjunção"],
+    rows: [["antes que", "bevor"], ["depois que", "nachdem"], ["enquanto", "während"], ["desde que", "seitdem"], ["assim que", "sobald"], ["até que", "bis"],
+      ["embora", "obwohl"], ["fazendo (o meio)", "indem"], ["de modo que", "sodass"]]},
+  {title: "n-Deklination", note: "Masculinos que ganham -(e)n fora do nominativo singular. Herr ganha só -n no singular e -en no plural.",
+    head: ["", "Nominativo", "Acusativo", "Dativo", "Genitivo"],
+    rows: [["paciente", "der Patient", "den Patienten", "dem Patienten", "des Patienten"], ["colega", "der Kollege", "den Kollegen", "dem Kollegen", "des Kollegen"],
+      ["senhor", "der Herr", "den Herrn", "dem Herrn", "des Herrn"], ["ser humano", "der Mensch", "den Menschen", "dem Menschen", "des Menschen"],
+      ["vizinho", "der Nachbar", "den Nachbarn", "dem Nachbarn", "des Nachbarn"], ["cliente", "der Kunde", "den Kunden", "dem Kunden", "des Kunden"]]},
+  {title: "Plusquamperfekt e Konjunktiv II no passado", note: "hatte/war = tinha feito; hätte/wäre = teria feito. A escolha entre haben e sein é a mesma do Perfekt.",
+    head: ["", "Plusquamperfekt", "Konjunktiv II passado"],
+    rows: [["fazer", "hatte gemacht", "hätte gemacht"], ["ir", "war gegangen", "wäre gegangen"], ["vir", "war gekommen", "wäre gekommen"], ["ser, estar", "war gewesen", "wäre gewesen"],
+      ["ter", "hatte gehabt", "hätte gehabt"], ["telefonar", "hatte angerufen", "hätte angerufen"], ["acontecer", "war passiert", "wäre passiert"], ["saber", "hatte gewusst", "hätte gewusst"]]},
+  // B2 (25/10/2026)
+  {title: "Konjunktiv I (discurso indireto)", note: "Onde o Konjunktiv I é igual ao presente (sie haben, wir können), use o Konjunktiv II (sie hätten, wir könnten).",
+    head: ["", "sein", "haben", "werden", "können"],
+    rows: [["ich", "sei", "hätte", "würde", "könne"], ["du", "seist", "habest", "werdest", "könnest"], ["er, sie, es, man", "sei", "habe", "werde", "könne"],
+      ["wir", "seien", "hätten", "würden", "könnten"], ["sie, Sie", "seien", "hätten", "würden", "könnten"]]},
+  {title: "Preposições com genitivo e Funktionsverbgefüge", note: "aufgrund, infolge, hinsichtlich, angesichts e innerhalb pedem genitivo. Os blocos da direita se aprendem inteiros, com a preposição.",
+    head: ["", "Alemão"],
+    rows: [["por causa de", "aufgrund"], ["em consequência de", "infolge"], ["quanto a", "hinsichtlich"], ["diante de", "angesichts"], ["dentro de (prazo)", "innerhalb"],
+      ["ser uma possibilidade", "in Frage kommen"], ["estar à disposição", "zur Verfügung stehen"], ["usar, recorrer a", "in Anspruch nehmen"], ["decidir", "eine Entscheidung treffen"], ["levar em conta", "Rücksicht nehmen"]]}
 ];
 /* Motivos de erro que o aluno pode marcar e os tópicos de gramática ligados a cada um. */
 const ERROR_REASONS = [
-  {id: "vocab", label: "Vocabulário", topics: ["falsos", "wfragen", "daworter", "alswenn"]},
-  {id: "ordem", label: "Ordem das palavras", topics: ["v2", "nebensatz", "modal", "trennbar", "konnektoren", "deshalb", "indirekt", "relativ", "umzu", "doppelkonj"]},
+  {id: "vocab", label: "Vocabulário", topics: ["falsos", "wfragen", "daworter", "alswenn", "fvg", "nominal"]},
+  {id: "ordem", label: "Ordem das palavras", topics: ["v2", "nebensatz", "modal", "trennbar", "konnektoren", "deshalb", "indirekt", "relativ", "umzu", "doppelkonj", "obwohl", "temporal", "zuinf", "indem", "konnektb2", "partizip"]},
   {id: "genero", label: "Gênero/artigo", topics: ["genero", "possessiv", "adjektiv"]},
-  {id: "caso", label: "Caso", topics: ["akkusativ", "dativ", "praep", "genitiv", "adjektiv", "zweiobjekt", "relativ"]},
-  {id: "verbo", label: "Verbo/conjugação", topics: ["perfekt", "praeteritum", "modal", "trennbar", "imperativ", "reflexiv", "konjunktiv", "passiv"]},
+  {id: "caso", label: "Caso", topics: ["akkusativ", "dativ", "praep", "genitiv", "adjektiv", "zweiobjekt", "relativ", "ndekl", "genpraep"]},
+  {id: "verbo", label: "Verbo/conjugação", topics: ["perfekt", "praeteritum", "modal", "trennbar", "imperativ", "reflexiv", "konjunktiv", "passiv", "plusquam", "futur", "konj2verg", "passiv2", "lassen", "konj1", "vermutung", "passivers"]},
   {id: "pronuncia", label: "Pronúncia", topics: []},
   {id: "travei", label: "Travei", topics: []}
 ];
@@ -333,5 +519,25 @@ const GRAM_EXTRA = {
   umzu: {pt: "Aprendo alemão para trabalhar na Alemanha.", clinic: ["Wir machen ein Röntgenbild, um eine Lungenentzündung auszuschließen.", "Vamos fazer um raio X para descartar pneumonia.", "Explicar a conduta: um … zu + infinitivo."]},
   doppelkonj: {pt: "Não bebo nem café nem chá.", clinic: ["Sie haben weder Fieber noch Husten.", "O senhor não tem nem febre nem tosse.", "weder … noch já nega: sem nicht nem kein."]},
   zweiobjekt: {pt: "Eu dou isso a ele.", clinic: ["Ich erkläre es Ihnen gleich.", "Já explico isso ao senhor.", "Dois pronomes: o acusativo (es) vem antes do dativo (Ihnen)."]},
+  // B1 (25/10/2026)
+  obwohl: {pt: "Embora esteja melhor, o senhor precisa tomar os comprimidos.", clinic: ["Obwohl Sie sich besser fühlen, nehmen Sie das Antibiotikum bitte bis zum Ende.", "Embora o senhor se sinta melhor, tome o antibiótico até o fim, por favor.", "Adesão ao tratamento: obwohl manda fühlen para o fim e a principal começa pelo verbo."]},
+  temporal: {pt: "Antes de comer, tome o comprimido.", clinic: ["Bitte essen Sie nichts, bevor wir Blut abnehmen.", "Por favor, não coma nada antes de colhermos o sangue.", "Preparo de exame: bevor + oração completa com o verbo no fim, não “antes de + infinitivo”."]},
+  plusquam: {pt: "As dores tinham começado dois dias antes.", clinic: ["Die Beschwerden hatten zwei Tage vor der Aufnahme begonnen.", "As queixas tinham começado dois dias antes da internação.", "Na anamnese e no Arztbrief: o que veio antes da internação vai no Plusquamperfekt."]},
+  zuinf: {pt: "Esqueci de tomar o remédio.", clinic: ["Haben Sie vergessen, die Tabletten zu nehmen?", "O senhor esqueceu de tomar os comprimidos?", "Adesão: vergessen pede vírgula e zu + infinitivo no fim."]},
+  futur: {pt: "Vai doer um pouco.", clinic: ["Es wird kurz ein bisschen wehtun.", "Vai doer um pouquinho, rapidinho.", "Antes de uma punção: avisar o que vai acontecer com werden + infinitivo no fim."]},
+  konj2verg: {pt: "O senhor devia ter vindo antes.", clinic: ["Sie hätten früher kommen sollen, aber gut, dass Sie jetzt da sind.", "O senhor devia ter vindo antes, mas que bom que está aqui agora.", "Sem culpar o paciente: hätten … sollen, com os dois infinitivos no fim."]},
+  passiv2: {pt: "O paciente foi operado ontem.", clinic: ["Der Patient ist gestern operiert worden.", "O paciente foi operado ontem.", "Na passagem de plantão e no Arztbrief: worden, nunca geworden."]},
+  ndekl: {pt: "Pode olhar o paciente do quarto 3?", clinic: ["Können Sie sich den Patienten in Zimmer 3 ansehen?", "Pode dar uma olhada no paciente do quarto 3?", "Com colegas: den Patienten, dem Patienten; o -en não pode faltar."]},
+  lassen: {pt: "Mande medir a pressão na farmácia.", clinic: ["Lassen Sie Ihren Blutdruck in der Apotheke messen.", "Mande medir a sua pressão na farmácia.", "Orientação ao paciente: lassen + infinitivo no fim, sem zu."]},
+  // B2 (25/10/2026)
+  konj1: {pt: "O paciente diz que tem febre há três dias.", clinic: ["Der Patient gibt an, er habe seit drei Tagen Fieber.", "O paciente relata ter febre há três dias.", "Anamnese no Arztbrief: o que o paciente contou vai no Konjunktiv I (er habe, er sei)."]},
+  partizip: {pt: "O paciente que foi internado ontem está melhor.", clinic: ["Der gestern aufgenommene Patient ist heute fieberfrei.", "O paciente internado ontem está hoje sem febre.", "Passagem de plantão e Arztbrief: o particípio com terminação antes do substantivo."]},
+  nominal: {pt: "Ele foi internado para esclarecer a dor no peito.", clinic: ["Die Aufnahme erfolgte zur Abklärung thorakaler Schmerzen.", "A internação ocorreu para investigação de dor torácica.", "Primeira frase do Arztbrief: zur Abklärung + genitivo, no lugar de um … zu."]},
+  vermutung: {pt: "Ele deve ter caído em casa.", clinic: ["Er muss zu Hause gestürzt sein, die Prellungen sind frisch.", "Ele deve ter caído em casa; as contusões são recentes.", "Raciocínio clínico na apresentação do caso: muss/dürfte + particípio + sein/haben."]},
+  passivers: {pt: "Os comprimidos devem ser tomados em jejum.", clinic: ["Die Tabletten sind morgens nüchtern einzunehmen.", "Os comprimidos devem ser tomados de manhã em jejum.", "Prescrição e bula: sein + zu + infinitivo, com o zu no meio do separável."]},
+  genpraep: {pt: "Por causa dos exames, recomendo internação.", clinic: ["Aufgrund der erhöhten Entzündungswerte empfehlen wir eine stationäre Aufnahme.", "Devido aos marcadores inflamatórios elevados, recomendamos internação.", "Arztbrief e conversa com o Oberarzt: aufgrund + genitivo, nunca dativo."]},
+  fvg: {pt: "Que diagnósticos são possíveis?", clinic: ["Differenzialdiagnostisch kommen eine Lungenembolie und eine Aortendissektion in Frage.", "Como diagnóstico diferencial, entram embolia pulmonar e dissecção de aorta.", "Fallvorstellung na FSP: in Frage kommen = ser uma possibilidade."]},
+  konnektb2: {pt: "O senhor pode ir para casa amanhã, desde que a febre não volte.", clinic: ["Sie können morgen nach Hause, sofern das Fieber nicht wiederkommt.", "O senhor pode ir para casa amanhã, desde que a febre não volte.", "Planejamento de alta: sofern + verbo no fim põe a condição."]},
+  indem: {pt: "O senhor pode baixar o açúcar comendo menos doce.", clinic: ["Sie können den Zucker senken, indem Sie weniger Süßes essen.", "O senhor pode baixar o açúcar comendo menos doce.", "Mudança de estilo de vida: o gerúndio do português vira indem + verbo no fim."]},
   deshalb: {pt: "Estou cansado, por isso vou para a cama.", clinic: ["Der Blutdruck ist zu hoch, deshalb bleiben Sie heute hier.", "A pressão está alta demais, por isso o senhor fica aqui hoje.", "Depois de deshalb, o verbo vem logo (bleiben Sie)."]}
 };

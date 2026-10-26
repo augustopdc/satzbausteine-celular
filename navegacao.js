@@ -53,7 +53,9 @@ function navGo(view, dir = "fade") {
     if (el) el.classList.add("vt");
   });
   const guard = setTimeout(() => { try { t.skipTransition(); } catch (e) { /* já terminou */ } }, 1500);
-  t.finished.finally(() => { clearTimeout(guard); delete document.documentElement.dataset.nav; });
+  // Transição pulada rejeita ready/finished: não é erro.
+  t.ready.catch(() => {});
+  t.finished.catch(() => {}).finally(() => { clearTimeout(guard); delete document.documentElement.dataset.nav; });
 }
 function navHub(id) {
   const views = hubViews(id), last = nav.last[id];

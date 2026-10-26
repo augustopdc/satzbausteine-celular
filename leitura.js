@@ -182,7 +182,7 @@ function rdBookSettings(id) {
   return [b.title, [
     h("div", {class: "bd-cover"}, rdCoverNode(b), h("button", {class: "small", type: "button", onclick: () => rdPickCover(b.id)}, b.cover ? "Trocar a capa" : "Buscar a capa")),
     h("div", {class: "bd-info"},
-      h("p", {class: "muted small-text", text: (rdAuthor(b) ? rdAuthor(b) + ". " : "") + b.chapters + " capítulos, " + (b.words || 0).toLocaleString("pt-BR") + " palavras."}),
+      h("p", {class: "muted small-text", text: (rdAuthor(b) ? rdAuthor(b) + ". " : "") + plural(b.chapters, "capítulo", "capítulos") + ", " + (b.words || 0).toLocaleString("pt-BR") + " palavras."}),
       h("h3", {text: "Áudio"}), syncStatusNode(b),
       h("h3", {text: "Traduções e gramática"}), annotStatusNode(b),
       typeof rdBookCardDifficulty === "function" ? rdBookCardDifficulty(b) : null,
@@ -275,7 +275,9 @@ function rdHeroRun(update) {
   root.dataset.nav = "book";
   const t = document.startViewTransition(update);
   const guard = setTimeout(() => { try { t.skipTransition(); } catch (e) { /* já terminou */ } }, 2500);
-  t.finished.finally(() => { clearTimeout(guard); delete root.dataset.nav; rdHeroClear(); });
+  // Transição pulada (janela sem foco, trava de tempo) rejeita ready/finished: não é erro.
+  t.ready.catch(() => {});
+  t.finished.catch(() => {}).finally(() => { clearTimeout(guard); delete root.dataset.nav; rdHeroClear(); });
 }
 /* A capa do cartão tocado (o botão da capa ou o “Continuar lendo” do mesmo cartão). */
 function rdCoverOf(e) {
@@ -366,6 +368,7 @@ function chapterRange(ci) {
 }
 function renderBook() {
   const book = reading.book;
+  if (!book) return;
   reading.view = "text";
   $("readingLibrary").hidden = true;
   $("readingBook").hidden = false;
@@ -817,7 +820,7 @@ function wordDetail(word, i = reading.sel, wk = reading.wk, inner = false) {
 function bookGrammar(i) {
   const s = reading.order[i];
   const pseudo = {id: "livro:" + reading.book.id + ":" + s.id, frase: s.text, alvo: "", tags: "", situacao: "[neutro] "};
-  const priority = ["relativ", "indirekt", "umzu", "alswenn", "doppelkonj", "zweiobjekt", "daworter", "deshalb",
+  const priority = ["konj1", "partizip", "nominal", "vermutung", "passivers", "fvg", "genpraep", "konnektb2", "plusquam", "konj2verg", "passiv2", "lassen", "zuinf", "obwohl", "temporal", "indem", "futur", "ndekl", "relativ", "indirekt", "umzu", "alswenn", "doppelkonj", "zweiobjekt", "daworter", "deshalb",
     "nebensatz", "v2", "trennbar", "perfekt", "praeteritum", "modal", "imperativ", "reflexiv", "passiv", "konjunktiv", "praep", "wfragen",
     "komparativ", "adjektiv", "possessiv", "konnektoren", "negacao", "falsos"];
   return topicsFor(pseudo).filter(id => id !== "genero").sort((a, b) => priority.indexOf(a) - priority.indexOf(b)).slice(0, 3);

@@ -28,7 +28,18 @@ async function gunzipText(bytes) { return new Response(new Blob([bytes]).stream(
 const utf8 = bytes => new TextDecoder().decode(bytes);
 
 /* Um pedido ao arquivo do progresso: devolve {status, bytes}. */
+/* Falha passageira (rede caiu um instante, GitHub com erro 5xx ou limite): vale tentar de novo daqui a pouco. */
+const cloudTransient = (status, e) => status >= 500 || status === 429 || (!!e && /fetch failed|Failed to fetch|NetworkError|ETIMEDOUT|ECONNRESET|ENOTFOUND|network/i.test(String(e.message || e)));
 async function cloudCall(method, body = null, accept = "") {
+  for (let attempt = 0; ; attempt++) {
+    let r = null, err = null;
+    try { r = await cloudCallOnce(method, body, accept); } catch (e) { err = e; }
+    if (attempt < 2 && cloudTransient(r ? r.status : 0, err)) { await new Promise(res => setTimeout(res, 1500 * (attempt + 1))); continue; }
+    if (err) throw err;
+    return r;
+  }
+}
+async function cloudCallOnce(method, body = null, accept = "") {
   if (!cloudWeb()) {
     const r = await window.satzDesktop.cloudRequest(method, body, accept);
     return {status: r.status, bytes: b64ToBytes(r.b64)};

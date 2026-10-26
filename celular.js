@@ -23,6 +23,9 @@ function offlineAudioList(now = Date.now(), days = 7) {
   const unseen = cards.filter(c => tag(c, "Modus") === "Produktion" && !cardProgress(c.id));
   const perDay = Math.max(1, Number(settings.newLimit) || 10);
   for (const c of orderNew(unseen, settings.levelGate).filter(voiced).slice(0, perDay * days * 1.5)) out.add(audioUrl(c, PRIMARY_VOICE));
+  // Compreensão: as próximas que a escuta vai apresentar (LISTEN_NEW_PER_DAY por dia).
+  const listen = cards.filter(c => tag(c, "Modus") === "Verstehen" && !cardProgress(c.id));
+  for (const c of orderNew(listen, settings.levelGate).filter(voiced).slice(0, LISTEN_NEW_PER_DAY * days * 1.5)) out.add(audioUrl(c, PRIMARY_VOICE));
   const lvl = LEVELS.indexOf(currentLevel());
   for (const s of CENAS) if (LEVELS.indexOf(s.level) <= lvl + 1) s.lines.forEach((_, i) => out.add(sceneUrl(s.id, i)));
   return [...out];
