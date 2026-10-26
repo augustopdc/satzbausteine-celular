@@ -176,7 +176,7 @@ function rdWebRender() {
     recent && rdWebBook(recent).b.chapters ? rdContinueNode(rdWebBook(recent).b, e => rdOpenFromCover(recent, rdCoverOf(e))) : null,
     rdWeb.error ? h("p", {class: "notice warn", text: "Não consegui ver a lista de livros no GitHub: " + rdWeb.error}) : null,
     items.length ? rdShelf(items)
-      : h("p", {class: "empty", text: "Nenhum livro enviado ainda. No PC, abra a Leitura e toque em “Enviar para o celular” no livro."}),
+      : emptyState("bookOpen", "Nenhum livro no celular ainda", "No PC, abra a Leitura e toque em “Enviar para o celular” no livro."),
     h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC."})));
 }
 if (window.satzDesktop && window.satzDesktop.onCloudBookProgress) window.satzDesktop.onCloudBookProgress(rdOnSendProgress);

@@ -433,6 +433,7 @@
    </section>
    <section class="panel"><h2>Aparência</h2>
     <div class="grid two"><div class="field"><label for="themeSelect">Tema</label><select id="themeSelect"><option value="auto">Automático (segue o Windows)</option><option value="light">Claro</option><option value="dark">Escuro</option></select></div></div>
+     <label class="switch spaced"><input id="setSounds" type="checkbox"><span><b>Sons discretos</b><small>Um toque curto ao acertar um cartão e ao fechar a meta do dia.</small></span></label>
    </section>
    <section class="panel"><h2>Áudio alemão</h2>
     <div class="grid two spaced-bottom"><div class="field"><label for="audioSource">Fonte do áudio</label><select id="audioSource"><option value="neural">Voz neural embutida (recomendada)</option><option value="system">Voz do Windows</option></select></div><p id="audioSourceInfo" class="muted small-text align-end"></p></div>
@@ -470,7 +471,7 @@
    <section id="offlinePanel" class="panel" hidden><h2>Uso sem internet</h2><div id="offlineText"></div><div class="row"><button id="offlineAll" type="button">Baixar todo o áudio</button></div></section>
    <section class="panel"><h2>Backup</h2>
     <p>Seu progresso fica salvo neste computador, separado da pasta do aplicativo. Para continuar em outro computador, exporte o backup JSON aqui e importe-o lá (ou use a sincronização acima).</p>
-    <div class="row spaced"><button id="exportProgress" class="primary" type="button">Exportar progresso</button><label class="file-label">Importar progresso<input id="progressInput" type="file" accept=".json,application/json"></label></div>
+    <div class="row spaced"><button id="exportProgress" class="primary" type="button">Exportar progresso</button><label class="file-label">Importar progresso<input id="progressInput" type="file" accept=".json,application/json"></label><button id="resetProgress" class="quiet danger-text" type="button">Zerar progresso…</button></div>
     <p id="storageInfo" class="muted small-text spaced"></p>
    </section>
    <section class="panel"><h2>Catálogo</h2>

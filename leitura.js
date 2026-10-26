@@ -141,6 +141,8 @@ function rdContinueNode(b, open) {
 }
 /* Estante: o livro em destaque em cima; embaixo, a prateleira e, ao lado dela (telas largas), o diário de leitura. */
 function rdLibraryLayout(hero, before, shelf, after) {
+  // Sem livro, só o convite: o diário de leitura não teria o que contar.
+  if (!shelf) return [hero, before, after];
   return [hero, before,
     h("div", {class: "rd-lib"},
       h("div", {class: "rd-lib-main"}, h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"})), shelf),
@@ -210,8 +212,9 @@ async function renderLibrary() {
   rdAssignCovers(reading.books);
   fill(box, rdLibraryLayout(
     recent ? rdContinueNode(recent[0], e => rdOpenFromCover(recent[0].id, rdCoverOf(e))) : null,
-    reading.books.length ? null : h("p", {class: "empty", text: "Nenhum livro ainda. Importe um EPUB com o audiolivro: o app sincroniza o áudio com o texto e você lê ouvindo, frase por frase."}),
-    rdShelf(reading.books.map(b => rdShelfItem(b, {open: e => rdOpenFromCover(b.id, rdCoverOf(e)), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})), rdAddTile(importBook))));
+    reading.books.length ? null : emptyState("bookOpen", "Sua estante está vazia", "Importe um livro em EPUB com o audiolivro: o app liga o áudio ao texto e você lê ouvindo, frase por frase.", ["Importar livro", importBook]),
+    // Sem livro, o convite acima já tem o botão: a prateleira só com o “Importar livro” repetiria.
+    reading.books.length ? rdShelf(reading.books.map(b => rdShelfItem(b, {open: e => rdOpenFromCover(b.id, rdCoverOf(e)), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})), rdAddTile(importBook)) : null));
   rdBookDialogRefresh();
 }
 async function importBook() {

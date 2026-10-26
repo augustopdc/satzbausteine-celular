@@ -567,6 +567,7 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   .nav button[aria-current="page"] { background: transparent; color: var(--accent-strong); }
   .nav svg { width: 23px; height: 23px; }
   .nav-badge { position: absolute; top: 2px; left: 52%; right: auto; font-size: .62rem; padding: .05rem .3rem; min-width: 1.1rem; }
+  .nav .nav-ring { position: absolute; top: 3px; left: 54%; width: 15px; height: 15px; margin: 0; background: var(--surface); border-radius: 50%; }
   main { padding-bottom: calc(var(--tabbar) + 1.5rem); }
   .footer { display: none; }
   .toasts { left: 1rem; right: 1rem; bottom: calc(var(--tabbar) + .6rem); max-width: none; }
@@ -646,7 +647,7 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .g-der { color: var(--g-der); } .g-die { color: var(--g-die); } .g-das { color: var(--g-das); } .g-pl { color: var(--g-pl); }
 .gender-legend { font-size: .8rem; color: var(--ink-3); margin: .6rem 0 0; }
 .gender-legend .gender { font-weight: 700; border-bottom-width: 1px; }
-.hero-plan.goal { color: var(--blue); }
+.hero-plan.goal { color: var(--accent-strong); }
 .level-info { margin: .9rem 0 0; font-size: .88rem; font-weight: 600; color: var(--accent-strong); }
 .inline-check { display: inline-flex; align-items: center; gap: .45rem; font-size: .9rem; color: var(--ink-2); cursor: pointer; }
 .inline-check input { accent-color: var(--accent); width: 17px; height: 17px; }
@@ -2047,3 +2048,24 @@ body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: 
 .ac-word { display: inline-flex; align-items: flex-end; gap: 2px; font-family: var(--font-de); }
 .ac-syl { padding: .1rem .3rem; border-radius: 5px; background: var(--surface-2); color: var(--ink-2); font-size: 1rem; font-weight: 500; }
 .ac-syl.on { padding: .18rem .4rem; background: var(--accent); color: var(--accent-ink); font-size: 1.22rem; font-weight: 700; }
+
+/* ---------- Polimento visual (25/10/2026) ---------- */
+/* Resposta revelada: as palavras entram uma a uma, bem rápido. */
+@media (prefers-reduced-motion: no-preference) {
+  #cardAnswer .w-in { display: inline-block; animation: word-in .26s var(--ease) both; animation-delay: calc(var(--i, 0) * 15ms); }
+}
+@keyframes word-in { from { opacity: 0; transform: translateY(.3em); filter: blur(2px); } }
+/* Anel da meta do dia ao lado de “Hoje”. */
+.nav-ring { width: 18px; height: 18px; margin-left: auto; flex: none; }
+.nav-ring circle { fill: none; stroke-width: 3; }
+.nav-ring .t { stroke: var(--line-strong); }
+.nav-ring .b { stroke: var(--accent); stroke-linecap: round; transition: stroke-dasharray .6s var(--ease); }
+.nav-ring.zero .b { stroke-linecap: butt; }
+.nav-ring.done .t { stroke: var(--accent); }
+/* Telas vazias com convite. */
+.empty-state { display: grid; justify-items: center; text-align: center; gap: .55rem; padding: 2rem 1rem 1.6rem; border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); background: var(--surface); }
+.empty-art { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); margin-bottom: .2rem; }
+.empty-title { font-size: 1.05rem; }
+.empty-state p { margin: 0; max-width: 38ch; color: var(--ink-2); }
+.empty-state button { margin-top: .5rem; }
+@media (prefers-reduced-motion: no-preference) { .empty-art { animation: pop-in .4s var(--spring); } }

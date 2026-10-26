@@ -32,7 +32,7 @@ const CONV_LEVEL_RULES = {
   B2: "Use natural spoken German (B2), at most 4 sentences per turn."
 };
 const CONV_NAMES = {charon: "Jonas", aoede: "Lena", system: "Lena"};
-const CONV_START = "(Beginne das Gespräch mit einer kurzen Begrüßung und einer ersten Frage.)";
+const CONV_START = "(Beginne das Gespräch mit einer kurzen Begrüßung und einer ersten Frage zum Thema. Du kennst Luiz schon: frag nicht nach seinem Namen.)";
 const CONV_HUH = "Wie bitte? Kannst du das bitte einfacher sagen?";
 const CONV_HUH_SIE = "Wie bitte? Können Sie das bitte einfacher sagen?";
 const conv = {topic: null, messages: [], turns: [], busy: false, clip: null, token: 0, startedAt: 0, audio: new Map(), ttsWarned: false, status: null, finished: false};
@@ -92,6 +92,8 @@ function convSystemPrompt({name, level, topic, known}) {
   lines.push("Rules:",
     "- Speak ONLY German. " + (CONV_LEVEL_RULES[level] || CONV_LEVEL_RULES.A1),
     "- Always end your turn with ONE simple question or a natural next step, so the conversation continues.",
+    "- First react to what Luiz just said (a short, interested comment), then ask a question that follows from it. Stay with the same subject for a few turns; change it only when it is used up, and then smoothly.",
+    "- Never ask something that was already asked or answered in this conversation. You already know that his name is Luiz.",
     "- Never explain grammar and never say \"richtig\" or \"falsch\". If Luiz makes a mistake, naturally reuse the correct form in your reply (recast). Example: Luiz: \"Ich habe nach Hause gegangen.\" You: \"Ah, du bist nach Hause gegangen! Wann?\"",
     "- If Luiz says he does not understand, say the same thing again, shorter and with easier words.",
     "- If Luiz asks \"Wie sagt man ... auf Deutsch?\", give the German word with its article, then continue.",
@@ -165,7 +167,7 @@ const CONV_CHECK_SCHEMA = {type: "object", properties: {
   corrigida: {type: "string"}}, required: ["erros", "estilo", "corrigida"]};
 function convCheckLevel() { return CONV_CHECK_LEVELS[settings.convCheck] ? settings.convCheck : "equilibrado"; }
 function convCheckPrompt(level, cefr = convLevel()) {
-  return `You check ONE line that Luiz, a Brazilian learner of German (level ${cefr}), said in a spoken conversation. The partner's previous line is given only as context; do not check it. ${CONV_CHECK_LEVELS[level].rule} Ignore capitalization and punctuation (it is transcribed speech). Short answers without a verb that are normal in spoken German (e.g. "Mit Milch, bitte.", "Ja, gern.", "Aus Brasilien.") are correct. For each mistake: the wrong part exactly as he said it, the correct German, and one short sentence in Brazilian Portuguese explaining the rule. "corrigida" = his whole line with the mistakes fixed and nothing else changed (keep his words and meaning); with no mistakes, repeat his line. Only report something you are sure is wrong; when in doubt, it is not a mistake. Never assume facts he did not say (for example how he travelled). When a word is wrong or does not exist, give the word that best fits what he most likely meant, using the partner's question as context. The correction must itself be correct German. Answer as JSON.`;
+  return `You check ONE line that Luiz, a Brazilian learner of German (level ${cefr}), said in a spoken conversation. The partner's previous line is given only as context; do not check it. ${CONV_CHECK_LEVELS[level].rule} Ignore capitalization and punctuation (it is transcribed speech). Short answers without a verb that are normal in spoken German (e.g. "Mit Milch, bitte.", "Ja, gern.", "Aus Brasilien.") are correct. For each mistake: the wrong part exactly as he said it, the correct German, and one short sentence in Brazilian Portuguese explaining the rule. "corrigida" = his whole line with the mistakes fixed and nothing else changed (keep his words and meaning); with no mistakes, repeat his line. Only report something you are sure is wrong; when in doubt, it is not a mistake. Never assume facts he did not say (for example how he travelled). When a word is wrong or does not exist, give the word that best fits what he most likely meant, using the partner's question as context. The correction must itself be correct German, and so must "corrigida" as a whole: when you change a word, also fix what depends on it in the same phrase (for example "nicht die Lust" → "keine Lust"). Answer as JSON.`;
 }
 /* Lê a resposta da IA com os mesmos filtros do resumo final; sem erro e sem dica = certo. */
 function convCheckResult(said, j, level) {

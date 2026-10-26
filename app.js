@@ -99,7 +99,7 @@ let db = null, dataDb = null, cards = [], byId = new Map(), currentView = "home"
 const tagIndex = new Map(), searchIndex = new Map();
 let progress = emptyProgress();
 let settings = {newLimit: 6, reviewLimit: "", newOrder: "recommended", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
-  welcomeDismissed: false, provaPack: false, orderV2: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
+  welcomeDismissed: false, provaPack: false, sounds: false, orderV2: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
   presentNew: true, levelGate: true, nwChapter: 7, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
   convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado"};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
@@ -111,7 +111,7 @@ let recorder = null, recordPlace = null, voices = [];
 let filters = {session: {}, catalog: {}};
 let desktopInfo = null, autoBackupTimer = null, optimizerWorker = null;
 
-function emptyProgress() { return {version: 3, cards: {}, days: {}, reviewDays: {}, dayStats: {}, errorStats: {}, practice: {scenes: {}, pron: {}}, schedule: defaultSchedule(), mine: {items: {}}, lastBackupAt: 0}; }
+function emptyProgress() { return {version: 3, cards: {}, days: {}, reviewDays: {}, dayStats: {}, errorStats: {}, practice: {scenes: {}, pron: {}}, schedule: defaultSchedule(), mine: {items: {}}, lastBackupAt: 0, resetAt: 0}; }
 
 // ---------- DOM ----------
 function applyStyle(el, css) {
@@ -142,6 +142,53 @@ function h(tag, props, ...children) {
 /* replaceChildren sem transformar null/false em texto. */
 /* “1 avaliação”, “2 avaliações” (número no formato brasileiro). */
 function plural(n, um, varios) { return Number(n).toLocaleString("pt-BR") + " " + (Number(n) === 1 ? um : varios); }
+/* Tela vazia com convite: ilustração simples (ícone num círculo suave), título, texto curto e um botão claro. */
+function emptyState(iconName, title, text, action) {
+  return h("div", {class: "empty-state"}, h("span", {class: "empty-art"}, icon(iconName, 34)), h("b", {class: "empty-title", text: title}), h("p", {text}),
+    action ? h("button", {class: "primary", type: "button", onclick: action[1]}, action[0]) : null);
+}
+/* Resposta revelada: cada palavra entra com um pequeno atraso (~150 ms no total). Só o visual; o texto não muda. */
+function staggerWords(el) {
+  if (!el || typeof window.matchMedia !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let n = 0;
+  const walk = node => {
+    for (const ch of [...node.childNodes]) {
+      if (ch.nodeType !== 3) { walk(ch); continue; }
+      const frag = document.createDocumentFragment();
+      for (const part of ch.textContent.split(/(\s+)/)) {
+        if (!part) continue;
+        if (/^\s+$/.test(part)) { frag.append(part); continue; }
+        const s = document.createElement("span");
+        s.className = "w-in";
+        s.textContent = part;
+        s.style.setProperty("--i", String(Math.min(n++, 10)));
+        frag.append(s);
+      }
+      ch.replaceWith(frag);
+    }
+  };
+  walk(el);
+}
+/* Sons discretos (opcionais, desligados por padrão; cada aparelho escolhe): sintetizados na hora, sem arquivo. */
+let uiAudio = null;
+function uiSound(kind) {
+  if (!settings.sounds) return;
+  try {
+    uiAudio = uiAudio || new (window.AudioContext || window.webkitAudioContext)();
+    const meta = kind === "meta", notes = meta ? [523.25, 659.25, 783.99, 1046.5] : [880, 1318.5], t0 = uiAudio.currentTime + .01;
+    notes.forEach((f, i) => {
+      const o = uiAudio.createOscillator(), g = uiAudio.createGain(), at = t0 + i * (meta ? .09 : .07);
+      o.type = "sine";
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0, at);
+      g.gain.linearRampToValueAtTime(.07, at + .012);
+      g.gain.exponentialRampToValueAtTime(.0001, at + (meta ? .5 : .22));
+      o.connect(g).connect(uiAudio.destination);
+      o.start(at);
+      o.stop(at + .55);
+    });
+  } catch (e) { /* sem áudio: segue em silêncio */ }
+}
 function fill(el, ...nodes) { el.replaceChildren(...nodes.flat().filter(n => n != null && n !== false)); return el; }
 function node(tag, className, value) { return h(tag, className || null, value === undefined ? null : String(value)); }
 function setWidth(el, pct) { el.style.width = Math.max(0, Math.min(100, pct)) + "%"; }
@@ -307,7 +354,7 @@ async function loadProgressFromDB() {
   // Banco realmente vazio: null. Frases sem o registro geral (gravação interrompida) ainda são progresso.
   if (!found && !rows.length) return null;
   const meta = found || {};
-  const raw = {cards: {}, days: meta.days, reviewDays: meta.reviewDays, dayStats: meta.dayStats, errorStats: meta.errorStats, practice: meta.practice, schedule: meta.schedule, mine: meta.mine, lastBackupAt: meta.lastBackupAt};
+  const raw = {cards: {}, days: meta.days, reviewDays: meta.reviewDays, dayStats: meta.dayStats, errorStats: meta.errorStats, practice: meta.practice, schedule: meta.schedule, mine: meta.mine, lastBackupAt: meta.lastBackupAt, resetAt: meta.resetAt};
   for (const row of rows) { const {id, ...rest} = row; raw.cards[id] = rest; }
   return sanitizeProgress(raw);
 }
@@ -339,7 +386,7 @@ async function flushProgress() {
       for (const entry of adds) log.put(entry);
       for (const id of dels) log.delete(id);
       tx.objectStore("meta").put({key: "progress", days: progress.days, reviewDays: progress.reviewDays, dayStats: progress.dayStats,
-        errorStats: progress.errorStats || {}, practice: progress.practice || {scenes: {}, pron: {}}, schedule: progress.schedule || defaultSchedule(), mine: progress.mine || {items: {}}, lastBackupAt: progress.lastBackupAt || 0});
+        errorStats: progress.errorStats || {}, practice: progress.practice || {scenes: {}, pron: {}}, schedule: progress.schedule || defaultSchedule(), mine: progress.mine || {items: {}}, lastBackupAt: progress.lastBackupAt || 0, resetAt: progress.resetAt || 0});
       tx.oncomplete = () => resolve(true);
       const fail = () => {
         ids.forEach(id => dirtyCards.add(id));
@@ -739,7 +786,8 @@ let restoreCandidate = null;
 async function offerRestore() {
   restoreCandidate = null;
   $("restoreOffer").hidden = true;
-  if (!window.satzDesktop || progressReadFailed || hasAnyProgress()) return;
+  // Depois de “Zerar progresso”, abrir vazio é o esperado: não oferece o backup antigo.
+  if (!window.satzDesktop || progressReadFailed || hasAnyProgress() || progress.resetAt) return;
   let list = [];
   try { list = await window.satzDesktop.findBackups(); } catch (e) { reportError("procurar backups", e.message, e.stack); return; }
   for (const b of list) {
@@ -764,7 +812,7 @@ async function restoreFromOffer() {
   $("restoreOffer").hidden = true;
   restoreCandidate = null;
   try {
-    const n = await mergeIncoming(c.parsed, {settings: true});
+    const n = await mergeIncoming(c.parsed, {settings: true, force: true});
     refreshAll();
     setStatus("Progresso restaurado do backup de " + new Date(c.savedAt).toLocaleDateString("pt-BR") + ": " + n.toLocaleString("pt-BR") + " frases.", "success");
   } catch (e) { setStatus("Não foi possível restaurar: " + e.message, "error"); }
@@ -1305,6 +1353,7 @@ function showAnswer(card, answer) {
   if (answer && answer.source === "voice") renderAnswerDiff(answer.text, "voice");
   else if (answer && answer.source === "typed") renderAnswerDiff(answer.text, "typed");
   $("cardAnswer").replaceChildren(...answerNodes(card));
+  staggerWords($("cardAnswer"));
   $("cardTranslation").textContent = card.traducao;
   $("moldRow").hidden = !card.molde;
   $("cardMold").replaceChildren(...(card.molde ? moldNodes(card.molde) : []));
@@ -1361,6 +1410,7 @@ function continuePresentation(skip = false) {
 function rateCard(grade) {
   const card = session.card;
   if (!card || !session.revealed || !GRADES.includes(grade)) return;
+  if (grade === "good" || grade === "easy") uiSound("ok");
   const id = card.id, mode = session.mode, now = Date.now(), day = dateKey();
   progress.dayStats = progress.dayStats || {};
   progress.reviewDays = progress.reviewDays || {};
@@ -2107,6 +2157,8 @@ function sanitizeProgress(source) {
   if (!source || typeof source !== "object" || !source.cards || typeof source.cards !== "object") throw new Error("JSON sem progresso de cards.");
   const result = emptyProgress();
   result.lastBackupAt = Number(source.lastBackupAt) || 0;
+  // Quando o progresso foi zerado (Configurações → Zerar progresso): dados de antes disso não voltam pela sincronização.
+  result.resetAt = Math.max(0, Number(source.resetAt) || 0);
   for (const [id, p] of Object.entries(source.cards)) {
     if (!CARD_ID.test(id) || !p || typeof p !== "object") continue;
     const item = {};
@@ -2185,8 +2237,15 @@ function applyImportedSettings(s) {
   if (FSRS.validWeights(s.fsrsWeights)) { settings.fsrsWeights = s.fsrsWeights.slice(); settings.fsrsInfo = s.fsrsInfo && typeof s.fsrsInfo === "object" ? s.fsrsInfo : null; }
   saveSettings();
 }
-async function mergeIncoming(parsed, {settings: withSettings}) {
+async function mergeIncoming(parsed, {settings: withSettings, force = false}) {
   const incoming = sanitizeProgress(parsed.progress || parsed), changed = [];
+  // Zerar progresso vale em todos os aparelhos: o lado zerado depois descarta o outro; o lado mais antigo zera também.
+  const inReset = incoming.resetAt || 0, myReset = progress.resetAt || 0;
+  if (inReset > myReset) await wipeProgress(inReset);
+  else if (inReset < myReset && !force) {
+    if (withSettings) { applyImportedSettings(parsed.settings); applyTheme(); }
+    return 0;
+  }
   for (const [id, p] of Object.entries(incoming.cards)) {
     const old = progress.cards[id] || {}, merged = {...old};
     let touched = !progress.cards[id];
@@ -2235,6 +2294,33 @@ async function mergeIncoming(parsed, {settings: withSettings}) {
   if (incoming.practice.escrita && typeof escritaAfterMerge === "function") escritaAfterMerge();
   return changed.length;
 }
+/* Zera o progresso (cartões, dias, revisões, prática, minhas frases), guardando antes um backup com nome próprio.
+   As configurações (plano, escala, capítulo) ficam. Marca resetAt, que os outros aparelhos respeitam ao sincronizar. */
+async function wipeProgress(at) {
+  const keepBackup = progress.lastBackupAt || 0;
+  progress = emptyProgress();
+  progress.resetAt = at;
+  progress.lastBackupAt = keepBackup;
+  revlogAdds.length = 0; revlogDeletes.length = 0;
+  if (dataDb) await new Promise(resolve => { try { const tx = dataDb.transaction("revlog", "readwrite"); tx.objectStore("revlog").clear(); tx.oncomplete = tx.onerror = tx.onabort = () => resolve(); } catch (e) { resolve(); } });
+  if (typeof applyMine === "function") applyMine();
+  saveProgress("all");
+  await flushProgress();
+}
+async function resetProgress() {
+  if (progressReadFailed) { setStatus(PROGRESS_READ_MSG, "error"); return; }
+  if (!window.confirm("Zerar todo o progresso? Cartões, revisões, dias de estudo, conversas, textos, leitura e minhas frases voltam ao zero (as configurações e o plano ficam). Antes, o app guarda um backup completo. Os outros aparelhos zeram também na próxima sincronização.")) return;
+  try {
+    const payload = JSON.stringify(await backupPayload());
+    if (window.satzDesktop) await window.satzDesktop.saveAutoBackup(payload, "antes-de-zerar");
+    else downloadBlob("satzbausteine-antes-de-zerar-" + dateKey() + ".json", new Blob([payload], {type: "application/json;charset=utf-8"}));
+  } catch (e) { setStatus("Não consegui guardar o backup antes de zerar; nada foi apagado. " + e.message, "error"); return; }
+  await wipeProgress(Date.now());
+  refreshAll();
+  setStatus("Progresso zerado. O backup de antes ficou guardado " + (window.satzDesktop ? "na pasta de backups." : "nos downloads.") + " Bom começo!", "success");
+  if (typeof syncNow === "function") syncNow();
+  if (typeof cloudSync === "function") cloudSync({force: true});
+}
 async function importProgress(file) {
   if (!file) return;
   let parsed;
@@ -2242,7 +2328,8 @@ async function importProgress(file) {
   // Restaurar um backup é a saída quando a leitura falhou: a partir daqui, o que está na memória é o backup.
   if (progressReadFailed) progressReadFailed = false;
   try {
-    const n = await mergeIncoming(parsed, {settings: true});
+    // Importar um arquivo é escolha explícita: vale mesmo que seja de antes de um zeramento.
+    const n = await mergeIncoming(parsed, {settings: true, force: true});
     refreshAll();
     setStatus("Progresso importado e mesclado: " + n + " frases atualizadas.", "success");
   } catch (e) { setStatus("Não foi possível importar: " + e.message, "error"); }
@@ -2386,6 +2473,7 @@ function renderSettings() {
   $("alternateVoices").checked = !!settings.alternateVoices;
   $("setLevelGate").checked = !!settings.levelGate;
   $("setProvaPack").checked = !!settings.provaPack;
+  $("setSounds").checked = !!settings.sounds;
   $("setPresentNew").checked = settings.presentNew !== false;
   $("setGermanSituations").checked = !!settings.germanSituations;
   $("setGenderColors").checked = !!settings.genderColors;
@@ -2473,7 +2561,7 @@ function bindEvents() {
   $("sceneMiss").addEventListener("click", () => gradeSceneLine(false));
   $("sceneShowOther").addEventListener("change", e => { settings.sceneShowOther = e.target.checked; saveSettings(); });
   $("sceneHelp").addEventListener("change", e => { settings.sceneHelp = e.target.value; saveSettings(); setSceneHelp(); });
-  for (const [id, key] of [["setLevelGate", "levelGate"], ["setPresentNew", "presentNew"], ["setGermanSituations", "germanSituations"], ["setGenderColors", "genderColors"], ["setProvaPack", "provaPack"]]) {
+  for (const [id, key] of [["setLevelGate", "levelGate"], ["setPresentNew", "presentNew"], ["setGermanSituations", "germanSituations"], ["setGenderColors", "genderColors"], ["setProvaPack", "provaPack"], ["setSounds", "sounds"]]) {
     $(id).addEventListener("change", e => { settings[key] = e.target.checked; saveSettings(); });
   }
   $("setRubric").addEventListener("change", e => { settings.showRubric = e.target.value; saveSettings(); });
@@ -2551,6 +2639,7 @@ function bindEvents() {
   $("speechRate").addEventListener("input", e => { settings.rate = Number(e.target.value); $("speechRateValue").textContent = settings.rate.toLocaleString("pt-BR") + "×"; saveSettings(); });
   $("testVoice").addEventListener("click", () => { const sample = byId.get("K3-9001"); if (usesNeural(sample)) speakCard(sample); else speak("Guten Tag! Ich bin Ihre deutsche Stimme. Eins, zwei, drei."); });
   $("exportProgress").addEventListener("click", exportProgress);
+  $("resetProgress").addEventListener("click", resetProgress);
   $("progressInput").addEventListener("change", async e => { await importProgress(e.target.files[0]); e.target.value = ""; });
   $("openBackups").addEventListener("click", () => window.satzDesktop?.openPath("backups"));
   $("examAiPatientBtn").addEventListener("click", () => { if (activeExam) fspFromExam(activeExam.id); });

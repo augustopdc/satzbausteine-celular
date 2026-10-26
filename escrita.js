@@ -342,7 +342,7 @@ function escritaHome(box) {
     h("section", {class: "es-diary-list"},
       h("h2", {text: "Seus textos"}),
       texts.length ? h("ol", {class: "es-timeline"}, ...texts.slice(0, 30).map(escritaTimelineItem))
-        : h("p", {class: "muted", text: "Nenhum texto ainda. Comece pelo diário de hoje: são só três frases."}),
+        : emptyState("pen", "Nenhum texto ainda", "Comece pelo diário de hoje: são só três frases.", ["Escrever o diário", () => { const t = $("esDiary"); if (t) { t.scrollIntoView({block: "center", behavior: "smooth"}); t.focus(); } }]),
       !escritaCanCorrect() ? h("p", {class: "muted small-text", text: "No celular você escreve e salva; o PC corrige quando o app abrir lá e a correção volta para cá."}) : null));
 }
 function escritaDiaryHero(spec, today) {

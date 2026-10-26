@@ -73,6 +73,22 @@ function hojeRing(box, m) {
   box.classList.toggle("complete", m.complete);
   box.setAttribute("aria-label", m.complete ? "Meta de hoje cumprida" : m.done + " de " + m.goal + " minutos de estudo hoje");
 }
+/* Anel pequeno da meta do dia ao lado de “Hoje” no menu (e no ícone da aba, no celular). */
+function navRing(m) {
+  const btn = document.querySelector('.nav-hub[data-hub="hoje"]');
+  if (!btn) return;
+  let ring = $("navRing");
+  if (!ring) {
+    ring = svgEl("svg", {id: "navRing", class: "nav-ring", viewBox: "0 0 20 20", "aria-hidden": "true"});
+    ring.append(svgEl("circle", {cx: 10, cy: 10, r: 7.5, class: "t"}), svgEl("circle", {cx: 10, cy: 10, r: 7.5, class: "b", transform: "rotate(-90 10 10)"}));
+    btn.append(ring);
+  }
+  const c = 2 * Math.PI * 7.5, pct = m.complete ? 1 : Math.min(1, m.goal ? m.done / m.goal : 0);
+  ring.querySelector(".b").setAttribute("stroke-dasharray", (c * pct).toFixed(1) + " " + c.toFixed(1));
+  ring.classList.toggle("done", !!m.complete);
+  ring.classList.toggle("zero", pct === 0);
+  btn.title = "Hoje · " + (m.complete ? "meta cumprida" : m.done + " de " + m.goal + " min");
+}
 function hojeCelebrate() {
   const ring = $("heroRing");
   ring.classList.remove("celebrate");
@@ -80,6 +96,7 @@ function hojeCelebrate() {
   ring.classList.add("celebrate");
   setTimeout(() => ring.classList.remove("celebrate"), 1600);
   toast("Meta de hoje cumprida. Até amanhã!", "success");
+  uiSound("meta");
 }
 function hojeRouteList(items, next) {
   const before = hoje.routeDone, now = new Set(items.filter(it => it.done).map(it => it.id));
@@ -161,6 +178,7 @@ function renderHoje(load) {
   $("homeSub").textContent = !next ? "Tudo feito por hoje. Bom descanso!" : "";
   $("homeSub").hidden = !!next;
   hojeRing($("heroRing"), m);
+  navRing(m);
   // Comemora só quando a meta fecha durante o uso (abrir o app com ela já cumprida não conta).
   if (!m.complete) hoje.seenIncomplete = true;
   else if (hoje.seenIncomplete) { hoje.seenIncomplete = false; hojeCelebrate(); }

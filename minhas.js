@@ -151,7 +151,7 @@ function renderMinhas() {
   fill($("mineList"),
     h("div", {class: "row between"}, h("h2", {text: "Meus cartões (" + items.length + ")"}),
       items.length ? h("button", {type: "button", onclick: () => { filters.session = {Thema: "Meine"}; syncFilterSelects("session"); showView("practice"); }}, "Treinar só as minhas") : null),
-    items.length ? h("p", {class: "muted small-text", text: "Entram no treino como frases novas, antes das do catálogo (dentro do limite de novas do dia), e seguem o mesmo agendamento."}) : h("p", {class: "muted", text: "Nenhum cartão ainda."}),
+    items.length ? h("p", {class: "muted small-text", text: "Entram no treino como frases novas, antes das do catálogo (dentro do limite de novas do dia), e seguem o mesmo agendamento."}) : emptyState("notebook", "Nenhuma frase sua ainda", "Guarde aqui frases da aula, das séries ou dos livros: elas viram cartões do treino, com o mesmo agendamento.", ["Escrever uma frase", () => { const t = $("mineInput"); if (t) { t.scrollIntoView({block: "center", behavior: "smooth"}); t.focus(); } }]),
     review,
     ...items.map(([id, m]) => mineRow(id, m)));
 }
