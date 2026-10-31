@@ -1105,7 +1105,7 @@ function renderPracticeSetup() {
   const leeches = leechCards(session.mode);
   $("leechBox").hidden = !leeches.length;
   $("leechButton").textContent = "Treinar frases difíceis (" + leeches.length + ")";
-  $("levelInfo").textContent = settings.levelGate ? levelSummary().text : "Progressão por nível desligada: as novas seguem só a ordem de prioridade.";
+  $("levelInfo").textContent = settings.levelGate ? levelSummary().text : "";
   const q = buildSessionQueue(), total = q.due.length + q.known.length + q.fresh.length;
   const parts = [];
   if (q.due.length) parts.push(q.due.length + (q.due.length === 1 ? " revisão" : " revisões"));
@@ -1796,6 +1796,12 @@ function populateExams() {
     EXAMS.filter(e => e.ref.startsWith(prefix)).forEach(e => group.append(new Option(e.title, e.id)));
     return group;
   }));
+  fill($("examList"), ...EXAM_GROUPS.map(([label, prefix]) => h("section", {class: "exam-group"}, h("h2", {class: "label", text: label}),
+    h("div", {class: "exam-rows"}, ...EXAMS.filter(e => e.ref.startsWith(prefix)).map(e => h("button", {class: "exam-row", type: "button", dataset: {exam: e.id}, onclick: () => {
+      sel.value = e.id;
+      loadExam();
+      $("examStage").scrollIntoView({behavior: "smooth", block: "start"});
+    }}, e.title))))));
 }
 function formatTime(seconds) { const s = Math.max(0, Math.ceil(seconds)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
 function paintTimer() {

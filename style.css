@@ -2503,3 +2503,53 @@ html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .session .audio-row button { min-height: 36px; padding: .2rem .6rem; font-size: .9rem; }
 .session .controls { gap: .5rem; margin-top: .6rem; }
 @media (max-width: 600px) { .rubric { display: none; } .flash { min-height: 0; padding: 1.2rem 1.1rem; } }
+
+/* Polimento: superfície em vez de contorno (borda só no escuro), verde só no que age. */
+.panel:not(.soft), .flash, .tile, .gram-now, .gram-next { border-color: var(--group-line); }
+.panel:not(.soft), .tile { box-shadow: 0 1px 2px rgba(18, 26, 25, .05); }
+.hero-plan, .hero-plan.goal, .level-info { color: var(--ink-2); font-weight: 500; }
+.level-info:empty { display: none; }
+.brand-text span { display: none; }
+.chip-featured:not([aria-pressed="true"]) { border-color: var(--line-strong); color: var(--ink); background: var(--surface); }
+#cardAnswer .w-in { display: inline; }
+@keyframes word-in { from { opacity: 0; } }
+
+/* Treino: modo em controle segmentado, um início claro, o resto recolhido. */
+#practiceSetup .segmented { gap: 2px; padding: 3px; border-radius: var(--radius); background: var(--surface-2); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#practiceSetup .segmented button { align-items: center; min-height: 38px; padding: .35rem .5rem; border: 0; border-radius: 8px; background: transparent; box-shadow: none; }
+#practiceSetup .segmented button small { display: none; }
+#practiceSetup .segmented button b { font-size: .95rem; font-weight: 600; color: var(--ink-2); }
+#practiceSetup .segmented button[aria-pressed="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(18, 26, 25, .14); }
+#practiceSetup .segmented button[aria-pressed="true"] b { color: var(--ink); }
+#practiceSetup .setup-foot { margin: 1.1rem 0 .4rem; padding: 0; border: 0; }
+.train-opts { margin: .7rem 0; }
+.train-opts > summary { cursor: pointer; color: var(--ink-2); font-size: .92rem; font-weight: 600; width: fit-content; margin-bottom: .5rem; }
+.train-more { display: block; margin-top: 1.2rem; border-top: .5px solid var(--line-strong); }
+.train-more button { display: flex; flex-direction: column; align-items: flex-start; gap: 0; width: 100%; min-height: 56px; padding: .5rem 0; border: 0; border-bottom: .5px solid var(--line); border-radius: 0; background: transparent; text-align: left; }
+.train-more b { font-weight: 600; }
+.train-more small { color: var(--ink-3); font-weight: 450; font-size: .84rem; }
+@media (hover: hover) { .train-more button:hover { background: transparent; color: var(--accent-strong); } }
+@media (max-width: 600px) { #practiceSetup .setup-foot .primary { width: 100%; } }
+
+/* Ferramentas: mostram o que acontece antes de pedir o clique. */
+.tool-intro { display: grid; gap: .7rem; }
+.tool-intro p { margin: 0; }
+.tool-sample { font: 500 1.7rem/1.3 var(--font-de); }
+.tool-gap { text-decoration: underline dashed var(--accent); text-decoration-thickness: 2px; text-underline-offset: 6px; }
+.tool-steps { font-size: 1.05rem; color: var(--ink-2); }
+.tool-steps b { color: var(--ink); font-weight: 600; }
+.exam-pick[hidden] { display: none; }
+.exam-group { margin-bottom: 1.2rem; }
+.exam-rows { overflow: hidden; background: var(--surface); border: 1px solid var(--group-line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.exam-row { display: flex; width: 100%; justify-content: flex-start; min-height: 50px; padding: .55rem 1rem; border: 0; border-radius: 0; background: transparent; text-align: left; font-weight: 500; }
+.exam-row + .exam-row { box-shadow: inset 0 .5px 0 var(--line-strong); }
+@media (hover: hover) { .exam-row:hover { background: var(--surface-2); } }
+
+/* Calendário: o espaço ao lado vira a leitura dele. */
+.panel:has(> #heatmap) { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2rem; align-items: start; }
+.panel:has(> #heatmap) > .row { grid-column: 1 / -1; }
+.panel:has(> #heatmap) > #heatmap { grid-column: 1; grid-row: 2; }
+.panel:has(> #heatmap) > #heatmapInfo { grid-column: 2; grid-row: 2; margin: 0; font-size: 1.05rem; }
+@media (max-width: 600px) { .panel:has(> #heatmap) { display: block; } .panel:has(> #heatmap) > #heatmapInfo { margin-bottom: .7rem; } }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #practiceSetup .segmented button[aria-pressed="true"] { background: var(--surface-3); } }
+:root[data-theme="dark"] #practiceSetup .segmented button[aria-pressed="true"] { background: var(--surface-3); }

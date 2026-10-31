@@ -131,14 +131,17 @@
      <button id="modeDictation" type="button" aria-pressed="false"><b>Ditado</b><small>Áudio em alemão → você escreve exatamente</small></button>
     </div>
     <p id="dictationInfo" class="level-info" hidden>O ditado usa a fila da escuta. Maiúsculas, ä, ö, ü e ß contam; o app mostra que tipo de erro de grafia você cometeu. Ctrl+Espaço repete o áudio e Ctrl+Shift+Espaço repete devagar.</p>
+    <div class="setup-foot"><p id="sessionPreview" class="muted"></p><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div>
+    <details class="train-opts"><summary>Opções de resposta</summary>
     <label id="typingRow" class="switch"><input id="typingMode" type="checkbox"><span><b id="typingTitle">Responder digitando</b><small id="typingHint"></small></span></label>
     <label id="presentRow" class="switch" title="Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória."><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória.</small></span></label>
+    </details>
     <p id="levelInfo" class="level-info"></p>
     <div id="leechBox" class="notice warn spaced" hidden><span>Algumas frases estão travando: você errou cada uma delas várias vezes. Vale um treino focado.</span><button id="leechButton" class="small" type="button"></button></div>
     <h3>Tema</h3>
     <div id="themeChips" class="chips"></div>
     <details class="filters-box"><summary>Filtros avançados <span id="sessionFilterCount" class="pill" hidden></span></summary><div id="sessionFilters" class="filters"></div><button id="clearSessionFilters" class="quiet small" type="button">Limpar filtros</button></details>
-    <div class="setup-foot"><p id="sessionPreview" class="muted"></p><div class="row"><button id="speedStart" class="lg" type="button" title="Mede quanto tempo você leva para começar a falar cada frase já aprendida">Rodada de velocidade</button><button id="contStart" class="lg" type="button" title="Ouve e repete frases já estudadas, sem precisar olhar a tela">Escuta contínua</button><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div></div>
+    <div class="train-more"><button id="speedStart" type="button"><b>Rodada de velocidade</b><small>Mede quanto tempo você leva para começar a falar</small></button><button id="contStart" type="button"><b>Escuta contínua</b><small>Ouve e repete frases já estudadas, sem olhar a tela</small></button></div>
    </div>
    <div id="contPlayer" class="panel cont-player" hidden>
     <div class="row between"><h2>Escuta contínua</h2><span id="contCounter" class="counter"></span></div>
@@ -344,7 +347,7 @@
 
   <section id="view-template" class="view" hidden>
    <header class="page-head"><p class="eyebrow" lang="de">Satzmuster</p><h1>Molde</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
-   <div class="panel row between"><span id="templateCount" class="muted"></span><button id="nextTemplate" class="primary" type="button">Sortear molde</button></div>
+   <div class="panel tool-intro"><p class="tool-sample" lang="de">Ich hätte gern <span class="tool-gap">einen Kaffee</span>.</p><p class="muted">Troque o que está sublinhado e fale três variações suas.</p><div class="row between"><span id="templateCount" class="muted small-text"></span><button id="nextTemplate" class="primary" type="button">Sortear molde</button></div></div>
    <div id="templateStage" hidden>
     <div class="flash">
      <div class="flash-meta"><span id="templateReg"></span></div>
@@ -359,7 +362,7 @@
 
   <section id="view-activation" class="view" hidden>
    <header class="page-head"><p class="eyebrow" lang="de">Aktivieren</p><h1>Ativação</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
-   <div class="panel row"><button id="startActivation" class="primary" type="button">Sortear 10 frases</button><button id="copyActivation" type="button" hidden>Copiar lista para o tutor</button></div>
+   <div class="panel tool-intro"><p class="tool-steps"><b>10 frases</b> que você já aprendeu <span aria-hidden="true">→</span> <b>um monólogo</b> livre <span aria-hidden="true">→</span> <b>sua gravação</b> para o tutor</p><div class="row"><button id="startActivation" class="primary" type="button">Sortear 10 frases</button><button id="copyActivation" type="button" hidden>Copiar lista para o tutor</button></div></div>
    <div id="activationStage" class="panel" hidden>
     <h2 id="activationTheme"></h2>
     <p id="activationFrame" class="lede"></p>
@@ -374,7 +377,7 @@
 
   <section id="view-exam" class="view" hidden>
    <header class="page-head"><p class="eyebrow" lang="de">Prüfung</p><h1>Modo Prova</h1><p class="lede">Tarefas originais para praticar o formato. A autoavaliação aparece ao concluir.</p></header>
-   <div class="panel exam-pick"><div class="field grow"><label for="examSelect">Escolha uma tarefa</label><select id="examSelect"></select></div><button id="loadExam" class="primary" type="button">Abrir tarefa</button></div>
+   <div id="examList" class="exam-list"></div><div class="exam-pick" hidden><select id="examSelect" aria-label="Tarefa"></select><button id="loadExam" type="button">Abrir tarefa</button></div>
    <div id="examStage" class="panel" hidden>
     <p id="examMeta" class="label"></p>
     <h2 id="examTitle"></h2>
