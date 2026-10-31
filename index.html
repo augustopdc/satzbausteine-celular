@@ -30,6 +30,7 @@
    <div class="nav-sub" data-sub="treinar"><div>
     <button data-view="practice" title="Cartões"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13.5" height="14" rx="2"/><path d="M7.5 3.5h11a2 2 0 0 1 2 2v11"/></svg><span>Cartões</span><span id="navDue" class="nav-badge" hidden></span></button>
     <button data-view="grammar" title="Gramática"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6M8 11h6M8 15h3"/><path d="M18 3v18"/></svg><span>Gramática</span></button>
+    <button data-view="artigos" title="Artigos (der, die, das)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="16" rx="1.5"/><rect x="16" y="4" width="5" height="16" rx="1.5"/></svg><span>Artigos</span></button>
     <button data-view="pron" title="Pronúncia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"/><path d="M21.5 7.5v3M2.5 7.5v3"/></svg><span>Pronúncia</span></button>
     <button data-view="activation" title="Ativação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>Ativação</span></button>
     <button data-view="template" title="Molde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12h6" stroke-dasharray="2 2"/></svg><span>Molde</span></button>
@@ -42,6 +43,7 @@
    </div></div>
    <button class="nav-hub" data-hub="ler" data-short="Ler" title="Ler e escrever"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5v13c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5z"/><path d="M12 6v13"/></svg><span>Ler e escrever</span></button>
    <div class="nav-sub" data-sub="ler"><div>
+    <button data-view="menschen" title="Menschen (livro do curso)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.5h12a2 2 0 0 1 2 2V21H7a2 2 0 0 1-2-2z"/><path d="M5 19a2 2 0 0 1 2-2h12"/><circle cx="12" cy="8.5" r="2"/><path d="M8.5 14a3.5 3.5 0 0 1 7 0"/></svg><span>Menschen</span></button>
     <button data-view="reading" title="Leitura"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5c3-1.3 6-1.3 9 .5 3-1.8 6-1.8 9-.5v13c-3-1.3-6-1.3-9 .5-3-1.8-6-1.8-9-.5z"/><path d="M12 6v13"/></svg><span>Leitura</span></button>
     <button data-view="escrita" title="Escrita"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/><path d="M13 20h7"/></svg><span>Escrita</span></button>
    </div></div>
@@ -260,6 +262,11 @@
    <div id="pronPlayer" class="panel" hidden></div>
   </section>
 
+  <section id="view-menschen" class="view" hidden>
+   <header class="page-head"><p class="eyebrow" lang="de">Menschen A2</p><h1>Menschen</h1><p class="lede">O livro do seu curso, lição por lição: frases para treinar, a gramática, as palavras e os áudios do livro com o texto.</p></header>
+   <div id="menschenRoot"></div>
+  </section>
+
   <section id="view-reading" class="view" hidden>
    <header class="page-head"><p class="eyebrow" lang="de">Lesen</p><h1>Leitura</h1><p class="lede">Seus livros com o audiolivro ligado ao texto, frase por frase.</p></header>
    <div id="readingLibrary"></div>
@@ -269,6 +276,11 @@
   <section id="view-escrita" class="view" hidden>
    <header class="page-head"><p class="eyebrow" lang="de">Schreiben</p><h1>Escrita</h1><p class="lede">Textos curtos no formato da prova, diário de 3 frases e resumo do livro. Primeiro o app marca onde estão os erros e você tenta consertar; depois vem a correção, com a versão natural do seu texto. Os erros viram cartões.</p></header>
    <div id="escritaRoot"></div>
+  </section>
+
+  <section id="view-artigos" class="view" hidden>
+   <header class="page-head"><p class="eyebrow" lang="de">der, die, das</p><h1>Artigos</h1><p class="lede">Cada substantivo com o artigo e o plural, falando ou digitando. Os que você erra voltam logo; os que acerta, cada vez mais espaçados.</p></header>
+   <div id="artigosRoot"></div>
   </section>
 
   <section id="view-grammar" class="view" hidden>
@@ -507,10 +519,17 @@
   <script src="catalog-nicosweg.js"></script>
   <script src="catalog-nicosweg-a2.js"></script>
   <script src="catalog-etapa4.js"></script>
+  <script src="catalog-menschen.js"></script>
   <script src="catalog-ajustes.js"></script>
 <script src="situacoes-de.js"></script>
 <script src="cenas-data.js"></script>
 <script src="gramatica-data.js"></script>
+<script src="gramatica-fichas.js"></script>
+<script src="gramatica-novos.js"></script>
+<script src="gramatica-fichas-a2.js"></script>
+<script src="gramatica-fichas-b1.js"></script>
+<script src="gramatica-fichas-b2.js"></script>
+<script src="gramatica-audio.js"></script>
 <script src="pronuncia-data.js"></script>
 <script src="audio-index.js"></script>
 <script src="didatica.js"></script>
@@ -534,9 +553,18 @@
 <script src="escrita.js"></script>
 <script src="gramatica-erros.js"></script>
 <script src="gramatica-frase.js"></script>
+<script src="corretor.js"></script>
+<script src="gramatica-aula.js"></script>
+<script src="gramatica-ficha-ui.js"></script>
+<script src="gramlivro.js"></script>
 <script src="pronuncia-voz.js"></script>
 <script src="pronuncia-melodia-data.js"></script>
 <script src="pronuncia-melodia.js"></script>
+<script src="artigos-data.js"></script>
+<script src="artigos.js"></script>
+<script src="menschen-data.js"></script>
+<script src="menschen.js"></script>
+<script src="menschen-aula.js"></script>
 <script src="navegacao.js"></script>
 <script src="hoje.js"></script>
 <script src="app.js"></script>

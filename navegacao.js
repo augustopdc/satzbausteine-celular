@@ -5,21 +5,23 @@
    para o lado e “Voltar” faz o caminho inverso, como no iPhone (View Transitions; sem suporte ou com “reduzir movimento”, troca direto). */
 const HUBS = [
   {id: "hoje", label: "Hoje", views: ["home"]},
-  {id: "treinar", label: "Treinar", views: ["practice", "grammar", "pron", "activation", "template", "exam"]},
+  {id: "treinar", label: "Treinar", views: ["practice", "grammar", "artigos", "pron", "activation", "template", "exam"]},
   {id: "falar", label: "Falar", views: ["conversa", "scenes"]},
-  {id: "ler", label: "Ler e escrever", views: ["reading", "escrita"]},
+  {id: "ler", label: "Ler e escrever", views: ["menschen", "reading", "escrita"]},
   {id: "eu", label: "Eu", views: ["plan", "minhas", "catalog", "coverage", "settings"]}
 ];
 const HUB_ROWS = {
   practice: ["Cartões", "Revisões e frases novas do dia: produção, escuta e ditado."],
   grammar: ["Gramática", "Notas, tabelas e exercícios de montar a frase."],
+  artigos: ["Artigos", "der, die, das e o plural de cada substantivo, com revisão espaçada."],
   pron: ["Pronúncia", "Pares de sons parecidos, ouvindo e gravando."],
   activation: ["Ativação", "10 frases já aprendidas de um tema para um monólogo livre."],
   template: ["Molde", "Fale três variações de uma frase trocando as lacunas."],
   exam: ["Modo Prova", "Tarefas no formato da prova, com autoavaliação."],
   conversa: ["Conversa", "Parceira no seu nível, 4/3/2 e paciente simulado (FSP)."],
   scenes: ["Cenas", "Diálogos do dia a dia e do hospital para treinar a sua parte."],
-  reading: ["Leitura", "Livros com áudio, tradução e gramática de cada frase."],
+  menschen: ["Menschen", "O livro do curso: lição por lição, com frases, gramática e os áudios."],
+  reading: ["Leitura","Livros com áudio, tradução e gramática de cada frase."],
   escrita: ["Escrita", "Tarefas da prova, diário de 3 frases e resumo do livro."],
   plan: ["Meu plano", "Rumo ao B2, capítulo do curso, plantões e pacote para a aula."],
   minhas: ["Minhas frases", "Seus cartões: da aula, das séries e dos seus erros."],
@@ -28,7 +30,7 @@ const HUB_ROWS = {
   settings: ["Configurações", "Áudio, backup, sincronização e aparência."]
 };
 // Telas que dependem do PC (Whisper, IA local): fora do app do PC não aparecem.
-const NAV_WEB_HIDDEN = ["conversa", "minhas", "pron"];
+const NAV_WEB_HIDDEN = ["conversa", "minhas", "pron", "menschen"];
 const NAV_KEY = "satzbausteine.navLast";
 const nav = {hub: "hoje", last: {}};
 

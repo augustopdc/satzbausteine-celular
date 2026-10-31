@@ -3,7 +3,7 @@
    Carregados antes: fsrs.js (FSRS), catalog*.js (frases) e audio-index.js (áudios embutidos). */
 
 const APP_VERSION = "1.9.0";
-const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1";
+const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1+menschen821";
 const KEY_PROGRESS = "satzbausteine.progress.v1";
 const KEY_SETTINGS = "satzbausteine.settings.v1";
 const KEY_CATALOG_FALLBACK = "satzbausteine.catalog.v1";
@@ -21,7 +21,8 @@ const BUNDLED_CARDS = [
   ...(typeof FRASES_ANKUNFT !== "undefined" ? FRASES_ANKUNFT : []),
   ...(typeof FRASES_NICOSWEG !== "undefined" ? FRASES_NICOSWEG : []),
   ...(typeof FRASES_NICOSWEG_A2 !== "undefined" ? FRASES_NICOSWEG_A2 : []),
-  ...(typeof FRASES_ETAPA4 !== "undefined" ? FRASES_ETAPA4 : [])
+  ...(typeof FRASES_ETAPA4 !== "undefined" ? FRASES_ETAPA4 : []),
+  ...(typeof FRASES_MENSCHEN !== "undefined" ? FRASES_MENSCHEN : [])
 ].map(c => typeof aplicarAjustes === "function" ? aplicarAjustes(c) : c);
 
 const REF_GROUPS = [
@@ -50,7 +51,7 @@ const REF_GROUPS = [
     ["FSP_Dokumentation", "Documentação e Arztbrief"], ["FSP_Fallvorstellung", "Arzt-Arzt-Gespräch e apresentação de caso"],
     ["FSP_Fachbegriffe", "Termos técnicos ↔ linguagem leiga"]]},
   {title: "Vida na Alemanha", items: [["Ankunft", "Chegada: burocracia, moradia, banco e Approbation"]]},
-  {title: "Curso", items: [["NicosWeg", "Nicos Weg A1 e A2 (Deutsche Welle) + Wortlisten A1 e A2 do Goethe"]]}
+  {title: "Curso", items: [["NicosWeg", "Nicos Weg A1 e A2 (Deutsche Welle) + Wortlisten A1 e A2 do Goethe"], ["Menschen", "Menschen A2.1 e A2.2 (Hueber), livro do curso particular"]]}
 ];
 const REF_LABELS = new Map(REF_GROUPS.flatMap(g => g.items));
 
@@ -64,16 +65,17 @@ const THEME_LABELS = {
   Wohnen: "Moradia", Dienstleistung: "Serviços", Reisen: "Viagens", Medien: "Mídia", Gesundheit: "Saúde", Technologie: "Tecnologia",
   Telefon: "Telefone", Mobilitaet: "Mobilidade", Versicherung: "Seguros", Konsum: "Consumo", Geld: "Dinheiro", Umwelt: "Meio ambiente",
   Ernaehrung: "Alimentação", Gleichstellung: "Igualdade", Migration: "Migração", Nachbarn: "Vizinhos", Ehrenamt: "Voluntariado",
-  Sport: "Esporte", Medizin: "Medicina (FSP)", Fachbegriffe: "Termos médicos", Ankunft: "Chegada na Alemanha", Meine: "Minhas frases", NicosWeg: "Reforço · Nicos Weg"
+  Sport: "Esporte", Medizin: "Medicina (FSP)", Fachbegriffe: "Termos médicos", Ankunft: "Chegada na Alemanha", Meine: "Minhas frases", NicosWeg: "Reforço · Nicos Weg",
+  Menschen: "Curso · Menschen"
 };
 const MEDICAL_THEMES = new Set(["Medizin", "Fachbegriffe"]);
-const FEATURED_THEMES = ["Meine", "NicosWeg", "Medizin", "Fachbegriffe", "Ankunft"];
+const FEATURED_THEMES = ["Meine", "Menschen", "NicosWeg", "Medizin", "Fachbegriffe", "Ankunft"];
 const TAG_VALUE_LABELS = {
   Register: {Sie: "Sie · formal", du: "du · informal", neutral: "Neutro", formell: "Formal (escrito)", umgangssprachlich: "Coloquial", ihr: "ihr · plural"},
   Modus: {Produktion: "Produção", Verstehen: "Compreensão"},
   Schicht: {1: "K1 · base", 2: "K2 · intermediária", 3: "K3 · avançada"},
   Prio: {1: "Prioridade 1", 2: "Prioridade 2", 3: "Prioridade 3"},
-  Quelle: {Kernliste: "Lista principal", Medizin: "Módulo médico", Ankunft: "Módulo chegada", Meine: "Minhas frases", NicosWeg: "Reforço Nicos Weg"},
+  Quelle: {Kernliste: "Lista principal", Medizin: "Módulo médico", Ankunft: "Módulo chegada", Meine: "Minhas frases", NicosWeg: "Reforço Nicos Weg", Menschen: "Reforço Menschen"},
   Thema: THEME_LABELS
 };
 const FUNCTION_FIXES = {
@@ -82,7 +84,7 @@ const FUNCTION_FIXES = {
   CartaAbertura: "Carta: abertura", CartaFecho: "Carta: fecho", TelefoneAbertura: "Telefone: abertura", TelefoneFecho: "Telefone: fecho",
   ElogiarSocial: "Elogiar (social)", Eigene: "Frase própria"
 };
-const THEME_NAMES = {"Wohnen": "moradia", "Behoerde": "Bürgeramt", "Arbeit": "emprego", "Gesundheit": "paciente", "Umwelt": "plástico", "Reisen": "viagem", "Medien": "redes", "Konsum": "consumo", "Ernaehrung": "alimentação e trabalho", "Bildung": "estudos", "Freundschaft": "amizades e vida social", "Versicherung": "seguro", "Gleichstellung": "igualdade de direitos", "Migration": "migração e integração", "Sport": "esportes e atividade física", "Kultur": "livros", "Technologie": "tecnologia e IA", "Mobilitaet": "trânsito", "Geld": "banco", "Ehrenamt": "voluntariado", "Telefon": "telefonema", "Dienstleistung": "compras", "Nachbarn": "vizinhos e convivência", "Alltag": "rotina", "Medizin": "plantão no hospital", "Fachbegriffe": "explicar termos médicos a um paciente", "Ankunft": "primeiras semanas na Alemanha", "NicosWeg": "o dia a dia (curso Nicos Weg)"};
+const THEME_NAMES = {"Wohnen": "moradia", "Behoerde": "Bürgeramt", "Arbeit": "emprego", "Gesundheit": "paciente", "Umwelt": "plástico", "Reisen": "viagem", "Medien": "redes", "Konsum": "consumo", "Ernaehrung": "alimentação e trabalho", "Bildung": "estudos", "Freundschaft": "amizades e vida social", "Versicherung": "seguro", "Gleichstellung": "igualdade de direitos", "Migration": "migração e integração", "Sport": "esportes e atividade física", "Kultur": "livros", "Technologie": "tecnologia e IA", "Mobilitaet": "trânsito", "Geld": "banco", "Ehrenamt": "voluntariado", "Telefon": "telefonema", "Dienstleistung": "compras", "Nachbarn": "vizinhos e convivência", "Alltag": "rotina", "Medizin": "plantão no hospital", "Fachbegriffe": "explicar termos médicos a um paciente", "Ankunft": "primeiras semanas na Alemanha", "NicosWeg": "o dia a dia (curso Nicos Weg)", "Menschen": "família, casa e o dia a dia (livro Menschen)"};
 const FILTER_KEYS = [["Schicht", "Camada"], ["Prio", "Prioridade"], ["Modus", "Modo"], ["Niveau", "Nível"], ["Thema", "Tema"], ["Register", "Registro"], ["Funktion", "Função"], ["Bezug", "Referência"]];
 
 // ---------- Estado ----------
@@ -100,7 +102,7 @@ const tagIndex = new Map(), searchIndex = new Map();
 let progress = emptyProgress();
 let settings = {newLimit: 6, reviewLimit: "", newOrder: "recommended", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
   welcomeDismissed: false, provaPack: false, sounds: false, orderV2: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
-  presentNew: true, levelGate: true, nwChapter: 7, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
+  presentNew: true, levelGate: false, unlockV1: false, nwChapter: 7, msLesson: 1, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
   convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado"};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
   done: 0, failed: 0, fresh: 0, grades: {}, startedAt: 0, shownAt: 0, undo: [], extraNew: 0, extraReviews: 0, extraReviewsDay: "", speech: "idle", dictation: false, diktat: null};
@@ -307,7 +309,7 @@ function safeWrite(key, value) {
 }
 /* Configurações que valem em todos os aparelhos (vão junto na sincronização pelo GitHub). Tema, voz e afins ficam em cada um.
    `syncAt` só muda quando uma destas muda: assim, trocar o tema no PC não “ganha” de um capítulo novo marcado no celular. */
-const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal", "provaPack"];
+const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "msLesson", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal", "provaPack"];
 function syncedSettings(s = settings) { const out = {}; for (const k of SYNCED_SETTINGS) if (s[k] !== undefined) out[k] = s[k]; return out; }
 // Valores de fábrica (lidos antes de init carregar as configurações salvas): um aparelho novo não “ganha” do outro.
 const SYNCED_DEFAULT = JSON.stringify(syncedSettings());
@@ -616,7 +618,7 @@ async function importTSV(files) {
 }
 
 // ---------- Navegação ----------
-const VIEWS = ["home", "hub", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
+const VIEWS = ["home", "hub", "practice", "scenes", "conversa", "minhas", "pron", "reading", "escrita", "menschen", "artigos", "plan", "template", "activation", "exam", "catalog", "grammar", "coverage", "settings"];
 function showView(view) {
   if (!VIEWS.includes(view)) return;
   // Trocar de tela pelo menu ou por atalho fecha o diálogo aberto (senão ele fica por cima da tela nova).
@@ -627,6 +629,9 @@ function showView(view) {
   if (currentView === "reading" && view !== "reading") { saveBookPosition(); stopReadingAudio(); }
   if (currentView === "scenes" && view !== "scenes") { scene.token++; if (scene.clip) { scene.clip.stop(); scene.clip = null; } }
   if (currentView === "conversa" && view !== "conversa") convLeave();
+  if (currentView === "menschen" && view !== "menschen") msStop();
+  if (currentView === "artigos" && view !== "artigos" && art.clip) art.clip.stop();
+  if (currentView === "grammar" && view !== "grammar" && typeof gbStop === "function") gbStop();
   if (currentView !== view) stopAudio();
   currentView = view;
   all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; e.classList.remove("vt"); });
@@ -640,6 +645,8 @@ function showView(view) {
   if (view === "minhas") renderMinhas();
   if (view === "pron") renderPron();
   if (view === "escrita") renderEscrita();
+  if (view === "menschen") renderMenschen();
+  if (view === "artigos") renderArtigos();
   if (view === "reading") renderReading();
   else if (typeof rdApplyFocus === "function") rdApplyFocus();
   if (view === "grammar") renderGrammar();
@@ -913,7 +920,7 @@ function renderPlan() {
   renderSchedule();
   const open = unlockedLevels();
   const levels = ["A1", "A2", "B1", "B2"].map(lv => {
-    const subset = cards.filter(c => tag(c, "Niveau") === lv && !isMedical(c) && !nwLocked(c));
+    const subset = cards.filter(c => tag(c, "Niveau") === lv && !isMedical(c) && !nwLocked(c) && !msLocked(c));
     return progressRow("Nível " + lv + (settings.levelGate ? (open.has(lv) ? "" : " · bloqueado") : ""), subset.filter(studied).length, subset.length);
   });
   const med = cards.filter(isMedical);
@@ -1065,12 +1072,14 @@ function buildSessionQueue() {
 /* Ordem das frases novas (a fila do treino e o áudio guardado no celular usam a mesma): próprias primeiro, depois o reforço
    do Nicos Weg na ordem do curso, depois o resto. Ordena `unseen` e tira dele os capítulos futuros; devolve as permitidas. */
 function orderNew(unseen, gated) {
-  const nwRank = c => { const ch = nwChapter(c); return ch === null ? 99 : ch; };
+  // O livro do curso particular (Menschen) vem antes do Nicos Weg: é o que está sendo visto nas aulas agora. Lições e capítulos
+  // depois do seu não ficam bloqueados: só vêm depois, misturados ao resto pela ordem recomendada.
+  const nwRank = c => { if (msLesson(c) !== null && !msLocked(c)) return msLesson(c) - 100; const ch = nwChapter(c); return ch === null || nwLocked(c) ? 99 : ch; };
   unseen.sort((a, b) => isMine(b) - isMine(a) || nwRank(a) - nwRank(b) || sortNew(a, b));
-  for (let i = unseen.length - 1; i >= 0; i--) if (nwLocked(unseen[i]) || isHiddenCard(unseen[i]) || (!settings.provaPack && isProvaCard(unseen[i]))) unseen.splice(i, 1);
+  for (let i = unseen.length - 1; i >= 0; i--) if (isHiddenCard(unseen[i]) || (!settings.provaPack && isProvaCard(unseen[i]))) unseen.splice(i, 1);
   const open = gated ? unlockedLevels() : null;
-  // O reforço do curso já liberado pelo capítulo (“Estou no capítulo”) não espera a progressão por nível.
-  return open ? unseen.filter(c => isMine(c) || nwChapter(c) !== null || open.has(tag(c, "Niveau"))) : unseen;
+  // O reforço do curso já liberado pelo capítulo (“Estou no capítulo”, “Estou na Lektion”) não espera a progressão por nível.
+  return open ? unseen.filter(c => isMine(c) || nwChapter(c) !== null || msLesson(c) !== null || open.has(tag(c, "Niveau"))) : unseen;
 }
 /* Em plantão e pós-plantão, a sessão vazia não puxa frases novas sozinha. */
 function restrictedToday(plan = dayPlan()) { return plan.type === "plantao" || plan.type === "pos"; }
@@ -2203,6 +2212,8 @@ function sanitizeProgress(source) {
   if (practice.f432) result.practice.f432 = sanitizeF432(practice.f432);
   if (practice.reading) result.practice.reading = sanitizeReadingLog(practice.reading);
   if (practice.gram) result.practice.gram = sanitizeGram(practice.gram);
+  if (practice.artigos) result.practice.artigos = sanitizeArtigos(practice.artigos);
+  if (practice.menschen && typeof sanitizeMenschen === "function") result.practice.menschen = sanitizeMenschen(practice.menschen);
   if (practice.bookWords) result.practice.bookWords = sanitizeBookWords(practice.bookWords);
   if (practice.escrita) result.practice.escrita = sanitizeEscrita(practice.escrita);
   result.schedule = sanitizeSchedule(source.schedule);
@@ -2225,6 +2236,7 @@ function applyImportedSettings(s) {
   if (Number(s.medShare) >= 0 && Number(s.medShare) <= .5) settings.medShare = Number(s.medShare);
   if ([15, 30, 60, 90, 120, 180].includes(Number(s.readingGoal))) settings.readingGoal = Number(s.readingGoal);
   if (Number.isInteger(Number(s.nwChapter)) && Number(s.nwChapter) >= 0 && Number(s.nwChapter) <= 37) settings.nwChapter = Number(s.nwChapter);
+  if (Number.isInteger(Number(s.msLesson)) && Number(s.msLesson) >= 1 && Number(s.msLesson) <= 24) settings.msLesson = Number(s.msLesson);
   if (typeof s.levelGate === "boolean") settings.levelGate = s.levelGate;
   if (typeof s.mineReview === "boolean") settings.mineReview = s.mineReview;
   if (["charon", "aoede", "system"].includes(s.convVoice)) settings.convVoice = s.convVoice;
@@ -2281,6 +2293,8 @@ async function mergeIncoming(parsed, {settings: withSettings, force = false}) {
   if (incoming.practice.f432) progress.practice.f432 = mergeF432(progress.practice.f432, incoming.practice.f432);
   if (incoming.practice.reading) progress.practice.reading = mergeReadingLog(progress.practice.reading, incoming.practice.reading);
   if (incoming.practice.gram) progress.practice.gram = mergeGram(progress.practice.gram, incoming.practice.gram);
+  if (incoming.practice.artigos) progress.practice.artigos = mergeArtigos(progress.practice.artigos, incoming.practice.artigos);
+  if (incoming.practice.menschen && typeof mergeMenschen === "function") progress.practice.menschen = mergeMenschen(progress.practice.menschen, incoming.practice.menschen);
   if (incoming.practice.bookWords) progress.practice.bookWords = mergeBookWords(progress.practice.bookWords, incoming.practice.bookWords);
   if (incoming.practice.escrita) progress.practice.escrita = mergeEscrita(progress.practice.escrita, incoming.practice.escrita);
   if (incoming.schedule.updatedAt > ((progress.schedule || {}).updatedAt || 0)) progress.schedule = incoming.schedule;
@@ -2748,6 +2762,8 @@ async function init() {
   if (savedSettings && typeof savedSettings === "object") settings = {...settings, ...savedSettings};
   // Auditoria do catálogo (out/2026): quem estava na ordem padrão antiga passa para a ordem revisada (uma vez só).
   if (!settings.orderV2) { if (settings.newOrder === "priority") settings.newOrder = "recommended"; settings.orderV2 = true; }
+  // Nada bloqueado (pedido do usuário em 26/10/2026): a progressão por nível vira só ordem. Uma vez; vale nos outros aparelhos.
+  if (!settings.unlockV1) { settings.levelGate = false; settings.unlockV1 = true; saveSettings(); settings.syncAt = Date.now(); safeWrite(KEY_SETTINGS, settings); }
   applyTheme();
   await loadProgress();
   db = await openCatalogDB();

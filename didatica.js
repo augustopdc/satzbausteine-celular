@@ -136,6 +136,13 @@ function nwLocked(card) {
   const ch = nwChapter(card), max = Number(settings.nwChapter);
   return ch !== null && Number.isFinite(max) && ch > max;
 }
+// Menschen A2.1 e A2.2 (livro do curso particular): tag MS::LL = lição. “Locked” aqui quer dizer “depois da sua lição/capítulo”:
+// nada fica bloqueado; essas frases só vêm depois na fila (orderNew) e não contam no domínio do nível (levelStats).
+function msLesson(card) { const v = tag(card, "MS"); return v ? Number(v) : null; }
+function msLocked(card) {
+  const l = msLesson(card), max = Number(settings.msLesson);
+  return l !== null && Number.isFinite(max) && l > max;
+}
 
 // ---------- Progressão por nível ----------
 const LEVELS = ["A1", "A2", "B1", "B2"];
@@ -150,7 +157,7 @@ function levelStats() {
   const stats = {};
   for (const lv of LEVELS) stats[lv] = {total: 0, learned: 0, unseen: 0};
   for (const c of cards) {
-    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c) || isHiddenCard(c) || isProvaCard(c)) continue;
+    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c) || msLocked(c) || isHiddenCard(c) || isProvaCard(c)) continue;
     const s = stats[tag(c, "Niveau")];
     if (!s) continue;
     s.total++;
@@ -266,12 +273,20 @@ function topicCards(topicId) {
 function grammarChips(card) {
   const priority = ["konj1", "partizip", "nominal", "vermutung", "passivers", "fvg", "genpraep", "konnektb2", "plusquam", "konj2verg", "passiv2", "lassen", "zuinf", "obwohl", "temporal", "indem", "futur", "ndekl", "relativ", "indirekt", "umzu", "alswenn", "doppelkonj", "zweiobjekt", "daworter", "deshalb",
     "nebensatz", "v2", "trennbar", "perfekt", "praeteritum", "modal", "imperativ", "reflexiv", "dativ", "akkusativ", "genitiv", "praep", "wfragen",
-    "komparativ", "adjektiv", "possessiv", "konnektoren", "passiv", "konjunktiv", "genero", "negacao", "falsos", "sie"];
+    "komparativ", "adjektiv", "possessiv", "konnektoren", "passiv", "konjunktiv", "genero", "negacao", "falsos", "sie",
+    // Tópicos A1 de 26/10/2026 (gramatica-novos.js): genéricos, ficam por último.
+    "richtung", "praepdat", "praepakk", "uhrzeit", "perspron", "vokalwechsel", "plural", "man", "janeindoch", "praesens",
+    "verbpaare", "zeitpraep", "demonstr", "wortbildung", "partikeln", "konj2irreal", "praetall", "ohnezu", "werden3", "adjsubst"];
   const ids = topicsFor(card).sort((a, b) => priority.indexOf(a) - priority.indexOf(b)).slice(0, 2);
   return ids.map(id => h("button", {class: "chip chip-grammar", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 15)));
 }
 function grammarTopicContent(t, withExamples = true) {
   const examples = withExamples ? topicCards(t.id).slice(0, 6) : [];
+  // Ficha em três camadas (gramatica-ficha-ui.js), quando o tópico tem uma.
+  const ficha = typeof fichaNodes === "function" ? fichaNodes(t, withExamples) : null;
+  // Na página do tópico, logo depois da ficha: os drills de áudio do livro de gramática do usuário (gramlivro.js).
+  const drills = withExamples && typeof gbTopicBlock === "function" ? gbTopicBlock(t.id) : null;
+  if (ficha) return [...ficha, drills, ...(examples.length ? [h("h3", {text: "No seu catálogo"}), h("div", {class: "list"}, ...examples.map(catalogItem))] : [])].filter(Boolean);
   const extra = typeof GRAM_EXTRA !== "undefined" ? GRAM_EXTRA[t.id] : null;
   return [
     h("p", {class: "lede", text: t.short}),
@@ -298,6 +313,8 @@ function openGrammarDialog(id) {
   dialog.showModal();
 }
 function renderGrammar() {
+  if (typeof gbStop === "function") gbStop();
+  if (typeof gbLoadIndex === "function") gbLoadIndex();
   $("grammarDetail").hidden = true;
   $("grammarList").hidden = false;
   if (typeof renderGrammarTrain === "function") renderGrammarTrain();
@@ -317,11 +334,14 @@ function renderGrammarTopic(id) {
     typeof gramErrSection === "function" ? gramErrSection(id) : null,
     typeof gfDiagram === "function" ? gfDiagram(id) : null,
     ...grammarTopicContent(t, true),
-    h("div", {class: "row spaced"}, h("button", {class: "primary", type: "button", onclick: () => startTopicSession(id)}, "Treinar frases deste tópico"),
-      typeof startExercise === "function" ? h("button", {type: "button", onclick: () => startExercise("build", id)}, "Montar a frase") : null,
-      hasForm ? h("button", {type: "button", onclick: () => startExercise("form", id)}, "Escolha a forma certa") : null,
-      hasForm ? h("button", {type: "button", onclick: () => startExercise("type", id)}, "Completar digitando") : null,
-      id === "v2" || id === "nebensatz" ? h("button", {type: "button", onclick: () => startExercise("transform", id)}, "Transforme") : null));
+    h("div", {class: "row spaced"},
+      typeof startAula === "function" ? h("button", {class: "primary", type: "button", onclick: () => startAula(id, "Você escolheu este tópico")}, iconText("play", "Fazer a aula deste tópico")) : null,
+      h("button", {type: "button", onclick: () => startTopicSession(id)}, "Treinar as frases nos cartões")),
+    // Exercícios extras, para quem quer mais (sem o de escolher entre duas formas).
+    typeof startExercise === "function" ? h("div", {class: "gram-more"}, h("span", {class: "muted small-text", text: "Mais exercícios:"}),
+      h("button", {class: "quiet small", type: "button", onclick: () => startExercise("build", id)}, "Montar a frase"),
+      hasForm ? h("button", {class: "quiet small", type: "button", onclick: () => startExercise("type", id)}, "Completar digitando") : null,
+      id === "v2" || id === "nebensatz" ? h("button", {class: "quiet small", type: "button", onclick: () => startExercise("transform", id)}, "Transforme") : null) : null);
   window.scrollTo({top: 0});
 }
 function startTopicSession(id) {

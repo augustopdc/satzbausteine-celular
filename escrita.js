@@ -76,9 +76,10 @@ function escritaNw() { const n = Number(settings.nwChapter); return Number.isFin
 /* Tarefas da prova já liberadas pelo capítulo do Nicos Weg; a sugerida é a mais avançada ainda não feita. */
 function escritaTasksFor(nw = escritaNw(), texts = escritaTexts()) {
   const done = new Set(texts.filter(t => t.kind === "prova").map(t => t.ref));
-  const open = ESCRITA_TAREFAS.filter(t => t.nw <= nw);
-  const todo = open.filter(t => !done.has(t.id));
-  return {open, locked: ESCRITA_TAREFAS.length - open.length, done, suggested: (todo.length ? todo[todo.length - 1] : open[open.length - 1]) || ESCRITA_TAREFAS[0]};
+  // Todas abertas; a sugerida é a mais avançada ainda não feita até o seu capítulo (ou a primeira não feita depois dele).
+  const open = ESCRITA_TAREFAS.slice(), reached = open.filter(t => t.nw <= nw);
+  const todo = reached.filter(t => !done.has(t.id)), later = open.filter(t => t.nw > nw && !done.has(t.id));
+  return {open, locked: 0, done, suggested: (todo.length ? todo[todo.length - 1] : later[0] || reached[reached.length - 1]) || ESCRITA_TAREFAS[0]};
 }
 function escritaTaskSpec(task) {
   return {de: task.de, pt: task.pt, pontos: task.pontos.map(p => p[0]), palavras: task.palavras.slice(), formato: task.formato, reg: task.reg, nivel: task.nivel};

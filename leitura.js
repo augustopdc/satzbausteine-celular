@@ -825,7 +825,7 @@ function bookGrammar(i) {
   const pseudo = {id: "livro:" + reading.book.id + ":" + s.id, frase: s.text, alvo: "", tags: "", situacao: "[neutro] "};
   const priority = ["konj1", "partizip", "nominal", "vermutung", "passivers", "fvg", "genpraep", "konnektb2", "plusquam", "konj2verg", "passiv2", "lassen", "zuinf", "obwohl", "temporal", "indem", "futur", "ndekl", "relativ", "indirekt", "umzu", "alswenn", "doppelkonj", "zweiobjekt", "daworter", "deshalb",
     "nebensatz", "v2", "trennbar", "perfekt", "praeteritum", "modal", "imperativ", "reflexiv", "passiv", "konjunktiv", "praep", "wfragen",
-    "komparativ", "adjektiv", "possessiv", "konnektoren", "negacao", "falsos"];
+    "komparativ", "adjektiv", "possessiv", "konnektoren", "negacao", "falsos", "richtung", "praepdat", "praepakk", "uhrzeit", "perspron", "vokalwechsel", "plural", "man", "janeindoch", "praesens", "verbpaare", "zeitpraep", "demonstr", "wortbildung", "partikeln", "konj2irreal", "praetall", "ohnezu", "werden3", "adjsubst"];
   return topicsFor(pseudo).filter(id => id !== "genero").sort((a, b) => priority.indexOf(a) - priority.indexOf(b)).slice(0, 3);
 }
 function renderDetail() {

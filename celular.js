@@ -5,6 +5,9 @@
    - Guarda antes o áudio que vai ser usado: frases que vencem em 7 dias, próximas novas e cenas até o nível seguinte.
    Carregado depois de app.js. */
 
+/* No iPhone, :active (o botão que encolhe) só funciona se a página escuta o toque. */
+document.addEventListener("touchstart", () => {}, {passive: true});
+
 const AUDIO_CACHE_NAME = "satz-audio";
 const offline = {busy: false, done: 0, total: 0, stored: null, persisted: null};
 

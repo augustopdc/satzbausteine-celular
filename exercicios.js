@@ -437,10 +437,20 @@ function buildItem(card) {
 }
 
 // ---------- Escolha das frases ----------
+/* Frases “do seu tamanho” para os exercícios: até um nível acima do seu, mais as que você já estudou. Não é bloqueio:
+   tópico de nível mais alto usa as frases dele mesmo quando no seu tamanho há poucas (gramWindow). */
+function gramLevels() {
+  const cur = typeof currentLevel === "function" ? currentLevel() : "A1", i = Math.max(0, LEVELS.indexOf(cur));
+  return new Set(LEVELS.slice(0, i + 2));
+}
+function gramWindow(list, min = 8) {
+  const lv = gramLevels(), near = list.filter(c => lv.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null || msLesson(c) !== null);
+  return near.length >= min ? near : list;
+}
 function exPool(topic) {
-  const open = typeof unlockedLevels === "function" ? unlockedLevels() : new Set(["A1"]);
-  const base = cards.filter(c => tag(c, "Modus") === "Produktion" && !isMedical(c) && !isMine(c) && !nwLocked(c) && (open.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null));
-  const list = topic ? base.filter(c => topicsFor(c).includes(topic) || (EX_FORM_TOPICS.includes(topic) && formItem(c, topic))) : base;
+  const all = cards.filter(c => tag(c, "Modus") === "Produktion" && !isMedical(c) && !isMine(c) && !isHiddenCard(c));
+  const base = topic ? all : gramWindow(all);
+  const list = topic ? gramWindow(base.filter(c => topicsFor(c).includes(topic) || (EX_FORM_TOPICS.includes(topic) && formItem(c, topic)))) : base;
   const seen = shuffled(list.filter(c => cardProgress(c.id) && cardProgress(c.id).introducedAt));
   const rest = shuffled(list.filter(c => !(cardProgress(c.id) && cardProgress(c.id).introducedAt)));
   return seen.concat(rest);
@@ -690,24 +700,10 @@ function exKey(e) {
   if (e.key === "Escape") { e.preventDefault(); exClose(); return true; }
   return false;
 }
-/* Painel no topo da tela Gramática: exercícios mistos e pontos fracos. */
+/* Topo da tela Gramática: a Aula de hoje (gramatica-aula.js). */
 function renderGrammarTrain() {
   const box = $("grammarTrain");
-  if (!box) return;
-  const weak = gramWeakTopics(), d = gramData().topics, total = Object.values(d).reduce((a, s) => a + s.n, 0);
-  const now = gramZones(gramInfos(), gramCurrentChapter()).now;
-  fill(box,
-    h("button", {class: "primary gram-quick", type: "button", onclick: startGramQuick},
-      h("b", {text: "5 minutos"}),
-      h("span", {text: now.length ? "8 exercícios de " + now.slice(0, 3).map(x => x.t.title.split(/[:(]/)[0].trim()).join(", ") : "8 exercícios do seu nível"})),
-    h("div", {class: "gram-tools"},
-      h("button", {type: "button", onclick: () => startExercise("build")}, "Montar a frase"),
-      h("button", {type: "button", onclick: () => startExercise("form")}, "Escolha a forma certa"),
-      h("button", {type: "button", onclick: () => startExercise("type")}, "Completar digitando"),
-      h("button", {type: "button", onclick: () => startExercise("transform")}, "Transforme"),
-      h("button", {class: "quiet", type: "button", onclick: renderGrammarTables}, "Tabelas de consulta")),
-    h("p", {class: "muted small-text gram-train-note", text: weak.length ? "Pontos fracos (abaixo de 80% nas últimas 10 respostas) entram primeiro." : total ? "" : "Os exercícios usam as frases do seu nível, primeiro as que você já viu."}));
-  box.hidden = false;
+  if (box) aulaHero(box);
 }
 /* ---------- Tela inicial da Gramática (24/10/2026): “Agora”, “Em seguida” e as famílias recolhidas ----------
    Capítulo do Nicos Weg (índice global: A1 1–18, A2 = 19 + cap.) em que cada tópico entra. É aproximado: alguns aparecem aos
@@ -719,6 +715,12 @@ const GRAM_CHAPTER = {genero: 1, falsos: 1, sie: 2, konnektoren: 3, negacao: 5, 
   // B1: não há curso; 38–40 vêm depois do fim do Nicos Weg A2 (o “capítulo” passa a ser o nível aberto, ver gramCurrentChapter).
   obwohl: 38, temporal: 38, zuinf: 38, futur: 38, plusquam: 39, ndekl: 39, lassen: 39, konj2verg: 40, passiv2: 40, indem: 40,
   // B2: 41–43, depois do B1.
+  // Tópicos A1 novos (26/10/2026).
+  // Tópicos A2 novos (26/10/2026).
+  // Tópicos B1 novos (26/10/2026).
+  konj2irreal: 38, praetall: 38, werden3: 39, ohnezu: 39, adjsubst: 40,
+  zeitpraep: 20, partikeln: 21, demonstr: 23, verbpaare: 24, wortbildung: 26,
+  praesens: 1, janeindoch: 2, vokalwechsel: 3, man: 4, plural: 5, uhrzeit: 8, praepakk: 10, praepdat: 10, richtung: 10, perspron: 15,
   konnektb2: 41, genpraep: 41, vermutung: 41, konj1: 42, passivers: 42, fvg: 42, partizip: 43, nominal: 43};
 const GRAM_B1_BASE = 38, GRAM_B2_BASE = 41;
 const GRAM_FAMILIES = [
@@ -726,7 +728,8 @@ const GRAM_FAMILIES = [
   ["verbo", "Verbo e tempo", ["praeteritum", "perfekt", "imperativ", "konjunktiv", "reflexiv", "alswenn", "passiv", "futur", "plusquam", "lassen", "konj2verg", "passiv2", "konj1", "vermutung", "passivers"]],
   ["caso", "Casos e artigos", ["genero", "akkusativ", "possessiv", "dativ", "praep", "adjektiv", "daworter", "zweiobjekt", "genitiv", "ndekl", "genpraep"]],
   ["palavras", "Palavras e tratamento", ["sie", "falsos", "wfragen", "komparativ", "fvg", "nominal"]]];
-const GRAM_STATES = {novo: "Ainda não visto", contato: "Em contato", firmando: "Firmando", firme: "Firme", revisar: "Revisar"};
+// Estados simples (26/10/2026): “Em contato” e “Firmando” viraram “Treinando”.
+const GRAM_STATES = {novo: "Novo", contato: "Treinando", firmando: "Treinando", firme: "Firme", revisar: "Revisar"};
 function gramCurrentChapter() {
   const n = Number(settings.nwChapter), cur = Number.isFinite(n) ? n : 7;
   // Com o B1 aberto (60% do A2 dominado), os tópicos do B1 (38–40) passam a ser “o seu capítulo”.
@@ -744,10 +747,9 @@ function gramTopicState(learned, total, s) {
   return "novo";
 }
 function gramInfos() {
-  const open = typeof unlockedLevels === "function" ? unlockedLevels() : new Set(["A1"]);
   const errs = typeof gramErrorsByTopic === "function" ? gramErrorsByTopic() : new Map();
   return [...GRAMMAR_BY_ID.values()].map(t => {
-    const scope = topicCards(t.id).filter(c => !isMine(c) && !nwLocked(c) && (open.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null));
+    const scope = gramWindow(topicCards(t.id).filter(c => !isMine(c) && !isHiddenCard(c)), 1);
     const learned = scope.filter(studied).length, stat = gramStat(t.id), due = gramReviewDue(t.id);
     let state = gramTopicState(learned, scope.length, stat);
     if (due && (state === "firme" || state === "firmando")) state = "revisar";
@@ -830,23 +832,8 @@ function gramFamilyNote(list) {
   const parts = [firm ? firm + (firm === 1 ? " firme" : " firmes") : "", rev ? rev + " para revisar" : ""].filter(Boolean);
   return parts.length ? parts.join(" · ") : list.length + " tópicos";
 }
-function renderGrammarHome(box) {
-  const infos = gramInfos(), cur = gramCurrentChapter(), {now, next} = gramZones(infos, cur), byId = new Map(infos.map(x => [x.t.id, x]));
-  const opened = gram.familiesOpen || (gram.familiesOpen = new Set());
-  fill(box,
-    now.length ? h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Agora"}), h("div", {class: "gram-now-grid"}, ...now.map(x => gramNowCard(x, cur)))) : null,
-    next.length ? h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Em seguida"}), h("div", {class: "gram-next-row"}, ...next.map(gramNextCard))) : null,
-    h("section", {class: "gram-zone"}, h("h2", {class: "label gram-sec", text: "Todos os tópicos"}),
-      ...GRAM_FAMILIES.map(([id, title, ids]) => {
-        const list = ids.map(k => byId.get(k)).filter(Boolean);
-        const d = h("details", {class: "gram-family", dataset: {family: id}},
-          h("summary", null, h("b", {text: title}), h("span", {class: "muted small-text", text: gramFamilyNote(list)})),
-          h("div", {class: "gram-rows"}, ...list.map(x => gramRow(x, cur))));
-        d.open = opened.has(id);
-        d.addEventListener("toggle", () => { d.open ? opened.add(id) : opened.delete(id); });
-        return d;
-      })));
-}
+/* Lista de todos os tópicos, abertos e agrupados pelo que você quer fazer (gramatica-aula.js). */
+function renderGrammarHome(box) { gramGoalsList(box); }
 const gram = {familiesOpen: null};
 /* Linha de estado no topo do tópico aberto. */
 function gramInfoLine(id) {

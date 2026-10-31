@@ -6,7 +6,7 @@
    Carregado antes de app.js; usa o estado e as funções de app.js apenas quando chamado. */
 
 const MINE_ID = /^M-[a-z0-9]{6,20}$/;
-const MINE_SOURCES = {aula: "Aula", serie: "Série ou filme", livro: "Livro", conversa: "Conversa", escrita: "Escrita", cena: "Cena", outro: "Outro"};
+const MINE_SOURCES = {aula: "Aula", menschen: "Livro Menschen", serie: "Série ou filme", livro: "Livro", conversa: "Conversa", escrita: "Escrita", cena: "Cena", outro: "Outro"};
 const MINE_LEVELS = ["A1", "A2", "B1", "B2"];
 const MINE_REGS = {du: "du · informal", Sie: "Sie · formal", neutro: "neutro"};
 const MINE_CHECKS = {conferir: "Para conferir", tutor: "Validado pelo tutor"};

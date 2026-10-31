@@ -36,7 +36,7 @@ function renderScenes() {
   // Cenas do Nicos Weg primeiro, na ordem dos capítulos; depois as demais por nível.
   const chapter = Number.isFinite(Number(settings.nwChapter)) ? Number(settings.nwChapter) : 18;
   const course = (from, to) => SCENES.filter(s => sceneChapter(s) !== null && sceneChapter(s) >= from && sceneChapter(s) < to).sort((a, b) => sceneChapter(a) - sceneChapter(b));
-  const where = "Uma cena por capítulo do curso; você está em " + nwChapterLabel(chapter) + ". As dos capítulos seguintes ficam mais claras, mas já podem ser feitas.";
+  const where = "Uma cena por capítulo do curso; você está em " + nwChapterLabel(chapter) + ". Todas estão abertas; a sugerida segue o seu capítulo.";
   const groups = [["Nicos Weg A1", course(0, NW_A2_BASE), where],
     ["Nicos Weg A2", course(NW_A2_BASE, 99), where],
     ...LEVELS.map(level => ["Nível " + level, SCENES.filter(s => s.level === level && sceneChapter(s) === null)])].filter(([, list]) => list.length);
@@ -47,7 +47,7 @@ function renderScenes() {
     h("div", {class: "scene-grid"}, ...list.map(s => {
       const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
       const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
-      const card = h("article", {class: "scene-card scene-pick" + (sc !== null && sc > chapter ? " later" : "") + (s === suggested ? " suggested" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
+      const card = h("article", {class: "scene-card scene-pick" + (s === suggested ? " suggested" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
         h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.theme}),
           st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
         h("h3", {text: s.title}),
