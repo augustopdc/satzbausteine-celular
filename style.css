@@ -642,9 +642,9 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .timeline:has(.tl-flip) { padding-top: 4rem; padding-bottom: 3.8rem; }
 
 /* ---------- Versão 1.3: didática ---------- */
-:root { --g-der: #1d5fb0; --g-die: #b3261e; --g-das: #1d7443; --g-pl: #6d7875; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g-der: #8db8f2; --g-die: #f2998d; --g-das: #8fd6a3; --g-pl: #85958f; } }
-:root[data-theme="dark"] { --g-der: #8db8f2; --g-die: #f2998d; --g-das: #8fd6a3; --g-pl: #85958f; }
+:root { --g-der: #1d5fb0; --g-die: #a8326e; --g-das: #1d7443; --g-pl: #6d7875; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g-der: #8db8f2; --g-die: #ee8fbe; --g-das: #8fd6a3; --g-pl: #85958f; } }
+:root[data-theme="dark"] { --g-der: #8db8f2; --g-die: #ee8fbe; --g-das: #8fd6a3; --g-pl: #85958f; }
 .gender { font-weight: inherit; border-bottom: 2px solid currentColor; }
 .g-der { color: var(--g-der); } .g-die { color: var(--g-die); } .g-das { color: var(--g-das); } .g-pl { color: var(--g-pl); }
 .gender-legend { font-size: .8rem; color: var(--ink-3); margin: .6rem 0 0; }
@@ -1734,7 +1734,7 @@ body.rd-paper-sepia .main-col { --bg: #f4ead5; --surface: #fbf4e4; --surface-2: 
   --line: #e2d3b4; --line-strong: #ccb892; --mark: #f3d77c; background: var(--bg); color: var(--ink); }
 body.rd-paper-noite .main-col { --bg: #0f1413; --surface: #161d1c; --surface-2: #1c2524; --surface-3: #24302e; --ink: #e3e8e6; --ink-2: #aeb9b6; --ink-3: #87938f;
   --line: #222c2a; --line-strong: #364442; --mark: #4d3f12; --accent-soft: #143430; --accent-strong: #7ddcc9; --warn-line: #6a5024; --warn-soft: #36290f;
-  --g-der: #8db8f2; --g-die: #f2998d; --g-das: #8fd6a3; --vb-1: #b79bff; --vb-2: #f48fb1; --vb-3: #5fd3dd; background: var(--bg); color: var(--ink); }
+  --g-der: #8db8f2; --g-die: #ee8fbe; --g-das: #8fd6a3; --vb-1: #b79bff; --vb-2: #f48fb1; --vb-3: #5fd3dd; background: var(--bg); color: var(--ink); }
 /* Menu “Aa” cabe na tela do celular, mesmo com as opções novas. */
 .rd-look { width: min(330px, calc(100vw - 2rem)); overflow-x: hidden; }
 .rd-look-row select { min-width: 0; flex: 1 1 auto; max-width: 200px; }
@@ -2433,3 +2433,73 @@ html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   input, select, textarea, .rd-diary select, input[type="date"], input[type="time"] { font-size: 16px; }
   #grammarDetail .ex-type-input { font-size: max(16px, 1em); }
 }
+
+/* Cartão de treino: a frase em primeiro lugar, as ações na zona do polegar. */
+.flash.revealed .prompt { font: 500 .98rem/1.45 var(--font); color: var(--ink-2); }
+.flash.revealed .prompt.listen-prompt { display: none; }
+.flash .state[hidden] { display: none; }
+.card-more { margin-top: .9rem; }
+.card-more > summary { cursor: pointer; color: var(--ink-2); font-size: .9rem; font-weight: 600; width: fit-content; }
+.card-more .tagline { margin-top: .6rem; }
+.session .controls { position: sticky; bottom: 0; z-index: 5; padding: .7rem 0 calc(.7rem + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--bg) 90%, transparent); backdrop-filter: blur(10px); }
+.grades { grid-template-columns: 1fr 1fr 1.5fr 1fr; }
+.grades button { min-height: 64px; }
+.g-hard, .g-easy { border-color: var(--line-strong); }
+.g-hard .g-label, .g-easy .g-label { color: var(--ink); }
+.g-good { background: var(--accent); border-color: var(--accent); }
+.g-good .g-label, .g-good .g-ivl { color: var(--accent-ink); }
+@media (hover: hover) { .g-hard:hover, .g-easy:hover { background: var(--surface-2); border-color: var(--ink-3); } .g-good:hover { background: var(--accent-hover); border-color: var(--accent-hover); } }
+.grades button.picked { border-color: var(--danger); background: var(--danger-soft); }
+.rubric { grid-template-columns: 1fr 1fr 1.5fr 1fr; }
+@media (hover: none) { .session kbd, .session + .hint, .session .hint { display: none; } }
+
+/* Artigos: um número só em destaque. */
+.art-today { display: flex; align-items: baseline; gap: .5rem; }
+.art-today b { font: 700 3rem/1 var(--font-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.art-today span { color: var(--ink-2); font-size: 1.05rem; }
+.art-rules-box > summary { cursor: pointer; font-weight: 600; }
+.art-rules-box[open] > summary { margin-bottom: .6rem; }
+
+/* Listas agrupadas: fundo e separador recuado, sem caixa em cada item. No escuro a sombra some, então a borda fica. */
+:root { --group-line: transparent; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --group-line: var(--line); } }
+:root[data-theme="dark"] { --group-line: var(--line); }
+.pron-pick-list, .scene-list { display: block; background: var(--surface); border: 1px solid var(--group-line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.pron-pick { display: flex; width: 100%; justify-content: space-between; gap: .8rem; min-height: 54px; padding: .6rem 1rem; border: 0; border-radius: 0; background: transparent; text-align: left; }
+.pron-pick + .pron-pick { box-shadow: inset 0 .5px 0 var(--line-strong); }
+@media (hover: hover) { .pron-pick:hover { background: var(--surface-2); } }
+.scene-list .scene-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .1rem .8rem; min-height: 60px; padding: .6rem 1rem; align-content: center; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.scene-list .scene-card + .scene-card { box-shadow: inset 0 .5px 0 var(--line-strong); }
+.scene-list .scene-card h3 { grid-column: 1; grid-row: 1; margin: 0; font-size: 1rem; font-weight: 600; }
+.scene-list .scene-card p { grid-column: 1; grid-row: 2; }
+.scene-list .scene-top { grid-column: 2; grid-row: 1 / 3; justify-content: flex-end; }
+.scene-list .scene-pick.suggested { background: var(--accent-soft); }
+@media (hover: hover) { .scene-list .scene-pick:hover { background: var(--surface-2); box-shadow: none; } }
+.scene-list .scene-pick:active { transform: none; background: var(--surface-2); }
+@media (max-width: 600px) { .scene-list .scene-top .tag { display: none; } }
+.gram-family { border-color: var(--group-line); box-shadow: var(--shadow-sm); }
+.gram-rows { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 0 .3rem; }
+.gram-row { width: 100%; border-radius: 0; padding: .65rem 1.1rem; box-shadow: inset 0 .5px 0 var(--line-strong); }
+
+/* Conversa: uma pílula só, como no Mensagens. */
+.conv-compose { display: flex; align-items: flex-end; gap: .4rem; }
+.conv-compose textarea { flex: 1; field-sizing: content; height: auto; min-height: 42px; max-height: 9rem; padding: .5rem .95rem; border-radius: 21px; resize: none; }
+.conv-compose > button { width: 42px; height: 42px; min-height: 42px; padding: 0; border-radius: 50%; flex: none; font-size: 0; }
+.conv-compose > button kbd { display: none; }
+.conv-compose:has(#convMic:not([hidden])):has(textarea:placeholder-shown) #convSend { display: none; }
+.conv-compose:has(textarea:not(:placeholder-shown)) #convMic:not(.danger-solid) { display: none; }
+.conv-more { position: relative; flex: none; }
+.conv-more > summary { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); cursor: pointer; list-style: none; }
+.conv-more > summary::-webkit-details-marker { display: none; }
+.conv-more-pop { position: absolute; bottom: calc(100% + .4rem); left: 0; z-index: 6; display: grid; min-width: 170px; padding: .3rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); }
+.conv-more-pop button { justify-content: flex-start; }
+.conv-input #convUmlauts { display: none; }
+.conv-input:focus-within #convUmlauts { display: flex; }
+#convRoom.finished #convFinish { display: none; }
+.pron-start.pron-pick { flex-direction: row; align-items: center; justify-content: space-between; text-align: left; }
+.pron-pick .pron-title { margin: 0; font-size: 1rem; font-weight: 600; }
+.flash.revealed .cloze { display: none; }
+.session .audio-row { flex-wrap: nowrap; gap: .2rem; }
+.session .audio-row button { min-height: 36px; padding: .2rem .6rem; font-size: .9rem; }
+.session .controls { gap: .5rem; margin-top: .6rem; }
+@media (max-width: 600px) { .rubric { display: none; } .flash { min-height: 0; padding: 1.2rem 1.1rem; } }

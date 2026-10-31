@@ -33,7 +33,7 @@ function hojeRoute(load) {
       meta: rest && !readMin ? "Opcional hoje" : readMin ? readMin + " de " + HOJE_READ_MIN + " min" : HOJE_READ_MIN + " min de livro",
       progress: Math.min(1, readMin / HOJE_READ_MIN), time: readMin >= HOJE_READ_MIN ? readMin + " min" : HOJE_READ_MIN - readMin + " min"},
     {id: "diary", title: "Diário", done: diary, min: diary ? 0 : HOJE_DIARY_MIN,
-      de: typeof escritaDiaryPrompt === "function" ? escritaDiaryPrompt().de : "", meta: "3 frases", time: HOJE_DIARY_MIN + " min"}
+      meta: "3 frases", time: HOJE_DIARY_MIN + " min"}
   ];
 }
 function hojeNext(items) { return items.find(i => !i.done && !i.optional) || items.find(i => !i.done) || null; }
@@ -190,7 +190,7 @@ function renderHoje(load) {
   $("heroDue").textContent = load.dueProd;
   $("heroNew").textContent = load.fresh;
   $("heroListen").textContent = load.dueListen;
-  document.querySelector("#hero .hero-split").hidden = !total;
+  document.querySelector("#hero .hero-split").hidden = true; // o detalhe fica no roteiro
   $("heroEta").textContent = total ? "Cerca de " + Math.max(1, Math.ceil(total * averageSeconds() / 60)) + " min de cartões"
     : next ? "Cartões em dia." : restrictedToday(load.plan) ? "Nada mais para hoje. Descanse." : "Se quiser mais: um molde, uma cena ou frases novas.";
   const cardsNext = next && next.id === "cards";
@@ -200,7 +200,7 @@ function renderHoje(load) {
   $("homeProduction").classList.toggle("primary", !!cardsNext);
   $("homeProduction").textContent = load.dueProd + load.fresh ? "Treinar produção" : "Estudar mais novas";
   $("homeListening").textContent = load.dueListen ? "Treinar escuta (" + load.dueListen + ")" : "Treinar escuta";
-  $("homeListening").hidden = !load.dueListen && !cardsNext;
+  $("homeListening").hidden = !load.dueListen;
   $("hero").classList.toggle("done", !next);
   fill($("homeMetrics"), hojeTiles());
 }

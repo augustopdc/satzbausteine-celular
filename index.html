@@ -158,7 +158,7 @@
 
    <div id="sessionStage" class="session" hidden>
     <article id="flashCard" class="flash" tabindex="-1" aria-live="polite">
-     <div class="flash-meta"><span id="cardRegister"></span><span id="cardBadges" class="tagline"></span><span id="cardState" class="state"></span></div>
+     <div class="flash-meta"><span id="cardRegister"></span><span id="cardState" class="state"></span></div>
      <div id="cardPrompt" class="prompt"></div>
      <div id="clozeBox" class="cloze" hidden></div>
      <div id="listenPad" class="listen-pad" hidden><button id="bigPlay" class="play-xl" type="button" aria-label="Ouvir o áudio de novo"><svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button></div>
@@ -167,14 +167,17 @@
       <div id="typingDiff" class="diff" hidden></div>
       <div class="answer-row"><p id="cardAnswer" class="answer" lang="de"></p><button id="answerPlay" class="icon-btn" type="button" title="Ouvir (R)" aria-label="Ouvir a frase"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button></div>
       <p id="cardTranslation" class="translation"></p>
+      <div id="cardErro"></div>
+      <details id="cardMore" class="card-more"><summary>Detalhes</summary>
+      <span id="cardBadges" class="tagline"></span>
       <dl class="details">
        <div id="situationRow" hidden><dt>Situação</dt><dd id="cardSituation"></dd></div>
        <div id="moldRow"><dt>Molde</dt><dd id="cardMold" lang="de"></dd></div>
        <div id="targetRow"><dt>Foco</dt><dd id="cardTarget"></dd></div>
       </dl>
-      <div id="cardErro"></div>
       <div id="grammarChips" class="chips grammar-chips"></div>
       <p id="genderLegend" class="gender-legend" hidden><span class="gender g-der">der</span> masculino · <span class="gender g-die">die</span> feminino · <span class="gender g-das">das</span> neutro · <span class="gender g-pl">die</span> plural</p>
+      </details>
       <div id="shadowPanel" class="shadow-panel" hidden></div>
      </div>
     </article>
@@ -190,7 +193,7 @@
       <button id="revealCard" class="primary lg reveal" type="button">Revelar resposta <kbd>Espaço</kbd></button>
      </div>
      <p id="speechStatus" class="speech-status" hidden></p>
-     <div id="reasonRow" class="reason-row" hidden><span class="muted small-text">Errou ou foi difícil? Marque o motivo (opcional):</span><div id="reasonChips" class="chips"></div></div>
+     <div id="reasonRow" class="reason-row" hidden><span class="muted small-text">O que aconteceu? (opcional)</span><div id="reasonChips" class="chips"></div><button id="reasonGo" class="primary" type="button">Continuar <kbd>Espaço</kbd></button></div>
      <div id="gradeRow" class="grades" hidden>
       <button data-grade="again" class="g-again" type="button"><span class="g-label">Errei</span><span id="ivl-again" class="g-ivl"></span><kbd>1</kbd></button>
       <button data-grade="hard" class="g-hard" type="button"><span class="g-label">Difícil</span><span id="ivl-hard" class="g-ivl"></span><kbd>2</kbd></button>
@@ -199,7 +202,7 @@
      </div>
      <div id="rubric" class="rubric" hidden><span><b>Errei</b> travou, ou o erro muda o sentido</span><span><b>Difícil</b> saiu com esforço ou pequenos erros</span><span><b>Bom</b> saiu em até ~5 s, com pouca hesitação</span><span><b>Fácil</b> saiu no automático</span></div>
     </div>
-    <p class="hint">Espaço revela · Espaço de novo = Bom · 1–4 avalia · R repete · D devagar · F fala e confere · S shadowing · K já conheço · Z desfaz · Esc encerra</p>
+    <p class="hint">Espaço revela · Espaço de novo = Bom · 1–4 avalia (1 e 2 pedem o motivo; repita a tecla para seguir) · R repete · D devagar · F fala e confere · S shadowing · K já conheço · Z desfaz · Esc encerra</p>
    </div>
   </section>
 
@@ -229,7 +232,7 @@
    <div id="f432Room" hidden></div>
    <div id="convRoom" hidden>
     <div class="panel scene-head">
-     <button id="convBack" class="quiet small" type="button">← Temas</button>
+     <div class="row between"><button id="convBack" class="quiet small" type="button">← Temas</button><button id="convFinish" class="small" type="button">Terminar e ver erros</button></div>
      <h2 id="convTitle"></h2><p id="convSetting" class="muted"></p><div id="convMeta" class="tagline"></div>
      <div class="row spaced"><label class="inline-check"><input id="convShowText" type="checkbox"> Mostrar o texto da parceira (desligue para treinar a escuta)</label><label class="inline-check"><input id="convAutoSend" type="checkbox"> Enviar direto depois de falar</label><label class="inline-check" title="Suave: só o que atrapalha o entendimento. Equilibrada: erros de verdade. Rígida: erros e dicas de estilo.">Correção de cada fala <select id="convCheck" class="cv-level"><option value="off">Desligada</option><option value="suave">Suave</option><option value="equilibrado">Equilibrada</option><option value="rigido">Rígida</option></select></label><label class="inline-check" title="Depois de cada resposta, um sinal toca e o app ouve; quando você para de falar, ele envia sozinho. Esc pausa."><input id="convHandsFree" type="checkbox"> Mãos livres (para usar só com fone)</label></div>
     </div>
@@ -237,12 +240,15 @@
     <div id="convChat" class="chat" aria-live="polite"></div>
     <div id="convHelp" class="panel soft conv-help" hidden></div>
     <div class="panel conv-input">
-     <textarea id="convText" lang="de" rows="2" spellcheck="false" aria-label="Sua fala em alemão" placeholder="Fale (F) ou escreva em alemão e aperte Enter"></textarea>
-     <div id="convUmlauts" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button></div>
-     <div class="row between conv-buttons">
-      <div class="row"><button id="convMic" class="lg" type="button"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Falar <kbd>F</kbd></button><button id="convSend" class="primary lg" type="button">Enviar <kbd>Enter</kbd></button></div>
-      <div class="row"><button id="convHuh" class="quiet small" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button><button id="convHowto" class="quiet small" type="button">Como digo…?</button><button id="convHint" class="quiet small" type="button">Dica</button><button id="convFinish" class="small" type="button">Terminar e ver erros</button></div>
+     <div class="conv-compose">
+      <details id="convMore" class="conv-more"><summary aria-label="Mais opções"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
+       <div class="conv-more-pop"><button id="convHint" class="quiet" type="button">Dica</button><button id="convHowto" class="quiet" type="button">Como digo…?</button><button id="convHuh" class="quiet" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button></div>
+      </details>
+      <textarea id="convText" lang="de" rows="1" spellcheck="false" aria-label="Sua fala em alemão" placeholder="Fale ou escreva em alemão"></textarea>
+      <button id="convMic" type="button" aria-label="Falar (F)" title="Falar (F)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Falar <kbd>F</kbd></button>
+      <button id="convSend" class="primary" type="button" aria-label="Enviar (Enter)" title="Enviar (Enter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
      </div>
+     <div id="convUmlauts" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button></div>
      <p id="convStatus" class="speech-status" aria-live="polite"></p>
     </div>
     <div id="convSummary" class="panel summary" hidden></div>

@@ -44,15 +44,14 @@ function renderScenes() {
   const suggested = [...course(0, 99), ...SCENES.filter(s => sceneChapter(s) === null)].find(s => !sceneStats(s.id) && (sceneChapter(s) === null || sceneChapter(s) <= chapter));
   $("sceneList").replaceChildren(...groups.map(([title, list, explain]) => h("section", {class: "scene-group"},
     ...(explain ? titled("h2", title, explain) : [h("h2", {text: title})]),
-    h("div", {class: "scene-grid"}, ...list.map(s => {
+    h("div", {class: "scene-grid scene-list"}, ...list.map(s => {
       const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
       const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
       const card = h("article", {class: "scene-card scene-pick" + (s === suggested ? " suggested" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
         h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.theme}),
           st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
         h("h3", {text: s.title}),
-        h("p", {class: "muted small-text", text: s.setting}),
-        h("p", {class: "scene-meta small-text", text: "Com " + s.other.name + ", " + mine + " de " + s.lines.length + " falas são suas"}));
+        h("p", {class: "muted small-text", text: s.other.name}));
       card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
       return card;
     })))));
@@ -347,12 +346,8 @@ function pronBadge(st) {
 }
 function pronStartCard(g) {
   const st = pronState(g.id);
-  return h("article", {class: "pron-start", dataset: {group: g.id}},
-    h("div", {class: "pron-start-top"}, h("h3", {class: "pron-title", text: g.title}), pronBadge(st)),
-    h("p", {class: "muted small-text", text: st.state === "revisar" ? "Último treino há " + st.days + (st.days === 1 ? " dia." : " dias.") : g.tip}),
-    h("div", {class: "row"},
-      h("button", {class: "primary small", type: "button", onclick: () => startPronQuiz(g.id)}, "Treinar o ouvido"),
-      h("button", {class: "small", type: "button", onclick: () => showPronPairs(g.id)}, "Ouvir e repetir")));
+  return h("button", {class: "pron-start pron-pick", type: "button", dataset: {group: g.id}, onclick: () => startPronQuiz(g.id)},
+    h("span", {class: "pron-title", text: g.title}), pronBadge(st));
 }
 /* Cada som da trilha: título, um par de exemplo em letra de livro (o que se ouve) e o estado (sem etiqueta enquanto novo). */
 function pronRow(g) {
@@ -367,7 +362,7 @@ function renderPron() {
   const byId = new Map(PRON.map(g => [g.id, g])), tracks = typeof PRON_TRACKS !== "undefined" ? PRON_TRACKS : [["todos", "Todos os sons", "", PRON.map(g => g.id)]];
   fill($("pronList"),
     h("section", {class: "pron-zone"}, h("h2", {class: "label", text: "Comece por estes 3"}),
-      h("div", {class: "pron-start-grid"}, ...pronPick().map(id => pronStartCard(byId.get(id))))),
+      h("div", {class: "pron-pick-list"}, ...pronPick().map(id => pronStartCard(byId.get(id))))),
     typeof melHomeZone === "function" ? melHomeZone() : null,
     ...tracks.map(([id, title, sub, ids], k) => h("section", {class: "pron-zone pron-track", dataset: {track: id}},
       h("div", {class: "pron-track-head"}, h("span", {class: "pron-track-n", text: String(k + 1)}), h("div", null, h("h2", {text: title}), h("p", {class: "muted small-text", text: sub})),

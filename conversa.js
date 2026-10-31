@@ -755,6 +755,7 @@ function bindConversa() {
   $("convHowto").addEventListener("click", convHowto);
   $("convHint").addEventListener("click", convHint);
   $("convFinish").addEventListener("click", convFinish);
+  $("convMore").addEventListener("click", e => { if (e.target.closest("button")) e.currentTarget.open = false; });
   $("convBack").addEventListener("click", () => { if (conv.turns.some(t => t.who === "me") && !conv.finished && !confirm("Sair sem ver o resumo dos erros?")) return; convReset(); });
   $("convText").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); convSend(); } });
   $("convShowText").addEventListener("change", e => { settings.convShowText = e.target.checked; saveSettings(); });

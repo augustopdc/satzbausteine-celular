@@ -1210,10 +1210,15 @@ function renderSessionCard() {
   $("cardBadges").replaceChildren(...[
     "K" + tag(card, "Schicht"), tag(card, "Niveau"), tagLabel("Thema", tag(card, "Thema")), tag(card, "Modus") === "Verstehen" ? "Compreensão" : ""
   ].filter(v => v && v !== "K").map(v => h("span", {class: "tag", text: v})));
+  $("cardMore").open = !!session.moreOpen;
+  session.pendingGrade = null;
+  $("flashCard").classList.remove("revealed");
+  all("[data-grade]").forEach(b => b.classList.remove("picked"));
   const state = present ? ["new", "Nova · conheça"] : cloze ? ["learning", prev ? "Reaprender · lacuna" : "Lacuna"] : !prev ? ["new", "Nova"]
     : isLeech(card, session.mode) ? ["leech", "Difícil"] : prev.lastGrade === "again" ? ["learning", "Reaprender"] : ["review", "Revisão"];
   $("cardState").className = "state s-" + state[0];
   $("cardState").textContent = state[1];
+  $("cardState").hidden = !["leech", "learning"].includes(state[0]) || state[1] === "Lacuna";
   if (listening) $("cardPrompt").textContent = session.dictation ? "Ouça e escreva exatamente o que ouviu: maiúsculas, ä, ö, ü e ß contam." : "Ouça e tente entender antes de revelar.";
   else fill($("cardPrompt"), ...situationNodes(card));
   $("cardPrompt").classList.toggle("listen-prompt", listening);
@@ -1387,7 +1392,7 @@ function revealCard(answer) {
   const preview = scheduleAll(modeProgress(card.id, session.mode), Date.now());
   for (const g of GRADES) $("ivl-" + g).textContent = formatInterval(preview[g].interval);
   renderReasonChips();
-  $("reasonRow").hidden = false;
+  $("flashCard").classList.add("revealed");
   $("gradeRow").hidden = false;
   $("rubric").hidden = !showRubric();
   $("revealCard").hidden = true;
@@ -1458,6 +1463,17 @@ function rateCard(grade) {
   } else session.steps.set(id, "produce");
   if (grade !== "again" && !prev) checkAchievements();
   if (session.queue.length) renderSessionCard(); else finishSession();
+}
+/* Bom e Fácil seguem na hora; Errei e Difícil abrem antes os motivos (opcionais). */
+function gradeTap(grade) {
+  if (!session.revealed) return;
+  if ((grade === "again" || grade === "hard") && session.pendingGrade !== grade) {
+    session.pendingGrade = grade;
+    all("[data-grade]").forEach(b => b.classList.toggle("picked", b.dataset.grade === grade));
+    $("reasonRow").hidden = false;
+    return;
+  }
+  rateCard(grade);
 }
 function undoRating() {
   const u = session.undo.pop();
@@ -2601,7 +2617,15 @@ function bindEvents() {
   bindUmlautKeys();
   bindReading();
   bindConversa();
-  all("[data-grade]").forEach(b => b.addEventListener("click", () => rateCard(b.dataset.grade)));
+  all("[data-grade]").forEach(b => b.addEventListener("click", () => gradeTap(b.dataset.grade)));
+  $("reasonGo").addEventListener("click", () => { if (session.pendingGrade) rateCard(session.pendingGrade); });
+  $("cardMore").addEventListener("toggle", e => { session.moreOpen = e.currentTarget.open; });
+  // Tocar no cartão revela a resposta (com digitação, não; palavras e botões continuam funcionando).
+  $("flashCard").addEventListener("click", e => {
+    if (session.revealed || session.step === "present" || !$("typingBox").hidden || $("revealCard").hidden) return;
+    if (e.target.closest("button, a, input, summary, details") || String(getSelection())) return;
+    revealCard();
+  });
   $("sessionStage").addEventListener("click", e => { const b = e.target.closest("button"); if (b && e.detail > 0 && session.active) $("flashCard").focus({preventScroll: true}); });
   for (const k of ["move", "b1", "b2", "fsp"]) $("plan-" + k).addEventListener("change", e => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) return;
@@ -2716,10 +2740,10 @@ function onKeyDown(e) {
   if (e.code === "Space" || e.key === "Enter") {
     if (onButton) return;
     e.preventDefault();
-    if (!session.revealed) revealCard(); else rateCard("good");
+    if (!session.revealed) revealCard(); else rateCard(session.pendingGrade || "good");
   } else if (/^[1-4]$/.test(e.key)) {
     e.preventDefault();
-    if (session.revealed) rateCard(GRADES[Number(e.key) - 1]);
+    gradeTap(GRADES[Number(e.key) - 1]);
   } else if (key === "r") { e.preventDefault(); speakSession(); }
   else if (key === "d") { e.preventDefault(); speakSession(true); }
   else if (key === "z") { e.preventDefault(); undoRating(); }

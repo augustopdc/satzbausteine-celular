@@ -192,15 +192,15 @@ function renderArtigos() {
   const s = artStats(), q = artQueue();
   const data = artData();
   const hard = artItems().filter(x => data.items[x.noun] && data.items[x.noun].w).sort((a, b) => data.items[b.noun].w - data.items[a.noun].w).slice(0, 6);
-  const tile = (n, label) => h("div", {class: "art-tile"}, h("b", {text: n.toLocaleString("pt-BR")}), h("span", {text: label}));
   fill(box,
     h("div", {class: "panel art-hero"},
-      h("div", {class: "art-tiles"}, tile(s.due, "para revisar hoje"), tile(s.newLeft, "novas hoje"), tile(s.solid, "firmes"), tile(s.learning, "em treino")),
-      h("p", {class: "muted small-text", text: "Escreva ou fale o substantivo com o artigo e o plural: “der Tisch, die Tische”. Ordem: primeiro os das frases que você já estudou e os do Menschen."}),
+      h("div", {class: "art-today"}, h("b", {text: q.length.toLocaleString("pt-BR")}), h("span", {text: "para hoje"})),
+      h("p", {class: "muted small-text", text: s.due + " para revisar · " + s.newLeft + " novas · " + s.learning + " em treino · " + s.solid + " firmes"}),
+      h("p", {class: "muted small-text", text: "Escreva ou fale o artigo e o plural: “der Tisch, die Tische”."}),
       h("button", {class: "primary", type: "button", disabled: !q.length, onclick: artStart}, q.length ? iconText("play", "Começar (" + q.length + ")") : "Nada para hoje: volte amanhã")),
     hard.length ? h("div", {class: "panel"}, h("h3", {text: "Os que mais te enganam"}),
       h("p", {class: "art-hard"}, ...hard.flatMap((x, k) => [k ? " · " : "", artGenderSpan(x.art, x.noun)]))) : null,
-    h("div", {class: "panel"}, ...titled("h3", "Atalhos pela terminação", "Valem para a grande maioria das palavras; as exceções aparecem no treino quando você chega nelas. Palavra composta herda o artigo da última parte: die Haltestelle (die Stelle), der Bahnhof (der Hof)."),
+    h("details", {class: "panel art-rules-box"}, h("summary", {text: "Atalhos pela terminação"}), h("p", {class: "muted small-text", text: "Valem para a grande maioria das palavras; as exceções aparecem no treino quando você chega nelas. Palavra composta herda o artigo da última parte: die Haltestelle (die Stelle), der Bahnhof (der Hof)."}),
       h("div", {class: "art-rules"}, ...[["die", "-ung, -heit, -keit, -schaft, -ion, -tät, -in (mulher)", "quase sempre: -e, -ie, -ei, -ik, -ur"],
         ["das", "-chen, -lein (diminutivos)", "quase sempre: -um, -ment, -nis, -o"],
         ["der", "-ling, -ismus, -ist/-ent/-ant (pessoas), dias, meses, estações", "quase sempre: -or"]].map(([a, sure, most]) =>

@@ -392,7 +392,7 @@ function renderDiagnosis() {
 function showRubric() {
   if (settings.showRubric === "always") return true;
   if (settings.showRubric === "never") return false;
-  return Object.values(progress.days).reduce((a, b) => a + Number(b || 0), 0) < 300;
+  return Object.values(progress.days).reduce((a, b) => a + Number(b || 0), 0) < 20;
 }
 
 // ---------- Cores de gênero ----------
