@@ -30,31 +30,65 @@ const SCENES = typeof CENAS !== "undefined" ? CENAS : [];
 const scene = {data: null, idx: 0, swap: false, results: [], clip: null, mode: "idle", token: 0};
 const sceneUrl = (id, i) => "audio-cenas/" + id + "-" + (i + 1) + ".mp3";
 function sceneStats(id) { return ((progress.practice || {}).scenes || {})[id] || null; }
+/* Lista das cenas: busca (título, assunto, situação, personagem), filtros por nível e origem e a sugerida em destaque no topo. */
+const sceneFind = {q: "", level: "", src: ""};
+const SCENE_SRC = [["", "Todas"], ["curso", "Curso A1/A2"], ["med", "Medicina"], ["outras", "Outras"]];
+function sceneNorm(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss"); }
+function sceneMatches(s) {
+  const med = /medicina|saude|hospital/.test(sceneNorm(s.theme));
+  if (sceneFind.level && s.level !== sceneFind.level) return false;
+  if (sceneFind.src === "curso" && sceneChapter(s) === null) return false;
+  if (sceneFind.src === "med" && !med) return false;
+  if (sceneFind.src === "outras" && (sceneChapter(s) !== null || med)) return false;
+  const q = sceneNorm(sceneFind.q).trim();
+  return !q || q.split(/\s+/).every(w => sceneNorm([s.title, s.theme, s.setting, s.other.name, s.level].join(" ")).includes(w));
+}
 function renderScenes() {
   $("sceneList").hidden = false;
   $("scenePlayer").hidden = true;
+  const search = h("input", {type: "search", class: "scene-search", placeholder: "Buscar cena (ex.: padaria, telefone, dor)", "aria-label": "Buscar cena", value: sceneFind.q});
+  const groupsBox = h("div", {class: "scene-results"});
+  const chipRow = (label, list, key) => h("div", {class: "chips scene-chips", role: "group", "aria-label": label},
+    ...list.map(([v, t]) => h("button", {class: "chip", type: "button", "aria-pressed": String(sceneFind[key] === v), onclick: () => { sceneFind[key] = sceneFind[key] === v && v ? "" : v; renderScenes(); }}, t)));
+  search.addEventListener("input", () => { sceneFind.q = search.value; renderSceneGroups(groupsBox); });
+  $("sceneList").replaceChildren(
+    h("div", {class: "scene-tools"}, search,
+      chipRow("Nível", [["", "Todos os níveis"], ...LEVELS.map(l => [l, l])], "level"),
+      chipRow("Origem", SCENE_SRC, "src")),
+    groupsBox);
+  renderSceneGroups(groupsBox);
+}
+function renderSceneGroups(box) {
   // Cenas do Nicos Weg primeiro, na ordem dos capítulos; depois as demais por nível.
   const chapter = Number.isFinite(Number(settings.nwChapter)) ? Number(settings.nwChapter) : 18;
   const course = (from, to) => SCENES.filter(s => sceneChapter(s) !== null && sceneChapter(s) >= from && sceneChapter(s) < to).sort((a, b) => sceneChapter(a) - sceneChapter(b));
   const where = "Uma cena por capítulo do curso; você está em " + nwChapterLabel(chapter) + ". Todas estão abertas; a sugerida segue o seu capítulo.";
-  const groups = [["Nicos Weg A1", course(0, NW_A2_BASE), where],
-    ["Nicos Weg A2", course(NW_A2_BASE, 99), where],
-    ...LEVELS.map(level => ["Nível " + level, SCENES.filter(s => s.level === level && sceneChapter(s) === null)])].filter(([, list]) => list.length);
   // Selo só na exceção: a próxima cena sugerida (a primeira ainda não feita até o seu capítulo).
   const suggested = [...course(0, 99), ...SCENES.filter(s => sceneChapter(s) === null)].find(s => !sceneStats(s.id) && (sceneChapter(s) === null || sceneChapter(s) <= chapter));
-  $("sceneList").replaceChildren(...groups.map(([title, list, explain]) => h("section", {class: "scene-group"},
-    ...(explain ? titled("h2", title, explain) : [h("h2", {text: title})]),
-    h("div", {class: "scene-grid scene-list"}, ...list.map(s => {
-      const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
-      const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
-      const card = h("article", {class: "scene-card scene-pick" + (s === suggested ? " suggested" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
-        h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.theme}),
-          st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
-        h("h3", {text: s.title}),
-        h("p", {class: "muted small-text", text: s.other.name}));
-      card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
-      return card;
-    })))));
+  const filtering = !!(sceneFind.q.trim() || sceneFind.level || sceneFind.src);
+  const groups = [["Curso A1", course(0, NW_A2_BASE), where],
+    ["Curso A2", course(NW_A2_BASE, 99), where],
+    ...LEVELS.map(level => ["Nível " + level, SCENES.filter(s => s.level === level && sceneChapter(s) === null)])]
+    .map(([t, list, ex]) => [t, list.filter(sceneMatches), ex]).filter(([, list]) => list.length);
+  const cardOf = (s, big) => {
+    const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
+    const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
+    const card = h("article", {class: "scene-card scene-pick" + (s === suggested ? " suggested" : "") + (big ? " scene-feature" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
+      h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.level + " · " + s.theme}),
+        st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
+      h("h3", {text: s.title}),
+      h("p", {class: "muted small-text", text: big ? s.setting : s.other.name}),
+      big ? h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: e => { e.stopPropagation(); openScene(s.id, false); }}, "Praticar agora"), h("span", {class: "muted small-text", text: "Você faz as " + mine + " falas suas, com " + s.other.name + "."})) : null);
+    card.addEventListener("keydown", e => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(); } });
+    return card;
+  };
+  const total = groups.reduce((n, [, l]) => n + l.length, 0);
+  fill(box,
+    !filtering && suggested ? h("section", {class: "scene-group"}, h("h2", {text: "Para agora"}), cardOf(suggested, true)) : null,
+    filtering ? h("p", {class: "muted small-text scene-count", text: total ? plural(total, "cena encontrada", "cenas encontradas") : "Nenhuma cena com esses filtros."}) : null,
+    ...groups.map(([title, list, explain]) => h("section", {class: "scene-group"},
+      ...(explain ? titled("h2", title, explain) : [h("h2", {text: title})]),
+      h("div", {class: "scene-grid scene-list"}, ...list.map(s => cardOf(s, false))))));
 }
 function sceneSheet(s, mine) {
   actionSheet({title: s.title, sub: s.setting, actions: [

@@ -443,14 +443,41 @@ function gramLevels() {
   const cur = typeof currentLevel === "function" ? currentLevel() : "A1", i = Math.max(0, LEVELS.indexOf(cur));
   return new Set(LEVELS.slice(0, i + 2));
 }
-function gramWindow(list, min = 8) {
-  const lv = gramLevels(), near = list.filter(c => lv.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null || msLesson(c) !== null);
+function gramWindow(list, min = 8, lv = gramLevels()) {
+  const near = list.filter(c => lv.has(tag(c, "Niveau")) || studied(c) || nwChapter(c) !== null || msLesson(c) !== null);
   return near.length >= min ? near : list;
 }
+/* O que não depende do progresso fica guardado até o catálogo mudar: as frases dos exercícios e as de cada tópico
+   (rodar as regras do formItem em milhares de frases é o que custa caro). */
+const exBase = {src: null, n: 0, all: [], topics: new Map()};
+function exBaseList() {
+  if (exBase.src !== cards || exBase.n !== cards.length) {
+    exBase.src = cards; exBase.n = cards.length; exBase.topics.clear();
+    exBase.all = cards.filter(c => tag(c, "Modus") === "Produktion" && !isMedical(c) && !isMine(c) && !isHiddenCard(c) && !isMenschenOnly(c));
+  }
+  return exBase.all;
+}
+function exTopicList(topic) {
+  const all = exBaseList();
+  if (!exBase.topics.has(topic)) exBase.topics.set(topic, all.filter(c => topicsFor(c).includes(topic) || (EX_FORM_TOPICS.includes(topic) && formItem(c, topic))));
+  return exBase.topics.get(topic);
+}
+/* Depois de abrir o app, adianta em pedaços pequenos o que a Gramática precisa, para a primeira abertura não travar. */
+function gramPrewarm() {
+  const wait = fn => typeof requestIdleCallback === "function" ? requestIdleCallback(fn, {timeout: 100}) : setTimeout(fn, 30);
+  const list = cards, topics = [...GRAMMAR_BY_ID.keys()];
+  let i = 0, k = 0;
+  const step = () => {
+    if (list !== cards) return;
+    const end = performance.now() + 8;
+    while (i < list.length && performance.now() < end) topicsFor(list[i++]);
+    while (i >= list.length && k < topics.length && performance.now() < end) exTopicList(topics[k++]);
+    if (i < list.length || k < topics.length) wait(step); else topicCards(topics[0]);
+  };
+  wait(step);
+}
 function exPool(topic) {
-  const all = cards.filter(c => tag(c, "Modus") === "Produktion" && !isMedical(c) && !isMine(c) && !isHiddenCard(c));
-  const base = topic ? all : gramWindow(all);
-  const list = topic ? gramWindow(base.filter(c => topicsFor(c).includes(topic) || (EX_FORM_TOPICS.includes(topic) && formItem(c, topic)))) : base;
+  const list = topic ? gramWindow(exTopicList(topic)) : gramWindow(exBaseList());
   const seen = shuffled(list.filter(c => cardProgress(c.id) && cardProgress(c.id).introducedAt));
   const rest = shuffled(list.filter(c => !(cardProgress(c.id) && cardProgress(c.id).introducedAt)));
   return seen.concat(rest);
@@ -483,7 +510,9 @@ function sanitizeGram(src) {
     if (!/^[a-z][a-z0-9]{1,19}$/.test(id) || !s) continue;
     const n = Math.max(0, Math.round(Number(s.n) || 0)), ok = Math.min(n, Math.max(0, Math.round(Number(s.ok) || 0)));
     const r = typeof s.r === "string" && /^[01]*$/.test(s.r) ? s.r.slice(-GRAM_RECENT_KEEP) : "";
-    if (n) out.topics[id] = r ? {ok, n, at: Number(s.at) || 0, r} : {ok, n, at: Number(s.at) || 0};
+    // h = ajuda nas últimas respostas da aula (s sozinho, 1/2 com pista, m vendo o modelo; gramatica-correcao.js).
+    const hl = typeof s.h === "string" && /^[s12m]*$/.test(s.h) ? s.h.slice(-20) : "";
+    if (n) out.topics[id] = Object.assign({ok, n, at: Number(s.at) || 0}, r ? {r} : {}, hl ? {h: hl} : {});
   }
   // Seus erros já reescritos certo (gramatica-erros.js): chave curta → quantas vezes.
   if (src.fixed && typeof src.fixed === "object") for (const [k, f] of Object.entries(src.fixed)) {
@@ -507,7 +536,7 @@ function gramRecord(topics, ok) {
   const d = gramData();
   for (const id of new Set(topics)) {
     const s = d.topics[id] || {ok: 0, n: 0, at: 0};
-    d.topics[id] = {ok: s.ok + (ok ? 1 : 0), n: s.n + 1, at: Date.now(), r: ((s.r || "") + (ok ? "1" : "0")).slice(-GRAM_RECENT_KEEP)};
+    d.topics[id] = Object.assign({}, s, {ok: s.ok + (ok ? 1 : 0), n: s.n + 1, at: Date.now(), r: ((s.r || "") + (ok ? "1" : "0")).slice(-GRAM_RECENT_KEEP)});
   }
 }
 /* pct = acerto recente (últimas 10) quando já há 5 respostas recentes; senão, o total. all = acerto de sempre.
@@ -747,9 +776,9 @@ function gramTopicState(learned, total, s) {
   return "novo";
 }
 function gramInfos() {
-  const errs = typeof gramErrorsByTopic === "function" ? gramErrorsByTopic() : new Map();
+  const errs = typeof gramErrorsByTopic === "function" ? gramErrorsByTopic() : new Map(), lv = gramLevels();
   return [...GRAMMAR_BY_ID.values()].map(t => {
-    const scope = gramWindow(topicCards(t.id).filter(c => !isMine(c) && !isHiddenCard(c)), 1);
+    const scope = gramWindow(topicCards(t.id).filter(c => !isMine(c) && !isHiddenCard(c) && !isMenschenOnly(c)), 1, lv);
     const learned = scope.filter(studied).length, stat = gramStat(t.id), due = gramReviewDue(t.id);
     let state = gramTopicState(learned, scope.length, stat);
     if (due && (state === "firme" || state === "firmando")) state = "revisar";

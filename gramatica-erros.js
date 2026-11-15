@@ -28,7 +28,9 @@ function gramErrTopics(errado, certo, tipo) {
   const removed = gramMinus(a, b), added = gramMinus(b, a);
   const any = (list, re) => list.some(w => re.test(w));
   if (!removed.length && !added.length && a.join(" ") !== b.join(" ")) {
-    // Só a ordem mudou: o tópico de ordem que a frase certa mostra.
+    // Só a ordem mudou: o tópico de ordem que a frase certa mostra. Se quem mudou de lugar foi o nicht, é negação
+    // (“ich mag nicht den Regen” → “ich mag den Regen nicht”), não verbo em 2º.
+    if (a.includes("nicht") && a.indexOf("nicht") !== b.indexOf("nicht") && a.filter(w => w !== "nicht").join(" ") === b.filter(w => w !== "nicht").join(" ")) { add("negacao"); return out; }
     const found = topicsFor({id: "G-" + certo, frase: certo, tags: "", situacao: "", traducao: ""});
     add(GRAM_ERR_ORDER.find(id => found.includes(id)) || "v2");
     return out;
@@ -104,7 +106,7 @@ function gramMyErrors() {
     seen.add(x.key);
     out.push(x);
   };
-  for (const s of ((p.conversa || {}).sessions || [])) for (const e of s.errors || [])
+  for (const s of ((p.conversa || {}).sessions || [])) for (const e of s.errors || []) if (e.tipo !== "microfone")
     push({at: s.at, src: s.fsp ? "Anamnese" : "Conversa", errado: e.errado, certo: e.certo, explicacao: e.explicacao, topics: gramErrTopics(e.errado, e.certo)});
   for (const t of Object.values((p.escrita || {}).texts || {})) if (!t.deleted) gramEscritaItems(t).forEach(push);
   return out.sort((a, b) => b.at - a.at);

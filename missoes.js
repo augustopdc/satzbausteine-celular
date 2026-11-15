@@ -224,7 +224,7 @@ function missionPromptLines(topic) {
 
 // ---------- Estado na sala da Conversa ----------
 const mis = {topic: null, tries: [], solved: null, manual: new Set(), reveal: false};
-function missionReset(topic) { Object.assign(mis, {topic: topic && (topic.game || topic.mission) ? topic : null, tries: [], solved: null, manual: new Set(), reveal: false}); missionRender(); }
+function missionReset(topic) { Object.assign(mis, {topic: topic && (topic.game || topic.mission || topic.lesson) ? topic : null, tries: [], solved: null, manual: new Set(), reveal: false}); missionRender(); }
 /* Depois de cada fala sua: no jogo, um diagnóstico certo dito na conversa já vale; nas missões, a lista se marca sozinha. */
 function missionAfterTurn(turn) {
   if (!mis.topic) return;
@@ -250,6 +250,7 @@ function missionRender() {
   if (!box) return;
   if (!mis.topic) { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false;
+  if (mis.topic.lesson) return msFechoPanel(box);
   if (mis.topic.game) {
     const c = mis.topic.game, found = fspFound(c, conv.turns).size;
     const input = h("input", {type: "text", lang: "de", placeholder: "Seu diagnóstico em alemão: Sie haben …", "aria-label": "Seu diagnóstico em alemão"});
@@ -284,12 +285,14 @@ function missionRender() {
 /* O que vai junto da sessão salva (jogo: caso e resultado; missão: metas cumpridas). */
 function missionSessionExtra() {
   if (!mis.topic) return {};
+  if (mis.topic.lesson) return msFechoSessionExtra();
   if (mis.topic.game) return {game: {id: mis.topic.game.id, solved: !!mis.solved, questions: wasQuestions(), tries: mis.tries.length}};
   const m = mis.topic.mission, auto = missionGoals(m, conv.turns);
   return {mission: {done: m.metas.filter(([id]) => auto.has(id) || mis.manual.has(id)).length, total: m.metas.length}};
 }
 function missionSummaryNode() {
   if (!mis.topic) return null;
+  if (mis.topic.lesson) return msFechoSummaryNode();
   if (mis.topic.game) {
     const c = mis.topic.game;
     return h("p", {class: "mis-result" + (mis.solved ? " ok" : "")}, mis.solved ? "Diagnóstico certo com " + mis.solved.questions + " perguntas: " : "Diagnóstico: ", h("b", {lang: "de", text: c.de}), " (" + c.pt + ").");
@@ -310,12 +313,12 @@ function missionSetupNode() {
         h("span", {class: "muted small-text", text: solved.size + " de " + WAS_CASOS.length + " casos resolvidos"}))),
     h("section", {class: "scene-group"},
       ...titled("h2", "Chegada à Alemanha", "Missões com situações reais da mudança. Cada uma tem um objetivo, um imprevisto no meio e uma lista do que você precisa conseguir, marcada sozinha conforme você fala."),
-      h("div", {class: "scene-grid"}, ...MISSOES.map(m => {
-        const b = best(m.id);
+      h("div", {class: "scene-grid"}, ...MISSOES.map((m, k, all) => {
+        const b = best(m.id), sug = m === (all.find(x => best(x.id) < 1) || all[0]);
         return h("article", {class: "scene-card"},
           h("div", {class: "scene-top"}, h("span", {class: "tag", text: m.level}), h("span", {class: "tag", text: "Sie"}), b >= 1 ? h("span", {class: "tag ok", text: "cumprida"}) : b >= 0 ? h("span", {class: "tag", text: Math.round(b * 100) + "%"}) : null),
           h("h3", {text: m.pt}),
           h("p", {class: "muted small-text", text: m.missao}),
-          h("div", {class: "row"}, h("button", {class: "primary small", type: "button", disabled: !ok, onclick: () => openConversaTopic(missionTopic(m))}, "Começar")));
+          h("div", {class: "row"}, h("button", {class: (sug ? "primary " : "") + "small", type: "button", disabled: !ok, onclick: () => openConversaTopic(missionTopic(m))}, "Começar")));
       })))];
 }

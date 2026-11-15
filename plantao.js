@@ -226,11 +226,16 @@ function renderShiftToday(load) {
   if (btn) {
     fill(btn, icon(load.plan.type === "plantao" || load.plan.type === "pos" ? "moon" : "sun", 16),
       h("span", {text: SHIFT_LABELS[load.plan.type] + ", " + (load.budget ? load.budget + " min" : "sem limite")}), icon("chevron", 14));
-    btn.onclick = e => { e.stopPropagation(); pop.hidden = !pop.hidden; btn.setAttribute("aria-expanded", String(!pop.hidden)); };
+    // Ao abrir, o foco vai para a opção marcada; Tab para fora ou Esc fecham.
+    btn.onclick = e => {
+      e.stopPropagation(); pop.hidden = !pop.hidden; btn.setAttribute("aria-expanded", String(!pop.hidden));
+      if (!pop.hidden && e.detail === 0) (pop.querySelector("[aria-pressed=\"true\"]") || pop.querySelector("button")).focus();
+    };
     if (!dayPopBound) {
       dayPopBound = true;
       document.addEventListener("click", e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
       document.addEventListener("keydown", e => { if (e.key === "Escape" && !pop.hidden) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
+      pop.addEventListener("focusout", e => { if (!pop.hidden && e.relatedTarget && !pop.contains(e.relatedTarget) && e.relatedTarget !== btn) { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
     }
   }
   const note = shiftNote(load);

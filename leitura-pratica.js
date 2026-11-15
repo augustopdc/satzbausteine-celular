@@ -8,6 +8,8 @@
    Carregado depois de leitura.js; usa o estado e as funções de app.js, leitura.js, fluencia.js e conversa.js. */
 
 const BW_KEY_MAX = 140;
+const BW_DAYS = [0, 1, 3, 7, 14, 30, 60, 120];
+const BW_RUN_MAX = 20, BW_PRODUCE_FROM = 2;
 const RD_CONTENT = new Set(["substantivo", "verbo", "adjetivo", "advérbio"]);
 const bp = {kind: null, items: [], i: 0, score: 0, answered: false, clip: null, token: 0, flipped: false};
 
@@ -29,6 +31,17 @@ function sanitizeBookWords(src) {
     const t = ["w", "x", "p"].includes(v.t) ? v.t : "w";
     const item = {b: str(v.b, 80), w: str(v.w, 120), lema: str(v.lema, 120), pt: str(v.pt, 300), s: str(v.s, 600), sid: str(v.sid, 40),
       at: Number(v.at) || updatedAt, updatedAt, ok: Math.max(0, Math.round(Number(v.ok) || 0))};
+    // Revisão espaçada: caixa (bx, dias em BW_DAYS), próxima data (due), revisões (n), erros (wr), última revisão (last).
+    const int = (x, max) => Math.max(0, Math.min(max, Math.round(Number(x) || 0)));
+    const bx = int(v.bx, BW_DAYS.length - 1), n = int(v.n, 1e6), wr = int(v.wr, 1e6);
+    if (bx) item.bx = bx;
+    if (Number(v.due) > 0) item.due = Number(v.due);
+    if (n) item.n = n;
+    if (wr) item.wr = Math.min(wr, n);
+    if (Number(v.last) > 0) item.last = Number(v.last);
+    // Palavra guardada numa frase: índice dela na frase (wk) e se o sentido veio da explicação daquela ocorrência (src "o").
+    if (Number.isInteger(v.wk) && v.wk >= 0 && v.wk < 400) item.wk = v.wk;
+    if (v.src === "o") item.src = "o";
     if (t !== "w") item.t = t;
     if (t === "x") { item.uso = str(v.uso, 600); item.ks = str(v.ks, 40); }
     if (item.b && (item.w || (t === "p" && item.s))) out.items[k] = item;
@@ -45,28 +58,108 @@ function bookWordKey(bookId, word) { return (bookId + "|" + String(word).toLocal
 function savedWordsOf(bookId) {
   return Object.entries(bookWordsData().items).filter(([, v]) => !v.deleted && v.b === bookId).map(([k, v]) => ({k, ...v})).sort((a, b) => b.at - a.at);
 }
-function isWordSaved(bookId, word) { const v = bookWordsData().items[bookWordKey(bookId, word)]; return !!(v && !v.deleted); }
+/* Palavra guardada numa frase: a chave inclui a frase e a posição, para a mesma palavra poder ser guardada em sentidos
+   diferentes (“Bank” banco × banco de praça). As guardadas antes (chave livro|palavra) continuam valendo. */
+function bookWordOccKey(bookId, sid, wk) { return (bookId + "|w:" + sid + ":" + wk).slice(0, BW_KEY_MAX); }
+function wordIndexIn(text, word) { const low = String(word).toLocaleLowerCase("de"); return sentenceTokens(text).words.findIndex(w => w.toLocaleLowerCase("de") === low); }
+function savedWordKey(bookId, word, i, wk) {
+  const items = bookWordsData().items, s = i != null && i >= 0 && reading.order ? reading.order[i] : null;
+  if (s) {
+    const k = wk != null && wk >= 0 ? wk : wordIndexIn(s.text, word);
+    const key = k >= 0 ? bookWordOccKey(bookId, s.id, k) : "";
+    if (key && items[key] && !items[key].deleted) return key;
+  }
+  const legacy = bookWordKey(bookId, word);
+  return items[legacy] && !items[legacy].deleted ? legacy : "";
+}
+function isWordSaved(bookId, word, i, wk) { return !!savedWordKey(bookId, word, i, wk); }
+
+// ---------- Revisão espaçada das palavras guardadas ----------
+/* Caixas como nos Artigos: acertou sobe uma caixa (1, 3, 7… dias); errou volta à primeira e reaparece em 10 minutos.
+   Das caixas 2 em diante (já lembrou duas vezes) a palavra passa a ser produzida: a frase do livro com a lacuna.
+   Constantes BW_* no topo do arquivo. */
+function bwNext(v, ok, now = Date.now()) {
+  const out = {...v, n: (v.n || 0) + 1, last: now, updatedAt: now};
+  if (ok) { out.ok = (v.ok || 0) + 1; out.bx = Math.min(BW_DAYS.length - 1, (v.bx || 0) + 1); out.due = now + BW_DAYS[out.bx] * 864e5 - 3600e3; }
+  else { out.wr = (v.wr || 0) + 1; out.bx = 0; out.due = now + 10 * 60000; }
+  return out;
+}
+/* Palavra que já aparece em 2+ frases estudadas nos cartões: começa mais adiante (o treino principal já cuida dela). */
+function bwStart(word, now = Date.now()) {
+  const known = typeof catalogWithWord === "function" && catalogWithWord(word).filter(studied).length >= 2;
+  return known ? {bx: BW_PRODUCE_FROM, due: now + BW_DAYS[BW_PRODUCE_FROM] * 864e5 - 3600e3} : {};
+}
+function bwReviewList(items) {
+  return Object.entries(items).filter(([, v]) => v && !v.deleted && v.t !== "p" && v.w).map(([k, v]) => ({k, ...v}));
+}
+/* Vencidas de todos os livros: primeiro as já revisadas (mais atrasadas antes), depois as novas na ordem em que foram guardadas. */
+function bwDueOf(items, now = Date.now()) {
+  return bwReviewList(items).filter(v => (v.due || 0) <= now)
+    .sort((a, b) => (b.n ? 1 : 0) - (a.n ? 1 : 0) || (a.n ? (a.due || 0) - (b.due || 0) : a.at - b.at));
+}
+function bwInfo(now = Date.now()) {
+  const items = bookWordsData().items, all = bwReviewList(items), today = dateKey(new Date(now));
+  return {total: all.length, due: bwDueOf(items, now).length, today: all.filter(v => v.last && dateKey(new Date(v.last)) === today).length};
+}
+/* Produzir (lacuna na frase do livro) ou reconhecer (ver a palavra na frase e lembrar o sentido). */
+function bwMode(v) { return v.t !== "x" && (v.bx || 0) >= BW_PRODUCE_FROM && v.s && bwGapAt(v.s, v.w, v.wk) >= 0 ? "produzir" : "reconhecer"; }
+/* Onde a palavra está na frase (a ocorrência wk, se souber; senão a primeira). -1 se não estiver. */
+function bwGapAt(text, w, wk) {
+  const low = String(w).toLocaleLowerCase("de");
+  let pos = 0, n = 0, first = -1;
+  for (const p of sentenceWords(text)) {
+    if (/^[\p{L}\p{N}]/u.test(p)) { if (p.toLocaleLowerCase("de") === low) { if (n === wk) return pos; if (first < 0) first = pos; } n++; }
+    pos += p.length;
+  }
+  return first;
+}
+function bwWhen(v, now = Date.now()) {
+  if (!v.n && !v.due) return "nova";
+  const days = Math.round((new Date(dateKey(new Date(v.due || 0))) - new Date(dateKey(new Date(now)))) / 864e5);
+  return (v.due || 0) <= now || days <= 0 ? "revisar hoje" : days === 1 ? "revisar amanhã" : "revisar em " + days + " dias";
+}
+function bwNextText(now = Date.now()) {
+  const items = bookWordsData().items, left = bwDueOf(items, now).length;
+  if (left) return "Ainda há " + plural(left, "palavra vencida", "palavras vencidas") + ": dá para fazer mais uma rodada.";
+  const next = bwReviewList(items).filter(v => (v.due || 0) > now).sort((a, b) => a.due - b.due)[0];
+  if (!next) return "";
+  const soon = next.due - now < 3600e3;
+  return soon ? "As que você errou voltam daqui a alguns minutos." : "Próxima revisão: " + bwWhen(next, now).replace("revisar ", "") + ".";
+}
+/* Quando a explicação da ocorrência chega (ou você corrige), a palavra guardada naquela frase passa a ter o sentido dela. */
+function bwSyncGloss(bookId, sid, wk, g) {
+  const v = bookWordsData().items[bookWordOccKey(bookId, sid, wk)];
+  if (!v || v.deleted || !g || !g.pt || (v.src === "o" && !g.fix)) return;
+  Object.assign(v, {pt: g.pt, lema: g.lema || v.lema, src: "o", updatedAt: Date.now()});
+  saveProgress();
+}
 function bookWordEntry(word) {
   const w = reading.book && reading.book.notes && reading.book.notes.w;
   return w ? (w[word] || w[String(word).toLocaleLowerCase("de")] || null) : null;
 }
-function toggleSavedWord(word, i) {
+/* Guarda (ou tira) a palavra NESTA frase, com o sentido que a explicação dela deu; sem explicação ainda, o do dicionário
+   do livro, trocado pelo da ocorrência quando ela chegar (bwSyncGloss). */
+function toggleSavedWord(word, i, wk) {
   const b = reading.book;
   if (!b || !word) return false;
-  const k = bookWordKey(b.id, word), now = Date.now(), d = bookWordsData();
-  if (isWordSaved(b.id, word)) d.items[k] = {deleted: true, updatedAt: now};
+  const d = bookWordsData(), now = Date.now(), cur = savedWordKey(b.id, word, i, wk);
+  if (cur) d.items[cur] = {deleted: true, updatedAt: now};
   else {
-    const e = bookWordEntry(word) || [], s = reading.order[i] || {};
-    d.items[k] = {b: b.id, w: word, lema: e[0] || "", pt: e[2] || "", s: s.text || "", sid: s.id || "", at: now, updatedAt: now, ok: 0};
+    const s = (i != null && i >= 0 && reading.order[i]) || {}, k = wk != null && wk >= 0 ? wk : s.text ? wordIndexIn(s.text, word) : -1;
+    const occ = s.id && k >= 0 ? occurrence(i, k) : null, e = bookWordEntry(word) || [];
+    const item = {b: b.id, w: word, lema: (occ && occ.lema) || e[0] || "", pt: (occ && occ.pt) || e[2] || "", s: s.text || "", sid: s.id || "", at: now, updatedAt: now, ok: 0, ...bwStart(word, now)};
+    if (k >= 0) item.wk = k;
+    if (occ && occ.pt) item.src = "o";
+    d.items[s.id && k >= 0 ? bookWordOccKey(b.id, s.id, k) : bookWordKey(b.id, word)] = item;
   }
   saveProgress();
   updateSavedCount();
-  return isWordSaved(b.id, word);
+  return !cur;
 }
-function saveWordButton(word) {
-  const saved = isWordSaved(reading.book.id, word);
-  return h("button", {class: "icon-btn" + (saved ? " on" : ""), type: "button", title: saved ? "Tirar das palavras guardadas" : "Guardar a palavra para revisar",
-    "aria-label": saved ? "Tirar das palavras guardadas" : "Guardar a palavra", onclick: () => { toggleSavedWord(word, reading.sel); renderDetail(); refreshReaderPop(); }}, saved ? "★" : "☆");
+function saveWordButton(word, i = reading.sel, wk = reading.wk) {
+  const saved = isWordSaved(reading.book.id, word, i, wk);
+  return h("button", {class: "icon-btn" + (saved ? " on" : ""), type: "button", title: saved ? "Tirar das palavras guardadas" : "Guardar a palavra (com o sentido nesta frase) para revisar",
+    "aria-label": saved ? "Tirar das palavras guardadas" : "Guardar a palavra", onclick: () => { toggleSavedWord(word, i, wk); renderDetail(); refreshReaderPop(); }}, saved ? "★" : "☆");
 }
 
 // ---------- Dados do capítulo (funções puras sobre o livro) ----------
@@ -112,12 +205,16 @@ function readingShell(title, ...content) {
   if (bp.clip) { bp.clip.stop(); bp.clip = null; }
   $("readingLibrary").hidden = true;
   $("readingBook").hidden = false;
+  // Sem livro aberto (revisão das palavras de todos os livros, vinda da estante ou da Hoje): volta para a estante.
+  const b = reading.book;
   fill($("readingBook"),
-    h("div", {class: "reader-head"}, h("p", {class: "label"}, h("span", {lang: "de", text: reading.book.title}), ", capítulo " + (reading.ch + 1) + " de " + reading.book.chapters.length)),
-    h("div", {class: "reader-bar"}, h("button", {class: "quiet small", type: "button", onclick: backToText}, "← Voltar ao texto"), h("b", {text: title})),
+    h("div", {class: "reader-head"}, b ? h("p", {class: "label"}, h("span", {lang: "de", text: b.title}), ", capítulo " + (reading.ch + 1) + " de " + b.chapters.length)
+      : h("p", {class: "label", text: "Palavras dos seus livros"})),
+    h("div", {class: "reader-bar"}, h("button", {class: "quiet small", type: "button", onclick: b ? backToText : bwExit}, b ? "← Voltar ao texto" : "← Voltar à estante"), h("b", {text: title})),
     h("div", {class: "rd-practice"}, ...content));
   window.scrollTo({top: 0});
 }
+function bwExit() { bp.token++; reading.view = "text"; renderLibrary(); }
 function backToText() { bp.token++; if (bp.clip) { bp.clip.stop(); bp.clip = null; } stopReadingAudio(); reading.view = "text"; renderBook(); requestAnimationFrame(() => reading.sel >= 0 && scrollToSentence(reading.sel, "center")); }
 function renderSavedWords() {
   reading.view = "words";
@@ -125,8 +222,13 @@ function renderSavedWords() {
   readingShell("Guardados deste livro",
     h("p", {class: "muted", text: all.length ? "Palavras (☆ no painel), expressões (marque várias palavras) e trechos marcados em “Estudar depois”. Revise, ouça a frase onde apareceram ou transforme a frase em cartão."
       : "Nada guardado neste livro ainda. Na leitura, toque numa palavra e depois na estrela (☆); marque várias palavras para uma expressão; ou use “Estudar depois” para guardar um trecho."}),
-    list.length ? h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => startWordReview(list)}, "Revisar palavras e expressões (" + list.length + ")"),
-      h("button", {class: "quiet", type: "button", onclick: () => copyWords(list)}, "Copiar a lista")) : null,
+    list.length ? (() => {
+      const due = bwInfo().due;
+      return h("div", {class: "row"},
+        due ? h("button", {class: "primary", type: "button", onclick: bwStartDue}, "Revisar as de hoje (" + due + ")") : h("span", {class: "muted small-text", text: "Nada para revisar hoje. " + bwNextText()}),
+        h("button", {class: due ? "quiet" : "", type: "button", title: "Passa por todas deste livro sem mudar as datas de revisão", onclick: () => startWordReview(list)}, "Revisar todas deste livro"),
+        h("button", {class: "quiet", type: "button", onclick: () => copyWords(list)}, "Copiar a lista"));
+    })() : null,
     spots.length ? h("h2", {text: "Trechos para estudar (" + spots.length + ")"}) : null,
     ...spots.map(v => h("article", {class: "rd-saved"},
       h("div", null, h("p", {lang: "de", text: v.s}), v.pt ? h("p", {class: "muted small-text", text: v.pt}) : null),
@@ -140,7 +242,8 @@ function renderSavedWords() {
         h("p", null, h("b", {lang: "de", class: "rd-word-form", text: v.w}), v.lema && v.lema.toLocaleLowerCase("de") !== v.w.toLocaleLowerCase("de") ? h("span", {class: "muted", lang: "de", text: "  (" + v.lema + ")"}) : null),
         v.pt ? h("p", {class: "rd-meaning", text: v.pt}) : null,
         v.t === "x" && v.uso ? h("p", {class: "muted small-text", text: v.uso}) : null,
-        v.s ? h("p", {class: "small-text", lang: "de", text: v.s}) : null),
+        v.s ? h("p", {class: "small-text", lang: "de", text: v.s}) : null,
+        h("p", {class: "muted small-text", text: bwWhen(v) + (v.n ? " · lembrou " + (v.ok || 0) + " de " + v.n : "")})),
       h("div", {class: "row"},
         v.t === "x" ? null : h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(v.w)}, icon("volume", 18)),
         v.sid && reading.byId.has(v.sid) ? h("button", {class: "quiet small", type: "button", onclick: () => openSpot(v.sid)}, "No livro") : null,
@@ -161,32 +264,105 @@ async function copyWords(list) {
   const text = list.map(v => v.w + (v.lema && v.lema !== v.w ? " (" + v.lema + ")" : "") + " — " + (v.pt || "") + (v.s ? "\n   " + v.s : "")).join("\n");
   try { await navigator.clipboard.writeText(text); toast("Lista copiada.", "success"); } catch (e) { setStatus("Não foi possível copiar.", "error"); }
 }
-/* Revisão rápida: a palavra com a frase; você tenta lembrar, vira e diz se sabia. */
-function startWordReview(list) {
-  Object.assign(bp, {kind: "palavras", items: shuffled(list).slice(0, 20), i: 0, score: 0, answered: false, flipped: false});
+/* Revisão das vencidas de todos os livros (até 20): conta nas caixas. As erradas voltam uma vez no fim da rodada. */
+function bwStartDue() {
+  const items = bwDueOf(bookWordsData().items).slice(0, BW_RUN_MAX);
+  if (!items.length) {
+    reading.view = "review";
+    readingShell("Revisar palavras", h("div", {class: "summary"}, h("h2", {text: "Nada para revisar agora"}), h("p", {class: "muted", text: bwNextText() || "Guarde palavras na leitura (☆) para revisá-las aqui."}),
+      h("div", {class: "row center"}, h("button", {class: "primary", type: "button", onclick: reading.book ? backToText : bwExit}, reading.book ? "Voltar ao texto" : "Voltar à estante"))));
+    return;
+  }
+  Object.assign(bp, {kind: "palavras", items, i: 0, score: 0, answered: false, flipped: false, free: false, again: new Set(), first: items.length});
   showWordCard();
+}
+/* Revisão livre de um livro (todas, embaralhadas): não mexe nas datas. */
+function startWordReview(list) {
+  const items = shuffled(list).slice(0, BW_RUN_MAX);
+  Object.assign(bp, {kind: "palavras", items, i: 0, score: 0, answered: false, flipped: false, free: true, again: new Set(), first: items.length});
+  showWordCard();
+}
+function bwBookTitle(id) { const b = (reading.books || []).find(x => x.id === id) || (reading.book && reading.book.id === id ? reading.book : null); return b ? b.title : ""; }
+/* A frase do livro: com o áudio do livro se ele estiver aberto e sincronizado; senão, a voz do sistema. */
+function bwHearSentence(v) {
+  const i = reading.book && reading.book.id === v.b && v.sid ? reading.byId.get(v.sid) : null;
+  if (i != null && reading.starts[i] != null) playSentence(i); else speak(v.s);
 }
 function showWordCard() {
   const v = bp.items[bp.i];
+  reading.view = "review";
   if (!v) { finishPractice(); return; }
+  const mode = bwMode(v), again = bp.i >= bp.first;
+  const title = "Revisar palavras · " + (Math.min(bp.i, bp.first - 1) + 1) + " de " + bp.first + (again ? " · de novo" : "");
+  const book = bwBookTitle(v.b), from = book ? h("p", {class: "muted small-text"}, "De ", h("i", {lang: "de", text: book})) : null;
+  const hear = v.s ? h("button", {class: "quiet small", type: "button", onclick: () => bwHearSentence(v)}, icon("volume", 16), "Ouvir a frase") : null;
+  if (mode === "produzir") {
+    const at = bwGapAt(v.s, v.w, v.wk), input = h("input", {id: "bwInput", lang: "de", spellcheck: "false", autocomplete: "off", placeholder: "A palavra que falta"});
+    const result = h("div", {class: "bp-result", hidden: true});
+    const check = () => {
+      if (bp.answered) { bwAdvance(); return; }
+      const typed = input.value.trim().split(/\s+/)[0] || "";
+      if (!typed) { input.focus(); return; }
+      bp.answered = true;
+      const issues = spellingIssues(v.w, typed), ok = !issues.length || (issues.length === 1 && issues[0] === "caps");
+      bwGrade(v, ok);
+      input.readOnly = true;
+      const why = ok ? "" : issues.filter(c => c !== "missing" && SPELLING_CATS[c]).map(c => SPELLING_CATS[c].label).join(", ");
+      fill(result, h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? (issues.length ? "Isso! (atenção à maiúscula)" : "Isso!") : why ? "Quase: " + why.toLocaleLowerCase("pt-BR") + ". No livro está:" : "No livro está:"}),
+        h("p", {class: "bp-prompt", lang: "de"}, v.s.slice(0, at), h("mark", {text: v.w}), v.s.slice(at + v.w.length)),
+        v.lema && normWord(v.lema) !== normWord(v.w) ? h("p", {class: "small-text"}, h("span", {lang: "de", class: "rd-lemma", text: v.lema}), " — " + (v.pt || "")) : null,
+        h("p", {class: "muted small-text", text: ok ? "Próxima revisão: " + bwWhen(bookWordsData().items[v.k] || v).replace("revisar ", "") + "." : "Volta no fim desta rodada e daqui a 10 minutos."}),
+        h("div", {class: "row"}, hear, h("button", {class: "primary", type: "button", onclick: bwAdvance}, "Próxima", h("kbd", null, "Enter"))));
+      result.hidden = false;
+      input.focus();
+    };
+    input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); check(); } });
+    readingShell(title,
+      h("div", {class: "rd-card panel"}, from,
+        h("p", {class: "muted small-text", text: "Complete com a palavra do livro:"}),
+        h("p", {class: "bp-prompt", lang: "de"}, v.s.slice(0, at), h("span", {class: "bp-gap", text: "_".repeat(Math.max(4, Math.min(10, v.w.length)))}), v.s.slice(at + v.w.length)),
+        v.pt ? h("p", {class: "rd-meaning", text: v.pt}) : null,
+        input, umlautRow(input),
+        h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: check}, "Conferir", h("kbd", null, "Enter")), hear,
+          h("button", {class: "quiet small", type: "button", title: "Mostra a palavra e conta como não lembrada", onclick: () => { input.value = ""; bp.answered = true; bwGrade(v, false); bwShowAnswer(v, at, result, hear); }}, "Não lembro")),
+        result));
+    input.focus();
+    return;
+  }
   const flip = () => { bp.flipped = true; showWordCard(); };
-  readingShell("Revisar palavras · " + (bp.i + 1) + " de " + bp.items.length,
-    h("div", {class: "rd-card panel"},
+  readingShell(title,
+    h("div", {class: "rd-card panel"}, from,
       h("p", {class: "rd-word-form", lang: "de", text: v.w}),
-      v.s ? h("p", {class: "small-text", lang: "de"}, ...(v.t === "x" ? [v.s] : markWord(v.s, v.w))) : null,
-      bp.flipped ? h("div", null, v.lema ? h("p", {lang: "de", class: "rd-lemma", text: v.lema}) : null, h("p", {class: "rd-meaning", text: v.pt || "(sem significado anotado)"})) : null,
+      v.s ? h("p", {class: "small-text", lang: "de"}, ...(v.t === "x" ? [v.s] : bwMarkAt(v))) : null,
+      bp.flipped ? h("div", null, v.lema ? h("p", {lang: "de", class: "rd-lemma", text: v.lema}) : null, h("p", {class: "rd-meaning", text: v.pt || "(sem significado anotado)"}),
+        v.t === "x" && v.uso ? h("p", {class: "muted small-text", text: v.uso}) : null) : h("p", {class: "muted small-text", text: "O que quer dizer nesta frase?"}),
       h("div", {class: "row center"},
         !bp.flipped ? h("button", {class: "primary", type: "button", onclick: flip}, "Mostrar o significado", h("kbd", null, "Espaço"))
-          : [h("button", {type: "button", onclick: () => gradeWord(false)}, "Não sabia"), h("button", {class: "primary", type: "button", onclick: () => gradeWord(true)}, "Sabia")],
-        h("button", {class: "icon-btn", type: "button", title: "Ouvir", "aria-label": "Ouvir", onclick: () => speak(v.w)}, icon("volume", 18)))));
+          : [h("button", {type: "button", onclick: () => { bwGrade(v, false); bwAdvance(); }}, "Não lembrei"), h("button", {class: "primary", type: "button", onclick: () => { bwGrade(v, true); bwAdvance(); }}, "Lembrei")],
+        h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(v.w)}, icon("volume", 18)), hear)));
 }
-function gradeWord(ok) {
-  const v = bp.items[bp.i], item = bookWordsData().items[v.k];
-  if (ok) { bp.score++; if (item && !item.deleted) { item.ok = (item.ok || 0) + 1; item.updatedAt = Date.now(); } }
-  saveProgress();
-  bp.i++; bp.flipped = false;
-  showWordCard();
+function bwMarkAt(v) {
+  const at = bwGapAt(v.s, v.w, v.wk);
+  return at < 0 ? [v.s] : [v.s.slice(0, at), h("mark", {text: v.w}), v.s.slice(at + v.w.length)];
 }
+function bwShowAnswer(v, at, box, hear) {
+  fill(box, h("p", {class: "fb-bad", text: "No livro está:"}), h("p", {class: "bp-prompt", lang: "de"}, v.s.slice(0, at), h("mark", {text: v.w}), v.s.slice(at + v.w.length)),
+    h("p", {class: "muted small-text", text: "Volta no fim desta rodada e daqui a 10 minutos."}),
+    h("div", {class: "row"}, hear, h("button", {class: "primary", type: "button", onclick: bwAdvance}, "Próxima", h("kbd", null, "Enter"))));
+  box.hidden = false;
+  const input = $("bwInput"); if (input) { input.readOnly = true; input.focus(); }
+}
+/* Conta a resposta: na 1ª vez da rodada vale para o placar e para a caixa; a errada volta uma vez no fim (sem contar de novo). */
+function bwGrade(v, ok) {
+  const firstTime = bp.i < bp.first;
+  if (firstTime && ok) bp.score++;
+  if (!bp.free && firstTime) {
+    const items = bookWordsData().items, cur = items[v.k];
+    if (cur && !cur.deleted) { items[v.k] = bwNext(cur, ok); saveProgress(); }
+  }
+  if (!ok && !bp.again.has(v.k)) { bp.again.add(v.k); bp.items.push(v); }
+}
+function bwAdvance() { bp.i++; bp.flipped = false; bp.answered = false; showWordCard(); }
 function markWord(text, word) {
   const i = text.indexOf(word);
   return i < 0 ? [text] : [text.slice(0, i), h("mark", {text: word}), text.slice(i + word.length)];
@@ -240,8 +416,9 @@ function renderGlossary() {
     h("p", {class: "muted", text: list.length ? list.length + " palavras novas neste capítulo (a primeira vez que aparecem no livro), das mais frequentes no livro. ☆ guarda a palavra para revisar."
       : "Nenhuma palavra nova neste capítulo."}),
     h("div", {class: "rd-gloss"}, ...list.map(v => {
-      const star = h("button", {class: "icon-btn" + (isWordSaved(reading.book.id, v.w) ? " on" : ""), type: "button", title: "Guardar a palavra", "aria-label": "Guardar a palavra",
-        onclick: e => { const on = toggleSavedWord(v.w, reading.byId.get(v.s.id)); e.currentTarget.textContent = on ? "★" : "☆"; e.currentTarget.classList.toggle("on", on); }}, isWordSaved(reading.book.id, v.w) ? "★" : "☆");
+      const si = reading.byId.get(v.s.id), on0 = isWordSaved(reading.book.id, v.w, si);
+      const star = h("button", {class: "icon-btn" + (on0 ? " on" : ""), type: "button", title: "Guardar a palavra", "aria-label": "Guardar a palavra",
+        onclick: e => { const on = toggleSavedWord(v.w, si); e.currentTarget.textContent = on ? "★" : "☆"; e.currentTarget.classList.toggle("on", on); }}, on0 ? "★" : "☆");
       return h("div", {class: "rd-gloss-row"},
         h("div", null, h("b", {lang: "de", text: v.lema}), v.lema.toLocaleLowerCase("de").endsWith(v.w.toLocaleLowerCase("de")) ? null : h("span", {class: "muted small-text", lang: "de", text: " · no texto: " + v.w}),
           h("p", {class: "small-text", text: v.pt + (v.obs ? " · " + v.obs : "")}), h("p", {class: "muted small-text", text: v.classe + " · " + v.n + "× no livro"})),
@@ -349,7 +526,7 @@ function checkPractice(it, spoken) {
     fill(box, h("p", {class: ok ? "fb-ok" : "fb-bad", text: ok ? (issues.length ? "Isso! (atenção à maiúscula)" : "Isso!") : "A palavra é:"}),
       h("p", {class: "bp-prompt", lang: "de"}, ...markWord(it.text, it.gap.word)),
       h("p", {class: "small-text", text: (it.gap.lema ? it.gap.lema + " — " : "") + it.gap.pt}),
-      h("div", {class: "row"}, reading.starts[it.i] != null ? hear : null, h("button", {class: "quiet small", type: "button", onclick: e => { toggleSavedWord(it.gap.word, it.i); e.currentTarget.textContent = "★ Guardada"; e.currentTarget.disabled = true; }}, "☆ Guardar a palavra"), next));
+      h("div", {class: "row"}, reading.starts[it.i] != null ? hear : null, h("button", {class: "quiet small", type: "button", onclick: e => { if (!isWordSaved(reading.book.id, it.gap.word, it.i)) toggleSavedWord(it.gap.word, it.i); e.currentTarget.textContent = "★ Guardada"; e.currentTarget.disabled = true; }}, "☆ Guardar a palavra"), next));
     box.hidden = false;
     if (reading.starts[it.i] != null) playSentence(it.i);
   } else {
@@ -373,18 +550,29 @@ function checkPractice(it, spoken) {
   if (btn) btn.disabled = true;
 }
 function finishPractice() {
-  const n = bp.items.length, pct = n ? bp.score / n : 0;
+  const n = bp.kind === "palavras" ? bp.first : bp.items.length, pct = n ? bp.score / n : 0;
   if (n) { progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1; saveProgress(); }
-  const kind = bp.kind;
+  const kind = bp.kind, free = bp.free;
+  const head = kind === "palavras" ? " palavras que você lembrou" : kind === "volta" ? " frases próximas do livro" : kind === "sombra" ? " frases reconhecidas" : " frases certas";
+  const tip = kind === "palavras" ? (free ? "Revisão livre: as datas de revisão não mudaram." : bwNextText())
+    : pct >= .9 ? "" : pct >= .6 ? "Repita daqui a pouco: cada rodada escolhe frases diferentes." : "Releia o trecho ouvindo o áudio e tente de novo: cada rodada escolhe frases diferentes.";
   readingShell("Resultado",
     h("div", {class: "summary"}, h("div", {class: "summary-icon"}, icon("check", 30)),
-      h("h2", {text: bp.score + " de " + n + (kind === "palavras" ? " palavras que você sabia" : " frases certas")}),
-      h("p", {class: "muted", text: pct >= .9 ? "Muito bem! Esse capítulo está dominado." : pct >= .6 ? "Bom caminho. Repita daqui a pouco com outras frases." : "Releia o capítulo ouvindo o áudio e tente de novo: cada rodada escolhe frases diferentes."}),
+      h("h2", {text: bp.score + " de " + n + head}),
+      RD_PRACTICE_MEANS[kind] ? h("p", {class: "muted", text: RD_PRACTICE_MEANS[kind]}) : null,
+      tip ? h("p", {class: "muted", text: tip}) : null,
       h("div", {class: "row center"},
-        h("button", {class: "primary", type: "button", onclick: () => kind === "palavras" ? startWordReview(savedWordsOf(reading.book.id)) : startPractice(kind)}, "De novo"),
+        h("button", {class: "primary", type: "button", onclick: () => kind === "palavras" ? (free ? startWordReview(savedWordsOf(reading.book.id).filter(v => v.t !== "p")) : bwStartDue()) : startPractice(kind)}, "De novo"),
         kind === "palavras" ? null : h("button", {type: "button", onclick: () => renderBookPractice()}, "Outro exercício"),
-        h("button", {class: "quiet", type: "button", onclick: backToText}, "Voltar ao texto"))));
+        h("button", {class: "quiet", type: "button", onclick: reading.book ? backToText : bwExit}, reading.book ? "Voltar ao texto" : "Voltar à estante"))));
 }
+/* O que o número do resultado mede de verdade (e o que não mede). */
+const RD_PRACTICE_MEANS = {
+  ditado: "Conta como certa a frase escrita igual ao livro: maiúscula, trema e ß contam.",
+  lacuna: "Conta como certa a palavra escrita como no livro (só a maiúscula é perdoada).",
+  volta: "Próxima = 80% ou mais das palavras iguais às do livro. Uma frase diferente pode estar certa também: isso a comparação não sabe julgar.",
+  sombra: "Mede se o reconhecimento de fala entendeu as palavras do livro. Ritmo, melodia e cada som não entram na conta."
+};
 /* Conversa com a IA sobre o capítulo: o texto do capítulo vai no prompt como referência. */
 function chapterText(ch, max = 3500) {
   let out = "";
@@ -401,11 +589,15 @@ function talkAboutChapter() {
   openConversaTopic(topic);
 }
 function bookPracticeKey(e) {
-  if (!reading.book || $("readingBook").hidden || reading.view === "text") return false;
-  if (e.key === "Escape") { e.preventDefault(); backToText(); return true; }
+  if ((!reading.book && reading.view !== "review") || $("readingBook").hidden || reading.view === "text") return false;
+  if (e.key === "Escape") { e.preventDefault(); if (reading.book) backToText(); else bwExit(); return true; }
   const tag = (e.target && e.target.tagName) || "";
   if (tag === "INPUT" || tag === "TEXTAREA") return false;
-  if (e.code === "Space" && bp.kind === "palavras" && bp.items[bp.i] && !bp.flipped) { e.preventDefault(); bp.flipped = true; showWordCard(); return true; }
+  if (reading.view === "review") {
+    const v = bp.items[bp.i];
+    if (e.code === "Space" && v && bwMode(v) === "reconhecer" && !bp.flipped) { e.preventDefault(); bp.flipped = true; showWordCard(); return true; }
+    return false;
+  }
   if (e.key === "Enter" && bp.answered) { e.preventDefault(); bp.i++; showPracticeItem(); return true; }
   return false;
 }
@@ -550,6 +742,7 @@ function rdGlossApply(r, s, i, k, word, bookId) {
   if (o[s.id] && o[s.id][k] && o[s.id][k].fix) return;
   (o[s.id] = o[s.id] || {})[k] = rdGlossFromJson(j, s.text, k, word, reading.book.notes && reading.book.notes.w);
   scheduleNotesSave();
+  bwSyncGloss(bookId, s.id, k, o[s.id][k]);
 }
 function rdGlossFromJson(j, text, k, word, notesW) {
   const c = v => convClean(v || "");
@@ -590,6 +783,9 @@ function requestExpr(i, ks) {
       if (x[s.id] && x[s.id][kk] && x[s.id][kk].fix) return;
       (x[s.id] = x[s.id] || {})[kk] = {expr: c(j.expressao), pt: c(j.pt), uso: c(j.uso), ex: c(j.exemplo), exPt: c(j.exemplo_pt)};
       scheduleNotesSave();
+      // Expressão guardada antes de a explicação chegar: ganha o sentido agora.
+      const sv = bookWordsData().items[exprStoreKey(i, ks)];
+      if (sv && !sv.deleted && !sv.pt) { Object.assign(sv, {pt: c(j.pt), lema: c(j.expressao), uso: c(j.uso), updatedAt: Date.now()}); saveProgress(); }
     })
     .catch(e => { reading.glossError = cleanIpcError(e, "a IA não respondeu"); })
     .finally(() => { rdPending.delete(key); if (reading.book && reading.sel === i && exprKey(reading.pick || []) === exprKey(ks)) { renderDetail(); refreshReaderPop(); } });
@@ -631,6 +827,7 @@ function occEditor(i, k, word, occ) {
         for (const el of box.querySelectorAll("input")) v[el.dataset.key] = el.value.trim();
         if (!v.pt) { setStatus("Escreva pelo menos o sentido.", "error"); return; }
         (o[s.id] = o[s.id] || {})[k] = v;
+        bwSyncGloss(reading.book.id, s.id, k, v);
         scheduleNotesSave(); renderDetail(); refreshReaderPop();
       }}, "Salvar correção"),
       h("button", {class: "quiet small", type: "button", onclick: () => renderDetail()}, "Cancelar")));

@@ -20,7 +20,16 @@ function saveBookPosition() {
 
 // ---------- Biblioteca ----------
 async function renderReading() {
+  // Vindo da Hoje (“Palavras dos livros”): abre direto a revisão das vencidas, com ou sem livro aberto.
+  if (reading.pendingReview && typeof bwStartDue === "function") {
+    reading.pendingReview = false;
+    if (!reading.book && window.satzDesktop && window.satzDesktop.listBooks) reading.books = await window.satzDesktop.listBooks().catch(() => reading.books || []);
+    bwStartDue();
+    return;
+  }
+  if (reading.view === "review") reading.view = "text";
   if (reading.book) { renderBook(); return; }
+  reading.libEnter = true;
   await renderLibrary();
 }
 function syncStatusNode(b) {
@@ -69,7 +78,12 @@ function rdAssignCovers(books) {
 }
 /* Capa do EPUB ou, sem ela, uma capa gerada: cor própria, moldura, título e a inicial grande da palavra principal. */
 function rdCoverNode(b) {
-  if (b.cover) return h("div", {class: "cover"}, h("img", {src: rdImageUrl(b, b.cover) + (window.satzDesktop && b.coverAt ? "?v=" + b.coverAt : ""), alt: "", loading: "lazy"}));
+  if (b.cover) {
+    const img = h("img", {src: rdImageUrl(b, b.cover) + (window.satzDesktop && b.coverAt ? "?v=" + b.coverAt : ""), alt: "", loading: "lazy", decoding: "async"});
+    const el = h("div", {class: "cover cover-img"}, img);
+    rdKeepRatio(b, el, img);
+    return el;
+  }
   const [bg, fg] = RD_COVER_COLORS[rdCoverColor.has(b.id) ? rdCoverColor.get(b.id) : rdHash(b.title) % RD_COVER_COLORS.length];
   const main = String(b.title).split(/\s+/).find(w => !/^(der|die|das|den|dem|des|ein|eine|einer|the|a|an)$/i.test(w)) || String(b.title);
   const el = h("div", {class: "cover cover-gen"},
@@ -80,73 +94,227 @@ function rdCoverNode(b) {
   el.style.setProperty("--cv-fg", fg);
   return el;
 }
-function rdBookPct(b, pos) { return pos && b.chapters ? Math.round((pos.ch + 1) / b.chapters * 100) : 0; }
-/* Um livro na prateleira: capa (abre), título, capítulo onde parou com a barra grossa, engrenagem com os ajustes e, se faltar algo, um aviso curto. */
+/* Onde a pessoa está no livro: pela frase em que parou (o livro sabe quantas frases tem), senão pelo começo do capítulo. */
+function rdBookPct(b, pos) {
+  if (!pos || !b.chapters) return 0;
+  const total = b.notes && b.notes.total;
+  if (total && pos.sel >= 0) return Math.max(0, Math.min(100, Math.round((pos.sel + 1) / total * 100)));
+  return Math.round(pos.ch / b.chapters * 100);
+}
+/* Não iniciado, lendo ou lido (até o fim). */
+function rdBookState(b, pos) { return !pos ? "new" : rdBookPct(b, pos) >= 98 ? "done" : "reading"; }
+function rdWhen(at) {
+  if (!at) return "";
+  const d = calendarDays(at, Date.now());
+  return d <= 0 ? "Lido hoje" : d === 1 ? "Lido ontem" : d < 7 ? "Lido há " + d + " dias" : "Lido em " + new Date(at).toLocaleDateString("pt-BR", {day: "numeric", month: "short"});
+}
+/* Barras e colunas que mudam de valor deslizam do valor anterior para o novo (o nó é refeito a cada renderização). */
+const rdLastSize = new Map();
+function rdGrow(el, key, pct, prop = "width") {
+  const v = Math.max(0, Math.min(100, pct)), prev = rdLastSize.get(key);
+  rdLastSize.set(key, v);
+  if (prev == null || Math.abs(prev - v) < .5 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { el.style[prop] = v + "%"; return; }
+  el.style[prop] = prev + "%";
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style[prop] = v + "%"; }));
+}
+/* Proporção de cada capa (largura ÷ altura), lida da imagem e guardada, para a estante não pular ao reabrir. */
+const RD_RATIO = [.62, .86];
+function rdKeepRatio(b, el, img) {
+  const saved = (readingState().ratios || {})[b.id];
+  if (saved) el.style.setProperty("--cv-ratio", saved);
+  const go = () => {
+    if (!img.naturalWidth || !img.naturalHeight) return;
+    const r = Math.round(Math.max(RD_RATIO[0], Math.min(RD_RATIO[1], img.naturalWidth / img.naturalHeight)) * 1000) / 1000;
+    el.style.setProperty("--cv-ratio", r);
+    if (saved !== r) saveReadingState({ratios: {...(readingState().ratios || {}), [b.id]: r}});
+  };
+  img.complete ? go() : img.addEventListener("load", go, {once: true});
+}
+/* Cor média da capa (as cores vivas pesam mais), para o cartão em destaque ganhar um reflexo bem leve dela. */
+const rdTints = new Map();
+function rdTintFrom(img, target) {
+  const key = img.getAttribute("src"), apply = c => target.style.setProperty("--rd-tint", c);
+  if (rdTints.has(key)) { apply(rdTints.get(key)); return; }
+  const go = () => {
+    try {
+      const c = document.createElement("canvas");
+      c.width = c.height = 16;
+      const x = c.getContext("2d", {willReadFrequently: true});
+      x.drawImage(img, 0, 0, 16, 16);
+      const d = x.getImageData(0, 0, 16, 16).data;
+      let r = 0, g = 0, bl = 0, n = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const w = 1 + (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2])) / 32;
+        r += d[i] * w; g += d[i + 1] * w; bl += d[i + 2] * w; n += w;
+      }
+      const col = "rgb(" + [r, g, bl].map(v => Math.round(v / n)).join(" ") + ")";
+      rdTints.set(key, col);
+      apply(col);
+    } catch (e) { /* imagem que não dá para ler: fica sem reflexo */ }
+  };
+  img.complete && img.naturalWidth ? go() : img.addEventListener("load", go, {once: true});
+}
+/* Um livro na estante: a capa em pé (proporção original, alinhada pela base), título, onde parou e, ao passar o mouse, a engrenagem. */
 function rdShelfItem(b, o) {
-  const pos = bookPosition(b.id), pct = rdBookPct(b, pos), bar = h("i");
-  setWidth(bar, pct);
-  return h("div", {class: "shelf-item" + (o.cloud ? " cloud" : "")},
+  const pos = bookPosition(b.id), pct = rdBookPct(b, pos), state = rdBookState(b, pos), bar = h("i");
+  rdGrow(bar, "shelf|" + b.id, pct);
+  const status = state === "new" ? h("span", {class: "shelf-meta", text: "Ainda não começou"})
+    : state === "done" ? h("span", {class: "shelf-meta shelf-done"}, icon("check", 14), h("span", {text: "Lido"}))
+    : [h("span", {class: "shelf-meta", text: "Cap. " + (pos.ch + 1) + " de " + b.chapters}), h("span", {class: "shelf-pct", text: pct + "%"}),
+      h("span", {class: "shelf-bar", role: "progressbar", "aria-label": "Progresso", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100"}, bar)];
+  const when = pos && pos.at ? rdWhen(pos.at) : "";
+  return h("div", {class: "shelf-item is-" + state + (o.cloud ? " cloud" : ""), "data-q": rdFold(b.title + " " + rdAuthor(b))},
     h("button", {class: "shelf-book", type: "button", "data-book": b.id, "aria-label": (o.cloud ? "Baixar " : "Abrir ") + b.title, onclick: o.open},
       rdCoverNode(b), o.cloud ? h("span", {class: "shelf-cloud"}, icon("download", 16)) : null),
     h("div", {class: "shelf-info"},
-      h("div", {class: "shelf-title-row"}, h("b", {lang: "de", text: b.title}),
-        h("button", {class: "icon-btn quiet shelf-gear", type: "button", title: "Ajustes do livro", "aria-label": "Ajustes de " + b.title, onclick: o.gear}, icon("settings", 17))),
-      pos && b.chapters
-        ? h("div", {class: "shelf-progress"},
-          h("span", {class: "shelf-meta"}, h("b", {text: "Cap. " + (pos.ch + 1)}), " de " + b.chapters),
-          h("span", {class: "shelf-pct", text: pct + "%"}),
-          h("span", {class: "shelf-bar"}, bar))
-        : h("span", {class: "shelf-meta", text: rdAuthor(b) || "Ainda não começou"}),
-      o.alert ? h("button", {class: "shelf-alert", type: "button", onclick: o.gear}, o.alert) : null));
+      h("div", {class: "shelf-title-row"}, h("b", {lang: "de", title: b.title, text: b.title}),
+        h("button", {class: "icon-btn quiet shelf-gear", type: "button", title: "Ajustes do livro", "aria-label": "Ajustes de " + b.title, onclick: o.gear}, icon("more", 18))),
+      // Só na lista: autor e quando leu (na grade a capa já diz isso).
+      rdAuthor(b) ? h("span", {class: "shelf-author", text: rdAuthor(b)}) : null,
+      h("div", {class: "shelf-progress"}, status),
+      when ? h("span", {class: "shelf-when", text: when}) : null,
+      o.alert ? h("button", {class: "shelf-alert", type: "button", onclick: o.gear}, h("i", {"aria-hidden": "true"}), h("span", {text: o.alert})) : null));
 }
-/* Lugar de importar um livro, com o formato de uma capa: ocupa o primeiro espaço vazio da prateleira. */
+/* Lugar de importar um livro, com o formato de uma capa ainda em branco (também recebe o EPUB arrastado). */
 function rdAddTile(onclick) {
-  return h("div", {class: "shelf-item shelf-add"},
-    h("button", {class: "shelf-book", type: "button", title: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados.", onclick},
-      h("div", {class: "cover cover-add"}, icon("plus", 26), h("span", {text: "Importar livro"}))),
-    h("div", {class: "shelf-info"}, h("span", {class: "shelf-meta", text: "EPUB com o audiolivro"})));
+  const busy = !!reading.importing, drop = !!(window.satzDesktop && window.satzDesktop.importBookFiles);
+  return h("div", {class: "shelf-item shelf-add" + (busy ? " busy" : "")},
+    h("button", {class: "shelf-book", type: "button", disabled: busy, "aria-label": "Importar livro",
+      title: "Escolha o EPUB e, se tiver, o MP3 do audiolivro (os dois de uma vez). Os arquivos originais não são alterados.", onclick},
+      h("div", {class: "cover cover-add"}, h("span", {class: "cover-add-icon"}, busy ? h("span", {class: "rd-spin", "aria-hidden": "true"}) : icon("plus", 24)),
+        h("span", {class: "cover-add-t", text: busy ? "Importando…" : "Importar livro"}),
+        h("span", {class: "cover-add-s", text: busy ? "Leva até 2 minutos" : drop ? "EPUB com áudio, ou arraste e solte aqui" : "EPUB com o audiolivro"}))));
 }
-/* A prateleira vai até o fim da linha: completa a última fileira com espaços vazios (só a tábua), recalculando ao mudar a largura. */
 function rdShelf(items, addTile) {
-  const shelf = h("div", {class: "shelf"}, items, addTile || null);
-  const n = items.length + (addTile ? 1 : 0);
-  const fillRow = () => {
-    shelf.querySelectorAll(".shelf-ghost").forEach(g => g.remove());
-    const cols = getComputedStyle(shelf).gridTemplateColumns.split(" ").filter(Boolean).length;
-    for (let i = 0; cols > 1 && i < (cols - n % cols) % cols; i++)
-      shelf.append(h("div", {class: "shelf-item shelf-ghost", "aria-hidden": "true"}, h("div", {class: "shelf-book"}, h("div", {class: "cover"}))));
+  return h("div", {class: "shelf" + (readingState().shelfView === "list" ? " is-list" : "")}, items, addTile || null,
+    h("p", {class: "shelf-none muted", hidden: true}));
+}
+/* Texto sem acento e em minúsculas, para a busca. */
+function rdFold(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+/* Ordem da estante (Ordenar por): últimos lidos, título, progresso ou importados por último. bookOf tira o livro de cada item. */
+const RD_SORTS = [["recent", "Últimos lidos"], ["title", "Título"], ["progress", "Progresso"], ["added", "Adicionados"]];
+function rdSortBooks(list, bookOf = x => x) {
+  const by = readingState().shelfSort || "recent", at = b => (bookPosition(b.id) || {}).at || 0;
+  const cmp = {
+    recent: (x, y) => at(y) - at(x) || (y.importedAt || 0) - (x.importedAt || 0),
+    title: (x, y) => String(x.title).localeCompare(String(y.title), "de"),
+    progress: (x, y) => rdBookPct(y, bookPosition(y.id)) - rdBookPct(x, bookPosition(x.id)) || at(y) - at(x),
+    added: (x, y) => (y.importedAt || 0) - (x.importedAt || 0)}[by] || (() => 0);
+  return [...list].sort((p, q) => cmp(bookOf(p), bookOf(q)));
+}
+/* Ordenar por + grade/lista, no cabeçalho da estante. */
+function rdShelfControls() {
+  const sel = h("select", {class: "rd-sort", "aria-label": "Ordenar a estante"}, ...RD_SORTS.map(([v, t]) => new Option(t, v)));
+  sel.value = readingState().shelfSort || "recent";
+  sel.addEventListener("change", () => { saveReadingState({shelfSort: sel.value}); rdRerender(); });
+  const view = readingState().shelfView === "list" ? "list" : "grid";
+  const seg = (v, ic, label) => h("button", {class: "rd-seg-btn" + (view === v ? " on" : ""), type: "button", "aria-pressed": String(view === v), "aria-label": label, title: label,
+    onclick: () => { if (view !== v) { saveReadingState({shelfView: v}); rdRerender(); } }}, icon(ic, 18));
+  return h("div", {class: "shelf-controls"},
+    h("label", {class: "rd-sort-label"}, h("span", {text: "Ordenar por:"}), sel),
+    h("div", {class: "rd-seg", role: "group", "aria-label": "Mostrar a estante"}, seg("grid", "grid", "Em grade"), seg("list", "list", "Em lista")));
+}
+function rdRerender() { if (typeof rdWebRender === "function" && !(window.satzDesktop && window.satzDesktop.listBooks)) rdWebRender(); else renderLibrary(); }
+/* Busca e “Importar livro” no alto da tela, ao lado do título (o cabeçalho é fixo no HTML; os botões entram uma vez). */
+function rdHeadActions() {
+  const head = document.querySelector("#view-reading > .page-head");
+  if (!head || $("rdHeadActions")) return;
+  const row = head.querySelector(".title-row") || head;
+  const input = h("input", {id: "rdSearch", class: "rd-search-input", type: "search", placeholder: "Buscar na estante", "aria-label": "Buscar livro na estante", autocomplete: "off"});
+  const wrap = h("div", {class: "rd-search"}, input);
+  const btn = h("button", {class: "icon-btn rd-head-btn", type: "button", title: "Buscar livro", "aria-label": "Buscar livro", "aria-expanded": "false"}, icon("search", 20));
+  const open = on => {
+    wrap.classList.toggle("open", on); btn.setAttribute("aria-expanded", String(on));
+    if (on) input.focus(); else { input.value = ""; rdApplyFilter(""); }
   };
-  if (typeof ResizeObserver === "function") { let w = 0; new ResizeObserver(([e]) => { if (Math.abs(e.contentRect.width - w) > 1) { w = e.contentRect.width; fillRow(); } }).observe(shelf); }
-  return shelf;
+  btn.addEventListener("click", () => open(!wrap.classList.contains("open")));
+  input.addEventListener("input", () => rdApplyFilter(input.value));
+  input.addEventListener("keydown", e => { if (e.key === "Escape") { e.stopPropagation(); open(false); btn.focus(); } });
+  input.addEventListener("blur", () => { if (!input.value) open(false); });
+  const canImport = window.satzDesktop && window.satzDesktop.importBook;
+  row.append(h("div", {id: "rdHeadActions", class: "rd-head-actions"}, wrap, btn,
+    canImport ? h("button", {class: "primary rd-head-import", type: "button", onclick: () => importBook()}, icon("plus", 18), h("span", {text: "Importar livro"})) : null));
 }
-/* Livro em destaque: capa, título, barra grossa com a porcentagem do livro e, ao lado, capítulo, minutos da semana e palavras guardadas. */
+/* Esconde os livros que não batem com a busca (título ou autor, sem acento). */
+function rdApplyFilter(q) {
+  reading.query = q = rdFold(q).trim();
+  const items = [...document.querySelectorAll("#readingLibrary .shelf-item:not(.shelf-add)")];
+  let shown = 0;
+  for (const it of items) { const ok = !q || (it.dataset.q || "").includes(q); it.hidden = !ok; if (ok) shown++; }
+  const add = document.querySelector("#readingLibrary .shelf-add");
+  if (add) add.hidden = !!q;
+  const none = document.querySelector("#readingLibrary .shelf-none");
+  if (none) { none.hidden = !q || shown > 0; none.textContent = "Nenhum livro com “" + q + "” na estante."; }
+}
+/* Galho de folhas bem apagado no canto do cartão “Lendo agora” (só enfeite). */
+function rdLeaf() {
+  const tpl = document.createElement("template");
+  const leaf = (x, y, r, s = 1) => `<ellipse cx="0" cy="-17" rx="7.5" ry="17" transform="translate(${x} ${y}) rotate(${r}) scale(${s})"/>`;
+  tpl.innerHTML = `<svg class="rd-leaf" viewBox="0 0 220 180" aria-hidden="true"><path d="M206 6C170 40 130 70 70 150" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><g fill="currentColor">${
+    leaf(188, 23, -30) + leaf(180, 30, 70, .9) + leaf(160, 46, -40, 1.05) + leaf(150, 55, 62) + leaf(131, 72, -48, 1.1) + leaf(119, 84, 56, 1.05) + leaf(101, 105, -55, 1.1) + leaf(89, 120, 50) + leaf(72, 148, -10, .9)}</g></svg>`;
+  return tpl.content.firstChild;
+}
+/* Nome do capítulo, quando o livro tem um (não o “Capítulo N” que o importador põe quando falta). */
+function rdChapterName(b, ch) {
+  const t = String((b.chTitles || [])[ch] || "").trim().replace(/^(kapitel|cap[ií]tulo|chapter)\s*\d+[.:]?\s*(?=\S)/i, "");
+  return !t || /^(cap[ií]tulo|kapitel|chapter)\s*\d+\.?$/i.test(t) || t === b.title ? "" : t.length > 40 ? t.slice(0, 38) + "…" : t;
+}
+/* Livro em destaque: a capa grande e, ao lado, título, autor, onde parou (capítulo e porcentagem) e o botão. */
 function rdContinueNode(b, open) {
-  const pos = bookPosition(b.id), pct = rdBookPct(b, pos), bar = h("i");
-  setWidth(bar, pct);
-  const week = typeof rdWeek === "function" ? Math.round(rdWeek().ms / 60000) : null;
-  const saved = typeof savedWordsOf === "function" ? savedWordsOf(b.id).length : null;
-  const stat = (label, value, unit) => h("div", {class: "rd-stat"}, h("dt", {text: label}), h("dd", null, h("b", {text: String(value)}), unit ? h("small", {text: unit}) : null));
-  return h("section", {class: "panel rd-continue"},
-    h("button", {class: "shelf-book", type: "button", "data-book": b.id, "aria-label": "Continuar " + b.title, onclick: open}, rdCoverNode(b)),
+  const pos = bookPosition(b.id) || {ch: 0, sel: -1}, pct = rdBookPct(b, pos), bar = h("i");
+  rdGrow(bar, "hero|" + b.id, pct);
+  const saved = typeof savedWordsOf === "function" ? savedWordsOf(b.id).length : 0;
+  const weekMin = typeof rdWeek === "function" ? Math.round(rdWeek().ms / 60000) : 0;
+  const cover = rdCoverNode(b), chName = rdChapterName(b, pos.ch), when = rdWhen(pos.at);
+  const stat = (ic, big, small) => h("div", {class: "rd-stat"}, icon(ic, 22), h("span", null, h("b", {text: big}), h("small", {text: small})));
+  const card = h("section", {class: "rd-continue", "aria-label": "Lendo agora: " + b.title},
+    rdLeaf(),
+    h("button", {class: "shelf-book rd-continue-cover", type: "button", "data-book": b.id, "aria-label": "Continuar " + b.title, onclick: open}, cover),
     h("div", {class: "rd-continue-text"},
-      h("p", {class: "label", text: "Continuar de onde parou"}),
-      h("h2", {lang: "de", text: b.title}),
-      rdAuthor(b) ? h("p", {class: "muted", text: rdAuthor(b)}) : null,
-      h("div", {class: "rd-continue-progress"}, h("span", {class: "shelf-bar"}, bar), h("span", {class: "rd-continue-pct", text: pct + "% do livro"})),
-      h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: open}, iconText("play", "Continuar lendo")))),
-    h("dl", {class: "rd-continue-stats"},
-      stat("Capítulo", pos.ch + 1, " de " + b.chapters),
-      week != null ? stat("Nesta semana", week, " min") : null,
-      saved != null ? stat("Guardadas", saved, saved === 1 ? " palavra" : " palavras") : null));
+      h("p", {class: "rd-kicker"}, icon("bookOpen", 15), h("span", {text: "Lendo agora"})),
+      h("h2", {class: "rd-continue-title", lang: "de", text: b.title}),
+      h("p", {class: "rd-continue-ch"}, "Capítulo ", h("b", {text: String(pos.ch + 1)}), " de " + b.chapters,
+        chName ? [h("span", {class: "rd-dot", "aria-hidden": "true", text: "·"}), h("span", {lang: "de", text: chName})] : null),
+      h("div", {class: "rd-continue-progress"},
+        h("span", {class: "rd-bar", role: "progressbar", "aria-label": "Progresso do livro", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100"}, bar),
+        h("span", {class: "rd-continue-pct", text: pct + "%"})),
+      h("div", {class: "rd-continue-act"},
+        h("button", {class: "primary rd-go", type: "button", onclick: open}, icon("play", 18), h("span", {text: "Continuar lendo"})),
+        when ? h("span", {class: "rd-when-pill"}, icon("bookmark", 17), h("span", {text: when})) : null),
+      h("div", {class: "rd-stats"},
+        stat("bookOpen", pct + "%", "do livro"),
+        stat("clock", weekMin + " min", "nesta semana"),
+        stat("bookmark", String(saved), saved === 1 ? "palavra guardada" : "palavras guardadas"))));
+  const img = cover.querySelector("img");
+  if (img) rdTintFrom(img, card); else card.style.setProperty("--rd-tint", cover.style.getPropertyValue("--cv-bg"));
+  return card;
 }
-/* Estante: o livro em destaque em cima; embaixo, a prateleira e, ao lado dela (telas largas), o diário de leitura. */
+/* Composição da estante: em cima, o livro em destaque e o diário lado a lado (o que é de agora); embaixo, a coleção inteira.
+   Sem livro em andamento, a estante sobe e o diário fica ao lado dela. */
 function rdLibraryLayout(hero, before, shelf, after) {
   // Sem livro, só o convite: o diário de leitura não teria o que contar.
-  if (!shelf) return [hero, before, after];
-  return [hero, before,
-    h("div", {class: "rd-lib"},
-      h("div", {class: "rd-lib-main"}, h("div", {class: "shelf-head"}, h("h2", {text: "Sua estante"})), shelf),
-      h("div", {class: "rd-lib-side"}, typeof rdDiaryNode === "function" ? rdDiaryNode() : null, after))];
+  if (!shelf) return [hero, before, rdWordsReviewNode(), after];
+  // Ao lado do diário, as palavras dos livros só quando há o que revisar (sem isso, o cartão “Lendo agora” esticava à toa).
+  const side = h("div", {class: "rd-lib-side"}, typeof rdDiaryNode === "function" ? rdDiaryNode() : null, rdWordsReviewNode(true));
+  const n = shelf.querySelectorAll(".shelf-item:not(.shelf-add)").length;
+  const sec = h("section", {class: "rd-lib-shelf"},
+    h("div", {class: "shelf-head"},
+      h("div", {class: "shelf-head-t"}, icon("library", 26), h("h2", {text: "Sua estante"}), n ? h("span", {class: "shelf-count", text: plural(n, "livro", "livros")}) : null),
+      n > 1 ? rdShelfControls() : null),
+    shelf, after);
+  return hero ? [h("div", {class: "rd-lib-top"}, hero, side), before, sec] : [before, h("div", {class: "rd-lib"}, sec, side)];
+}
+/* Palavras guardadas de todos os livros: quantas venceram hoje e o botão para revisar. */
+function rdWordsReviewNode(onlyDue) {
+  if (typeof bwInfo !== "function") return null;
+  const info = bwInfo();
+  if (!info.total || (onlyDue && !info.due)) return null;
+  return h("section", {id: "rdWordsReview", class: "panel rd-words-review"},
+    h("p", {class: "label", text: "Palavras dos livros"}),
+    info.due ? h("p", {class: "rd-wr-num"}, h("b", {text: String(info.due)}), " para revisar hoje")
+      : h("p", {class: "rd-wr-num muted", text: info.today ? plural(info.today, "revisada hoje", "revisadas hoje") + ". " + bwNextText() : "Nada vencido. " + bwNextText()}),
+    h("p", {class: "muted small-text", text: plural(info.total, "palavra ou expressão guardada", "palavras e expressões guardadas")}),
+    info.due ? h("button", {class: "primary", type: "button", onclick: bwStartDue}, "Revisar agora") : null);
 }
 /* Janela de ajustes do livro. render(id) devolve [título, conteúdo]; é refeita a cada renderização da estante. */
 function rdBookDialog(id, render) {
@@ -201,6 +369,7 @@ async function renderLibrary() {
   const box = $("readingLibrary");
   $("readingBook").hidden = true;
   box.hidden = false;
+  rdDropZone(box);
   // Celular: os livros vêm do GitHub privado e ficam guardados no aparelho (leitura-celular.js).
   if (!window.satzDesktop || !window.satzDesktop.listBooks) {
     if (typeof rdWebLibrary === "function") return rdWebLibrary(box);
@@ -214,18 +383,65 @@ async function renderLibrary() {
     recent ? rdContinueNode(recent[0], e => rdOpenFromCover(recent[0].id, rdCoverOf(e))) : null,
     reading.books.length ? null : emptyState("bookOpen", "Sua estante está vazia", "Importe um livro em EPUB com o audiolivro: o app liga o áudio ao texto e você lê ouvindo, frase por frase.", ["Importar livro", importBook]),
     // Sem livro, o convite acima já tem o botão: a prateleira só com o “Importar livro” repetiria.
-    reading.books.length ? rdShelf(reading.books.map(b => rdShelfItem(b, {open: e => rdOpenFromCover(b.id, rdCoverOf(e)), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})), rdAddTile(importBook)) : null));
+    reading.books.length ? rdShelf(rdSortBooks(reading.books).map(b => rdShelfItem(b, {open: e => rdOpenFromCover(b.id, rdCoverOf(e)), gear: () => rdBookDialog(b.id, rdBookSettings), alert: rdShelfAlert(b)})), rdAddTile(importBook)) : null));
+  rdLibEnter(box);
   rdBookDialogRefresh();
+  rdHeadActions();
+  if (reading.query) rdApplyFilter(reading.query);
 }
-async function importBook() {
+/* Ao chegar na Leitura, o conteúdo sobe uns poucos pixels enquanto aparece (uma vez; as atualizações seguintes não repetem). */
+function rdLibEnter(box) {
+  if (!reading.libEnter) return;
+  reading.libEnter = false;
+  if (document.documentElement.dataset.nav === "book") return;
+  box.classList.remove("rd-enter");
+  void box.offsetWidth;
+  box.classList.add("rd-enter");
+  clearTimeout(rdLibEnter.t);
+  rdLibEnter.t = setTimeout(() => box.classList.remove("rd-enter"), 700);
+}
+/* Arrastar o EPUB (e o áudio) para a estante importa como o botão. Só no PC, que sabe o caminho do arquivo arrastado. */
+function rdDropZone(box) {
+  if (box.dataset.drop || !window.satzDesktop || !window.satzDesktop.importBookFiles) return;
+  box.dataset.drop = "1";
+  let depth = 0;
+  const isFiles = e => e.dataTransfer && [...e.dataTransfer.types].includes("Files");
+  const set = on => box.classList.toggle("rd-dropping", on);
+  box.addEventListener("dragenter", e => { if (!isFiles(e) || reading.book) return; e.preventDefault(); depth++; set(true); });
+  box.addEventListener("dragover", e => { if (!isFiles(e) || reading.book) return; e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+  box.addEventListener("dragleave", () => { depth = Math.max(0, depth - 1); if (!depth) set(false); });
+  box.addEventListener("drop", e => {
+    if (!isFiles(e) || reading.book) return;
+    e.preventDefault(); depth = 0; set(false);
+    const files = [...e.dataTransfer.files];
+    if (!files.some(f => /\.epub$/i.test(f.name))) { setStatus("Arraste o arquivo EPUB do livro (e, se tiver, o MP3 do audiolivro junto).", "info"); return; }
+    importBook(files);
+  });
+}
+/* Importa pelo seletor de arquivos ou, com files (arrastados), direto; enquanto isso, o lugar de importar mostra “Importando…”. */
+async function importBook(files) {
+  if (reading.importing) return;
+  const dropped = Array.isArray(files);
   try {
-    setStatus("Escolha o EPUB e o áudio. Se o áudio precisar de ajuste, a importação leva 1 a 2 minutos.", "info");
-    const b = await window.satzDesktop.importBook();
-    if (!b) return;
+    if (dropped) { reading.importing = true; renderLibrary(); }
+    else setStatus("Escolha o EPUB e o áudio. Se o áudio precisar de ajuste, a importação leva 1 a 2 minutos.", "info");
+    const b = dropped ? await window.satzDesktop.importBookFiles(files) : await window.satzDesktop.importBook();
+    reading.importing = false;
+    if (!b) { if (dropped) renderLibrary(); return; }
     setStatus("Livro importado: " + b.title + ".", "success");
     await renderLibrary();
+    rdFlashBook(b.id);
     if (b.audio && b.sync.state === "none") alignBook(b.id);
-  } catch (e) { setStatus(cleanIpcError(e, "Não consegui importar o livro."), "error"); }
+  } catch (e) { reading.importing = false; if (dropped) renderLibrary(); setStatus(cleanIpcError(e, "Não consegui importar o livro."), "error"); }
+}
+/* O livro que acabou de chegar entra na estante com um destaque breve (para o olho achar onde ele ficou). */
+function rdFlashBook(id) {
+  const el = document.querySelector("#readingLibrary .shelf-item [data-book=\"" + CSS.escape(id) + "\"]");
+  const item = el && el.closest(".shelf-item");
+  if (!item) return;
+  item.classList.add("just-added");
+  el.scrollIntoView({block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+  setTimeout(() => item.classList.remove("just-added"), 1600);
 }
 async function addBookAudio(id) {
   try { const b = await window.satzDesktop.addBookAudio(id); if (b) { await renderLibrary(); alignBook(id); } }
@@ -321,6 +537,13 @@ async function openBook(id, keepPlace, preloaded) {
   })));
   const starts = (book.sync && book.sync.starts) || {};
   reading.starts = reading.order.map(s => Number.isFinite(starts[s.id]) ? starts[s.id] : null);
+  // Fim da fala de cada frase (sinc v2). Sem ele, a frase vai até o início da seguinte.
+  const ends = (book.sync && book.sync.ends) || {};
+  reading.ends = reading.order.map(s => Number.isFinite(ends[s.id]) ? ends[s.id] : null);
+  // Tempo de cada palavra (palavras.json, quando o livro foi alinhado): [k, início, fim, ...] por frase.
+  const wt = (book.sync && book.sync.wt) || {};
+  reading.wt = reading.order.map(s => Array.isArray(wt[s.id]) ? wt[s.id] : null);
+  reading.lit = null;
   reading.wordCount = reading.articles = null;
   reading.audio = new Audio();
   reading.audio.preload = "metadata";
@@ -358,6 +581,7 @@ function closeBook() {
   saveBookPosition();
   stopReadingAudio();
   reading.book = null;
+  reading.shownCh = null;
   reading.cycle = null;
   reading.lookOpen = false;
   rdApplyFocus();
@@ -410,6 +634,8 @@ function renderBook() {
     })()),
     h("label", {class: "inline-check", title: "Liga com a mesma cor as partes do verbo que o alemão separa (habe … gesehen, weil … ist, ruft … an)"},
       h("input", {type: "checkbox", checked: readingState().bridges !== false, onchange: e => { saveReadingState({bridges: e.target.checked}); rdDrawBridges(reading.sel); }}), "Ponte do verbo na frase escolhida"),
+    reading.wt && reading.wt.some(Boolean) ? h("label", {class: "inline-check", title: "Enquanto o áudio toca, a palavra que está sendo dita fica marcada"},
+      h("input", {type: "checkbox", checked: readingState().wordLight !== false, onchange: e => { saveReadingState({wordLight: e.target.checked}); rdLightWord(-1); }}), "Acender a palavra falada") : null,
     h("label", {class: "inline-check", title: "Sublinhado em azul (der), vermelho (die) ou verde (das) nos substantivos"},
       h("input", {type: "checkbox", checked: !!readingState().gender, onchange: e => { saveReadingState({gender: e.target.checked}); renderBook(); }}), "Cor do gênero nos substantivos"),
     h("label", {class: "inline-check", title: "Pontilhado leve nas palavras que ainda não apareceram nos seus cartões; o texto vai clareando conforme você estuda"},
@@ -430,16 +656,19 @@ function renderBook() {
     h("button", {id: "rdPlay", class: "primary small", type: "button", title: "Ler acompanhando o áudio (Espaço)", onclick: toggleFollow}, iconText("play", "Ler ouvindo")),
     h("button", {class: "icon-btn", type: "button", title: "Próxima frase (→)", "aria-label": "Próxima frase", onclick: () => stepSentence(1)}, icon("skipFwd", 16)),
     h("button", {class: "icon-btn", type: "button", title: "Repetir a frase (R)", "aria-label": "Repetir a frase", onclick: () => reading.sel >= 0 && playSentence(reading.sel)}, icon("repeat", 16)),
-    speed);
+    speed,
+    // O progresso do capítulo também fica na pílula, que continua à vista quando a barra de cima some ao rolar.
+    phone ? null : h("span", {class: "rd-player-prog", "aria-hidden": "true"}, h("i", {class: "rd-prog-fill"})));
   const pickChip = reading.picking ? h("button", {class: "quiet small on", type: "button", title: "Parar de marcar a expressão", onclick: togglePick}, phone ? "✓ ✕" : "✓ Marcando expressão ✕") : null;
   const bar = phone
     ? h("div", {class: "reader-bar rd-bar-phone"},
       h("button", {class: "icon-btn quiet", type: "button", title: "Voltar à lista de livros", "aria-label": "Voltar à lista de livros", onclick: rdCloseBook}, "←"),
       chapterSelect, pickChip, lookWrap)
     : h("div", {class: "reader-bar"},
-      h("div", {class: "rd-nav"}, h("button", {class: "quiet small", type: "button", title: "Voltar à estante", onclick: rdCloseBook}, iconText("back", "Estante")), chapterSelect),
-      player, pickChip,
-      h("span", {class: "rd-progress", "aria-hidden": "true"}, h("i", {id: "rdProgress"})),
+      h("div", {class: "rd-nav"}, h("button", {class: "quiet small rd-back", type: "button", title: "Voltar à estante", onclick: rdCloseBook}, iconText("back", "Estante")),
+        h("span", {class: "rd-book-name", lang: "de", text: book.title}), chapterSelect),
+      pickChip,
+      h("span", {class: "rd-progress", "aria-hidden": "true"}, h("i", {id: "rdProgress", class: "rd-prog-fill"})),
       h("div", {class: "reader-controls rd-bar-end rd-tools"}, practiceBtn, savedBtn, lookWrap,
         h("button", {id: "rdFocusBtn", class: "icon-btn quiet", type: "button", title: reading.focus ? "Mostrar o menu do app (F)" : "Tela cheia de leitura (F)", "aria-label": "Tela cheia de leitura",
           onclick: () => rdSetFocus(!reading.focus)}, icon(reading.focus ? "minimize" : "maximize", 17))));
@@ -458,7 +687,7 @@ function renderBook() {
       const i = reading.byId.get(sid), s = reading.order[i];
       if (s.h) { text.append(h("h2", {class: "rd-h"}, sentenceNode(i))); continue; }
       // O primeiro parágrafo do capítulo ganha a capitular.
-      if (!para) { para = h("p", {class: "rd-p" + (text.querySelector(".rd-p") ? "" : " rd-first")}); text.append(para); } else para.append(" ");
+      if (!para) { para = h("p", {class: "rd-p" + (text.querySelector(".rd-p") || !/^\p{L}/u.test(s.text) ? "" : " rd-first")}); text.append(para); } else para.append(" ");
       para.append(sentenceNode(i));
       if ((reading.ptMode === "abaixo" || reading.ptMode === "toque") && notes && notes[s.id] && notes[s.id].pt)
         para.append(reading.ptMode === "toque" ? h("span", {class: "rd-pt fold", lang: "pt-BR"}, h("span", {text: notes[s.id].pt}))
@@ -474,15 +703,28 @@ function renderBook() {
   // Resumo do capítulo (anotação): para ler antes; já aberto no 1º passo do ouvir → ler → ouvir.
   const summary = book.notes && book.notes.c && book.notes.c[reading.ch];
   const summaryOpen = !!summary && (reading.summaryOpen === reading.ch || !!(reading.cycle && reading.cycle.step === 1));
+  const chips = rdChapterChips(summary, summaryOpen), summaryNode = summaryOpen ? h("div", {id: "rdSummary", class: "rd-summary panel", lang: "pt-BR"}, h("p", {text: summary})) : null;
+  if (chips) chips.lang = "pt-BR";
+  // No PC, o nome do livro vai para a barra e as etiquetas (Resumo, ciclo, %) viram o cabeçalho da própria página:
+  // uma camada só antes do texto. No ciclo ouvir → ler → ouvir o texto fica borrado, então elas ficam fora da página.
+  const inPaper = !phone && !reading.cycle;
+  if (inPaper && (chips || summaryNode)) text.prepend(...[chips, summaryNode].filter(Boolean));
+  chapterSelect.title = "Capítulo " + (reading.ch + 1) + " de " + book.chapters.length;
+  // Capítulo novo entra com um deslize curto; renderizar o mesmo capítulo de novo (ajustes, tradução) não anima.
+  const shown = book.id + ":" + reading.ch;
+  if (reading.shownCh !== shown) { if (reading.shownCh) text.classList.add("rd-enter"); reading.shownCh = shown; }
   fill($("readingBook"),
-    h("div", {class: "reader-head"}, h("p", {class: "label"}, h("span", {lang: "de", text: book.title}), ", capítulo " + (reading.ch + 1) + " de " + book.chapters.length)),
+    phone ? h("div", {class: "reader-head"}, h("p", {class: "label"}, h("span", {lang: "de", text: book.title}), ", capítulo " + (reading.ch + 1) + " de " + book.chapters.length)) : null,
     bar,
     warn ? h("p", {class: "notice warn", text: warn}) : null,
-    rdChapterChips(summary, summaryOpen),
-    summaryOpen ? h("div", {id: "rdSummary", class: "rd-summary panel"}, h("p", {text: summary})) : null,
+    inPaper ? null : chips,
+    inPaper ? null : summaryNode,
     reading.cycle && typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
-    h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel" + (phone ? " rd-sheet " + (reading.sheet === "full" ? "full" : "peek") : ""), hidden: reading.flow || (phone && !reading.sheet)}, detailPlaceholder())),
-    phone ? player : null);
+    // O player fica embaixo do texto: no PC, uma pílula que acompanha a rolagem; no celular, a faixa fixa do polegar.
+    h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel" + (phone ? " rd-sheet " + (reading.sheet === "full" ? "full" : "peek") : " rd-detail-empty"), hidden: reading.flow || (phone && !reading.sheet)}, detailPlaceholder()),
+      // No PC a pílula fica numa faixa que acompanha a rolagem e esmaece o texto embaixo dela (nunca corta uma linha seca).
+      phone ? player : h("div", {class: "rd-dock"}, player)));
+  rdCheckDropCap(text);
   if (reading.sel >= a && reading.sel <= b) { highlightSentence(reading.sel); renderDetail(); }
   updateReaderControls();
   rdApplyFocus();
@@ -490,10 +732,23 @@ function renderBook() {
   rdWatchBar();
   document.body.classList.remove("rd-bar-up");
 }
+/* A capitular só fica quando o 1º parágrafo (ou a 1ª frase, na tradução de apoio) tem 2+ linhas para abraçá-la; com 1 linha ela invadia o que vem depois
+   (o CSS ainda põe clear: left no seguinte, para o caso de a letra mudar de tamanho depois). Sem layout (tela escondida), mantém. */
+function rdCheckDropCap(text) {
+  const p = text.querySelector(".rd-p.rd-first");
+  if (!p || typeof document.createRange !== "function") return;
+  // Com a tradução de apoio, cada frase é seguida de um bloco (fecha a linha): só a 1ª frase fica ao lado da letra.
+  const first = p.querySelector(".rd-s"), alone = first && first.nextElementSibling && first.nextElementSibling.classList.contains("fold");
+  const r = document.createRange(); r.selectNodeContents(alone ? first : p);
+  // A própria capitular é um retângulo bem mais alto: fica de fora da contagem das linhas.
+  const rects = [...r.getClientRects()].filter(x => x.width > 1), low = Math.min(...rects.map(x => x.height));
+  const tops = rects.filter(x => x.height < low * 1.6).map(x => x.top);
+  if (tops.length && Math.max(...tops) - Math.min(...tops) < 10) p.classList.remove("rd-first");
+}
 /* Linha curta antes do texto: resumo do capítulo, ouvir → ler → ouvir e a dificuldade (explicação no título). */
 function rdChapterChips(summary, summaryOpen) {
   const chips = [
-    summary ? h("button", {id: "rdSummaryBtn", class: "chip small" + (summaryOpen ? " on" : ""), type: "button", "aria-expanded": String(summaryOpen), title: "Resumo do capítulo, para ler antes",
+    summary ? h("button", {id: "rdSummaryBtn", class: "chip small" + (summaryOpen ? " on" : ""), type: "button", "aria-expanded": String(summaryOpen), title: "Resumo do capítulo (conta o que acontece: melhor depois de ler)",
       onclick: () => { reading.summaryOpen = summaryOpen ? null : reading.ch; renderBook(); }}, iconText("bookOpen", "Resumo", 15)) : null,
     !reading.cycle && hasSync() && typeof rdCycleStart === "function" ? h("button", {class: "chip small", type: "button", title: "Ouvir o capítulo sem texto, ler com apoio e ouvir de novo", onclick: rdCycleStart}, iconText("repeat", "Ouvir → ler → ouvir", 15)) : null,
     typeof rdDifficultyNode === "function" ? rdDifficultyNode(true) : null].filter(Boolean);
@@ -607,8 +862,9 @@ function sentenceNode(i) {
   }
   return span;
 }
+/* Painel vazio: um convite curto, sem cartão (o cartão aparece no 1º toque; gestos e teclas ficam no Aa). */
 function detailPlaceholder() {
-  return h("p", {class: "muted small-text", text: "Toque numa palavra: a frase toca uma vez e aqui aparecem a palavra, a frase e a gramática. Outras palavras da mesma frase não repetem o áudio; para ouvir de novo, toque no espaço entre as palavras, em “Ouvir” ou aperte R. Teclado: Espaço lê ouvindo, ← → trocam de frase, D devagar, T mostra a tradução, F tela cheia."});
+  return h("p", {class: "rd-empty-hint", text: "Toque em qualquer palavra para ver o sentido, ouvir a frase e a gramática."});
 }
 /* Clique no texto: palavra da frase que já está escolhida só mostra a palavra (não relê a frase);
    frase nova toca o trecho; clique fora das palavras (espaço, pontuação) repete a frase.
@@ -649,9 +905,18 @@ function selectSentence(i, word, k = -1) {
   saveBookPosition();
 }
 function highlightSentence(i) {
+  const prev = document.querySelector("#rdText .rd-s.on");
   for (const el of all("#rdText .rd-s.on")) el.classList.remove("on");
   const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]');
-  if (el) el.classList.add("on");
+  // A tradução de apoio da frase anterior vai se fechar: se ela está acima da nova, a nova sobe a altura dela,
+  // e o destaque tem de pousar já no lugar final (antes ele pousava mais baixo e só depois a frase subia).
+  const oldFold = document.querySelector("#rdText .rd-pt.fold.open");
+  let dy = 0;
+  if (el && oldFold && (oldFold.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+    const cs = getComputedStyle(oldFold);
+    dy = oldFold.getBoundingClientRect().height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+  }
+  if (el) { if (prev && prev !== el) rdSlideMark(prev, el, dy); el.classList.add("on"); }
   for (const el2 of all("#rdText .rd-w.on, #rdText .rd-w.pick")) el2.classList.remove("on", "pick");
   if (!el) return;
   const ws = [...el.querySelectorAll(".rd-w")];
@@ -665,8 +930,27 @@ function highlightSentence(i) {
   if (fold && fold.classList.contains("fold")) fold.classList.add("open");
   if (typeof rdDrawBridges === "function") rdDrawBridges(i);
   if (typeof rdWatchSelection === "function") rdWatchSelection(el);
-  const prog = $("rdProgress");
-  if (prog) { const [a, b] = chapterRange(reading.ch); setWidth(prog, a < 0 ? 0 : (i - a + 1) / Math.max(1, b - a + 1) * 100); }
+  const [pa, pb] = chapterRange(reading.ch);
+  for (const prog of all(".rd-prog-fill")) setWidth(prog, pa < 0 ? 0 : (i - pa + 1) / Math.max(1, pb - pa + 1) * 100);
+}
+/* O destaque desliza da frase anterior para a nova (só a 1ª linha de cada uma, ~220 ms) e some quando o fundo da nova
+   já apareceu. Sem animação com “reduzir movimento”, com a janela escondida ou se as frases estão longe na tela. */
+function rdSlideMark(from, to, dy = 0) {
+  if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (document.hidden || typeof Element === "undefined" || !Element.prototype.animate) return;
+  const host = $("rdText"), a = from.getClientRects()[0], b0 = to.getClientRects()[0];
+  const b = b0 && dy ? {left: b0.left, top: b0.top - dy, width: b0.width, height: b0.height} : b0;
+  if (!host || !a || !b || Math.abs(a.top - b.top) > window.innerHeight * .6) return;
+  // Fica dentro do texto, atrás das letras (o #rdText isola o empilhamento), e acompanha a rolagem.
+  const c = host.getBoundingClientRect(), ghost = h("div", {class: "rd-mark-ghost", "aria-hidden": "true"});
+  host.append(ghost);
+  const box = r => ({left: (r.left - c.left) + "px", top: (r.top - c.top) + "px", width: r.width + "px", height: r.height + "px"});
+  Object.assign(ghost.style, box(a));
+  const anim = ghost.animate([{...box(a), opacity: 1}, {...box(b), opacity: 1, offset: .75}, {...box(b), opacity: 0}],
+    {duration: 300, easing: "cubic-bezier(.25, .1, .25, 1)"});
+  const done = () => ghost.remove();
+  anim.onfinish = done; anim.oncancel = done;
+  setTimeout(done, 600);
 }
 /* Modo contínuo: consulta rápida num balão ao lado da palavra, sem painel lateral e sem mexer na rolagem. */
 function showReaderPop(anchor) {
@@ -773,20 +1057,45 @@ function wordCard(word, i, wk) {
       h("b", {class: "rd-word-form" + (occ && occ.gen ? " g-" + occ.gen : ""), lang: "de", text: word}),
       h("div", {class: "rd-word-acts"},
         h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(word)}, icon("volume", 18)),
-        typeof saveWordButton === "function" ? saveWordButton(word) : null)),
+        typeof saveWordButton === "function" ? saveWordButton(word, i, wk) : null)),
     meaning ? h("p", {class: "rd-meaning", text: meaning}) : h("p", {class: "muted small-text", text: pending ? "Analisando o sentido nesta frase…" : "Sem o sentido desta palavra ainda."}),
     parts.length ? h("p", {class: "rd-word-sum"}, parts.flatMap((p, n) => n ? [", ", p] : [p])) : null,
     known ? h("p", {class: "rd-known", text: "Você já estudou esta palavra nos cartões."}) : null,
     h("details", {class: "rd-more"}, h("summary", null, "Mais sobre “", h("span", {lang: "de", text: word}), "”"), wordDetail(word, i, wk, true)));
 }
 /* Palavras da frase que a dica cita: verbo separável (as duas partes) e trechos entre aspas que existem na frase. */
-function rdTipWords(i, tip) {
+/* Palavras que a caneta âmbar marca: as citadas entre aspas na dica; sem citação e com a dica vinda do tópico (`topics`),
+   as que a regra do exercício muda para estragar a frase (`rdRuleWords`). Com a ponte do verbo ligada, as palavras da ponte
+   ficam só com a cor dela (arco = estrutura do verbo, âmbar = ponto da dica); sem a ponte, o separável ganha a caneta. */
+function rdTipWords(i, tip, topics = []) {
   const s = reading.order[i], {words} = sentenceTokens(s.text), ks = new Set(), low = words.map(w => String(w).toLocaleLowerCase("de"));
   for (const m of String(tip || "").matchAll(/["“„'‘]([^"”“'’]{1,40})["”“'’]/g))
     for (const piece of m[1].split(/\s+|…|\.\.\./)) { const k = low.indexOf(piece.toLocaleLowerCase("de")); if (piece && k >= 0) ks.add(k); }
+  if (!ks.size) for (const id of topics.slice(0, 2)) { const r = rdRuleWords(s.text, id); if (r.size) { r.forEach(k => ks.add(k)); break; } }
   const notesW = reading.book.notes && reading.book.notes.w;
-  for (let k = 0; k < words.length; k++) { const sep = sepParticle(s.text, k, notesW); if (sep) { ks.add(k); ks.add(sep.k); break; } }
+  if (readingState().bridges !== false && typeof rdVerbBridges === "function") {
+    for (const b of rdVerbBridges(s.text, notesW)) for (const k of [b.a, b.b, b.c, ...(b.m || [])]) ks.delete(k);
+  } else for (let k = 0; k < words.length; k++) { const sep = sepParticle(s.text, k, notesW); if (sep) { ks.add(k); ks.add(sep.k); break; } }
   return ks;
+}
+/* Onde a regra do tópico está na frase, por regra: o exercício “Escolha a forma” estraga a frase só na parte da regra
+   (formItem); as palavras que mudaram são o lugar. Sem regra que consiga estragar a frase, nada é marcado (marcar a
+   palavra errada seria pior). Devolve índices de `sentenceTokens().words`. */
+function rdRuleWords(text, id) {
+  const out = new Set();
+  if (typeof formItem !== "function" || typeof exTokens !== "function") return out;
+  let it = null;
+  try { it = formItem({frase: text}, id); } catch (e) { it = null; }
+  if (!it || !it.wrong) return out;
+  const toks = exTokens(text), wr = exTokens(it.wrong), mark = new Set();
+  if (wr.length === toks.length) toks.forEach((x, k) => { if (x !== wr[k]) mark.add(k); });
+  else { const rest = [...wr]; toks.forEach((x, k) => { const j = rest.indexOf(x); if (j >= 0) rest.splice(j, 1); else mark.add(k); }); }
+  if (!mark.size || mark.size > 3) return out;
+  // Pedaço separado por espaço → palavras do texto („Was = uma palavra; Pelz-Schal pode dar duas).
+  let w = 0;
+  toks.forEach((x, k) => { const n = sentenceTokens(x).words.length; if (mark.has(k)) for (let q = 0; q < n; q++) out.add(w + q); w += n; });
+  if (w !== sentenceTokens(text).words.length) out.clear();
+  return out;
 }
 /* Marca-texto nas palavras da dica: a caneta passa palavra por palavra (--tip-d), só quando a marca muda; clicar noutra palavra da mesma frase não repete. */
 let rdTipLast = "";
@@ -798,7 +1107,7 @@ function rdMarkTip(i, ks) {
   const el = document.querySelector('#rdText .rd-s[data-i="' + i + '"]');
   if (!el) return;
   let n = 0;
-  for (const w of el.querySelectorAll(".rd-w")) if (ks.has(Number(w.dataset.k))) { w.style.setProperty("--tip-d", (120 + n++ * 110) + "ms"); w.classList.add("tip"); }
+  for (const w of el.querySelectorAll(".rd-w")) if (ks.has(Number(w.dataset.k))) { w.style.setProperty("--tip-d", (260 + n++ * 120) + "ms"); w.classList.add("tip"); }
 }
 function wordDetail(word, i = reading.sel, wk = reading.wk, inner = false) {
   bookWordStats();
@@ -810,7 +1119,7 @@ function wordDetail(word, i = reading.sel, wk = reading.wk, inner = false) {
   return h("section", {class: "rd-word"},
     inner ? null : h("div", {class: "row between"}, h("b", {class: "rd-word-form", lang: "de", text: word}),
       h("div", {class: "row"}, h("button", {class: "icon-btn", type: "button", title: "Ouvir a palavra", "aria-label": "Ouvir a palavra", onclick: () => speak(word)}, icon("volume", 18)),
-        typeof saveWordButton === "function" ? saveWordButton(word) : null)),
+        typeof saveWordButton === "function" ? saveWordButton(word, i, wk) : null)),
     typeof occurrenceBlock === "function" ? occurrenceBlock(i, wk, word) : null,
     entry ? h("p", {class: "small-text"}, h("span", {class: "muted", text: "Dicionário do livro: "}), h("span", {lang: "de", class: "rd-lemma", text: entry[0]}), entry[1] ? h("span", {class: "muted", text: " · " + entry[1]}) : null) : null,
     entry && entry[2] ? h("p", {class: "small-text", text: entry[2]}) : null,
@@ -828,9 +1137,18 @@ function bookGrammar(i) {
     "komparativ", "adjektiv", "possessiv", "konnektoren", "negacao", "falsos", "richtung", "praepdat", "praepakk", "uhrzeit", "perspron", "vokalwechsel", "plural", "man", "janeindoch", "praesens", "verbpaare", "zeitpraep", "demonstr", "wortbildung", "partikeln", "konj2irreal", "praetall", "ohnezu", "werden3", "adjsubst"];
   return topicsFor(pseudo).filter(id => id !== "genero").sort((a, b) => priority.indexOf(a) - priority.indexOf(b)).slice(0, 3);
 }
+function rdPanelSwap(box) {
+  if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  box.classList.remove("rd-swap");
+  void box.offsetWidth;
+  box.classList.add("rd-swap");
+  clearTimeout(rdPanelSwap.t);
+  rdPanelSwap.t = setTimeout(() => box.classList.remove("rd-swap"), 260);
+}
 function renderDetail() {
   const box = $("rdDetail");
   if (!box || reading.sel < 0) return;
+  box.classList.remove("rd-detail-empty");
   const i = reading.sel, s = reading.order[i], note = reading.book.notes && reading.book.notes.s && reading.book.notes.s[s.id];
   const topics = note && Array.isArray(note.t) && note.t.length ? note.t.filter(id => GRAMMAR_BY_ID.has(id)) : bookGrammar(i);
   const picked = (reading.pick || []).length, full = rdPanelFull();
@@ -844,6 +1162,10 @@ function renderDetail() {
     toast("Rascunho criado em Minhas frases: confira e salve lá.", "success");
   }}, full ? "Criar cartão" : iconText("plus", "Criar cartão"));
   const copyBtn = h("button", {class: "quiet small", type: "button", onclick: () => copySentence(s.text)}, "Copiar");
+  // Frase nova: o conteúdo entra com um fade curto; a mesma frase (explicação que chegou, palavra trocada) só se atualiza.
+  const changed = box.dataset.sel !== String(i);
+  box.dataset.sel = String(i);
+  if (changed) rdPanelSwap(box);
   fill(box, rdSheetHead(),
     picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null,
     // Painel simples: o que a frase diz e o que fazer com ela vêm primeiro; a gramática fica num bloco à parte, mais discreto.
@@ -871,7 +1193,7 @@ function renderDetail() {
         ...topics.map(id => { const t = GRAMMAR_BY_ID.get(id); return h("div", {class: "rd-topic"},
           h("button", {class: "chip chip-grammar small", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", t.title, 15)), h("p", {class: "muted small-text", text: t.short})); }))
         : h("p", {class: "muted small-text", text: note ? "" : "Sem ponto de gramática destacado nesta frase."})));
-  rdMarkTip(i, tip ? rdTipWords(i, tip) : new Set());
+  rdMarkTip(i, tip ? rdTipWords(i, tip, note && note.g ? [] : topics) : new Set());
   if (typeof rdAwayUpdate === "function") rdAwayUpdate();
 }
 async function copySentence(text) {
@@ -903,23 +1225,46 @@ function rdNowMs() {
   return a.currentTime * 1000 + (parts && reading.partIdx >= 0 ? parts[reading.partIdx].start : 0);
 }
 function sentenceEnd(i) {
+  const next = rdNextStart(i), end = reading.ends && reading.ends[i];
+  // Com o fim da própria fala, um pouco de folga para a última sílaba, sem entrar na frase seguinte.
+  if (end != null && end > reading.starts[i]) return Math.min(end + 250, next == null ? Infinity : next - 20);
+  return next == null ? reading.starts[i] + 8000 : next - 60;
+}
+/* Onde o áudio da frase começa: um pouco antes da voz, sem pegar o fim da frase anterior. */
+function rdFrom(i) {
+  const prevEnd = i > 0 && reading.ends ? reading.ends[i - 1] : null;
+  const lead = prevEnd != null && prevEnd < reading.starts[i] ? Math.min(150, Math.max(0, reading.starts[i] - prevEnd - 30)) : 150;
+  return Math.max(0, reading.starts[i] - lead);
+}
+function rdNextStart(i) {
   for (let k = i + 1; k < reading.starts.length; k++) if (reading.starts[k] != null && reading.starts[k] > reading.starts[i]) return reading.starts[k];
-  return reading.starts[i] + 8000;
+  return null;
 }
 function playSentence(i, slow) {
   if (!hasSync() || reading.starts[i] == null) { if (reading.book && !hasSync()) setStatus("Sincronize o áudio do livro para ouvir frase por frase.", "info"); return; }
   stopAudio();
   const a = reading.audio;
   reading.follow = false;
-  const playing = reading.playing = {i, end: sentenceEnd(i) - 60};
+  const playing = reading.playing = {i, end: sentenceEnd(i)};
   if (reading.sel !== i) { reading.sel = i; highlightSentence(i); renderDetail(); }
-  rdSeek(Math.max(0, reading.starts[i] - 150)).then(() => {
+  rdSeek(rdFrom(i)).then(() => {
     if (reading.playing !== playing) return;
     a.playbackRate = reading.rate * (slow ? .75 : 1);
     a.play().catch(() => {});
     tickReading();
+    rdStopGuard(playing);
     updateReaderControls();
   });
+}
+/* Para no fim da frase também por relógio: o laço de animação (tickReading) fica lento quando a janela está coberta
+   ou sem foco, e a frase seguinte começava a tocar (medido: até 0,8 s a mais). */
+function rdStopGuard(playing) {
+  clearTimeout(reading.stopTimer);
+  const a = reading.audio;
+  if (reading.playing !== playing || !a || a.paused) return;
+  const left = (playing.end - rdNowMs()) / (a.playbackRate || 1);
+  if (left <= 12) { a.pause(); reading.playing = null; updateReaderControls(); return; }
+  reading.stopTimer = setTimeout(() => rdStopGuard(playing), left > 400 ? left - 200 : Math.max(8, left - 10));
 }
 function currentSentenceAt(ms) {
   let lo = 0, hi = reading.starts.length - 1, ans = -1;
@@ -933,7 +1278,7 @@ function tickReading() {
   cancelAnimationFrame(reading.raf);
   const loop = () => {
     const a = reading.audio;
-    if (!a || a.paused) { updateReaderControls(); return; }
+    if (!a || a.paused) { rdLightWord(-1); updateReaderControls(); return; }
     const ms = rdNowMs();
     if (reading.follow) {
       const i = currentSentenceAt(ms);
@@ -949,7 +1294,8 @@ function tickReading() {
         scrollToSentence(i);
         saveBookPosition();
       }
-    } else if (reading.playing && ms >= reading.playing.end) { a.pause(); reading.playing = null; updateReaderControls(); return; }
+    } else if (reading.playing && ms >= reading.playing.end) { a.pause(); reading.playing = null; rdLightWord(-1); updateReaderControls(); return; }
+    rdLightWord(reading.follow ? reading.sel : reading.playing ? reading.playing.i : -1, ms);
     reading.raf = requestAnimationFrame(loop);
   };
   reading.raf = requestAnimationFrame(loop);
@@ -967,7 +1313,7 @@ function toggleFollow() {
   reading.playing = null;
   if (reading.sel !== i) { reading.sel = i; highlightSentence(i); renderDetail(); }
   updateReaderControls();
-  return rdSeek(Math.max(0, reading.starts[i] - 150)).then(() => {
+  return rdSeek(rdFrom(i)).then(() => {
     if (!reading.follow) return;
     a.playbackRate = reading.rate;
     a.play().catch(() => {});
@@ -982,10 +1328,31 @@ function stepSentence(delta) {
   reading.word = "";
   selectSentence(next, "");
   scrollToSentence(next);
-  if (reading.follow && reading.audio && !reading.audio.paused) { const a = reading.audio; rdSeek(Math.max(0, reading.starts[next] - 150)).then(() => { if (reading.follow && a.paused) a.play().catch(() => {}); }); }
+  if (reading.follow && reading.audio && !reading.audio.paused) { const a = reading.audio; rdSeek(rdFrom(next)).then(() => { if (reading.follow && a.paused) a.play().catch(() => {}); }); }
   else if (reading.clickPlays) playSentence(next);
 }
+/* Palavra falada agora na frase i (índice k do data-k) ou -1. Acende 60 ms antes do início medido (o alinhador
+   começa em média ~50 ms depois da voz) e apaga 250 ms depois do fim da última palavra. */
+function rdSpokenWord(i, ms) {
+  const row = reading.wt && reading.wt[i];
+  if (!row) return -1;
+  let n = -3;
+  while (n + 3 < row.length && row[n + 4] <= ms + 60) n += 3;
+  if (n < 0 || (n + 3 >= row.length && row[n + 2] + 250 < ms)) return -1;
+  return row[n];
+}
+function rdLightWord(i, ms) {
+  const cyc = reading.cycle && reading.cycle.step !== 2; // texto borrado no ciclo: acender entregaria a palavra
+  const k = i >= 0 && !cyc && readingState().wordLight !== false ? rdSpokenWord(i, ms) : -1;
+  const lit = reading.lit;
+  if (lit && lit.i === i && lit.k === k && (!lit.el || lit.el.isConnected)) return;
+  if (lit && lit.el) lit.el.classList.remove("spoken");
+  const el = k >= 0 ? document.querySelector("#rdText .rd-s[data-i=\"" + i + "\"] .rd-w[data-k=\"" + k + "\"]") : null;
+  if (el) el.classList.add("spoken");
+  reading.lit = {i, k, el};
+}
 function stopReadingAudio() {
+  rdLightWord(-1);
   cancelAnimationFrame(reading.raf);
   if (reading.audio) reading.audio.pause();
   reading.follow = false;
@@ -1008,7 +1375,8 @@ function markChapterRead() {
   setStatus("Capítulo " + (reading.ch + 1) + " marcado como lido.", "success");
 }
 function readingKey(e) {
-  if (!reading.book || $("readingBook").hidden) return false;
+  if (!reading.book) return reading.view === "review" && typeof bookPracticeKey === "function" ? bookPracticeKey(e) : false;
+  if ($("readingBook").hidden) return false;
   if (reading.view !== "text") return typeof bookPracticeKey === "function" ? bookPracticeKey(e) : false;
   if (e.key === "Escape" && reading.lookOpen) { e.preventDefault(); rdToggleLook(false); return true; }
   if (e.key === "Escape" && (document.getElementById("rdPop") || (reading.pick || []).length)) {

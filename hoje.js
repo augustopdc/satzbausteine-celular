@@ -3,7 +3,7 @@
    Tudo é calculado por regra a partir do progresso; nada aqui grava dados. */
 const HOJE_NAME = "Luiz";
 const HOJE_READ_MIN = 10, HOJE_DIARY_MIN = 3;
-const hoje = {seenIncomplete: false, routeDone: null};
+const hoje = {seenIncomplete: false, routeDone: null, last: null};
 const SVG_NS = "http://www.w3.org/2000/svg";
 function svgEl(tag, attrs = {}) {
   const el = document.createElementNS(SVG_NS, tag);
@@ -25,10 +25,16 @@ function hojeRoute(load) {
   const readMin = Math.floor(hojeReadMs() / 60000), diary = hojeDiaryDone();
   const cardsMin = total ? Math.max(1, Math.ceil(total * averageSeconds() / 60)) : 0;
   const doneMin = Math.round((stats.ms || 0) / 60000);
+  // Palavras guardadas nos livros: só aparece quando há vencidas ou quando já revisou hoje (~10 s por palavra).
+  const bw = typeof bwInfo === "function" ? bwInfo() : null, bwRun = bw ? Math.min(bw.due, BW_RUN_MAX) : 0, bwMin = bwRun ? Math.max(1, Math.ceil(bwRun * 10 / 60)) : 0;
+  const words = bw && (bw.due || bw.today) ? [{id: "bookwords", title: "Palavras dos livros", done: !bw.due, optional: rest, min: bwMin,
+    meta: bw.due ? plural(bw.due, "palavra para revisar", "palavras para revisar") : plural(bw.today, "revisada hoje", "revisadas hoje"),
+    time: bw.due ? "~" + bwMin + " min" : ""}] : [];
   return [
     {id: "cards", title: "Cartões", done: !total, min: cardsMin,
       meta: total ? plural(load.dueProd + load.dueListen, "revisão", "revisões") + " e " + plural(load.fresh, "nova", "novas") : stats.reviews ? plural(stats.reviews, "avaliação", "avaliações") + " hoje" : "Nada pendente",
       time: total ? "~" + cardsMin + " min" : doneMin ? doneMin + " min" : ""},
+    ...words,
     {id: "reading", title: "Leitura com áudio", done: readMin >= HOJE_READ_MIN, optional: rest, min: Math.max(0, HOJE_READ_MIN - readMin),
       meta: rest && !readMin ? "Opcional hoje" : readMin ? readMin + " de " + HOJE_READ_MIN + " min" : HOJE_READ_MIN + " min de livro",
       progress: Math.min(1, readMin / HOJE_READ_MIN), time: readMin >= HOJE_READ_MIN ? readMin + " min" : HOJE_READ_MIN - readMin + " min"},
@@ -47,23 +53,33 @@ function hojeMinutes(load, items) {
 function hojeGo(id) {
   if (id === "cards") { $("homeProduction").click(); return; }
   if (id === "reading") { navGo("reading"); return; }
+  if (id === "bookwords") { reading.pendingReview = true; navGo("reading"); return; }
   if (id === "diary") { Object.assign(escrita, {view: "editor", spec: escritaDiarySpec()}); navGo("escrita"); }
 }
 
-/* O anel enche a partir do valor anterior (na primeira vez, do zero) e o número conta até o valor novo. */
+/* O anel enche a partir do valor anterior (na primeira vez, do zero) e o número conta até o valor novo.
+   O svg é criado uma vez e só o traço muda: redesenhar a tela não reinicia a animação; sem mudança, nada se mexe. */
 function hojeRing(box, m) {
   const r = 54, c = 2 * Math.PI * r, pct = m.complete ? 1 : Math.min(1, m.goal ? m.done / m.goal : 0);
   const prev = Number(box.dataset.pct || 0), prevDone = Number(box.dataset.done || 0), still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const dash = p => (c * p).toFixed(1) + " " + c.toFixed(1);
-  const svg = svgEl("svg", {viewBox: "0 0 132 132", width: 132, height: 132, "aria-hidden": "true"});
-  const bar = svgEl("circle", {cx: 66, cy: 66, r, class: "ring-bar" + (pct > 0 || prev > 0 ? "" : " empty"), "stroke-dasharray": dash(still ? pct : prev), transform: "rotate(-90 66 66)"});
-  svg.append(svgEl("circle", {cx: 66, cy: 66, r, class: "ring-track"}), bar);
+  let svg = box.querySelector("svg"), bar = svg && svg.querySelector(".ring-bar");
+  if (!bar) {
+    svg = svgEl("svg", {viewBox: "0 0 132 132", width: 132, height: 132, "aria-hidden": "true"});
+    bar = svgEl("circle", {cx: 66, cy: 66, r, class: "ring-bar", "stroke-dasharray": dash(still ? pct : prev), transform: "rotate(-90 66 66)"});
+    svg.append(svgEl("circle", {cx: 66, cy: 66, r, class: "ring-track"}), bar);
+  }
+  bar.classList.toggle("empty", pct === 0 && prev === 0);
   const num = h("b", {text: still ? m.done : prevDone});
-  fill(box, svg, h("div", {class: "ring-center"}, m.complete ? icon("check", 34) : num, h("span", {text: m.complete ? "meta cumprida" : "de " + m.goal + " min"})));
+  const center = h("div", {class: "ring-center"}, m.complete ? icon("check", 34) : num, h("span", {text: m.complete ? "meta cumprida" : "de " + m.goal + " min"}));
+  if (svg.parentNode === box) box.querySelector(".ring-center").replaceWith(center);
+  else fill(box, svg, center);
   box.dataset.pct = pct;
   box.dataset.done = m.done;
-  if (!still) {
-    requestAnimationFrame(() => requestAnimationFrame(() => { bar.setAttribute("stroke-dasharray", dash(pct)); if (pct > 0) bar.classList.remove("empty"); }));
+  if (still) bar.setAttribute("stroke-dasharray", dash(pct));
+  else {
+    if (pct !== prev || !box.dataset.drawn) requestAnimationFrame(() => requestAnimationFrame(() => { bar.setAttribute("stroke-dasharray", dash(pct)); if (pct > 0) bar.classList.remove("empty"); }));
+    box.dataset.drawn = "1";
     if (!m.complete && m.done !== prevDone) {
       const t0 = performance.now(), from = prevDone, to = m.done;
       const step = now => { const k = Math.min(1, (now - t0) / 700), e = 1 - Math.pow(1 - k, 3); num.textContent = Math.round(from + (to - from) * e); if (k < 1) requestAnimationFrame(step); };
@@ -148,7 +164,7 @@ function hojeTiles() {
   const trail = h("div", {class: "trail"}, LEVELS.map((l, i) => {
     const seg = h("span", {class: "trail-seg"}, h("i"));
     setWidth(seg.firstChild, i < li ? 100 : i === li ? lv.pct : 0);
-    return h("span", {class: "trail-step"}, seg, h("small", {text: l === "B2" ? "B2 · FSP" : l}));
+    return h("span", {class: "trail-step" + (i < li ? " past" : i === li ? " now" : "")}, seg, h("small", {text: l === "B2" ? "B2 · FSP" : l}));
   }));
   const b2 = daysUntil(plan.b2), move = daysUntil(plan.move);
   const learned = cards.filter(studied).length, acc = accuracy30();
@@ -157,7 +173,7 @@ function hojeTiles() {
   const trend = rates.length >= 2 ? Math.round((rates[rates.length - 1] - rates[0]) / Math.max(.1, rates[0]) * 100) : null;
   return [
     hojeTile("flame", "Sequência", String(st), st === 1 ? "dia" : "dias", week, best > st ? "Recorde: " + best + " dias. Plantão não quebra a sequência." : "Plantão não quebra a sequência.", "warm"),
-    hojeTile("target", "Rumo à Approbation", lv.level, lv.pct + "% dominado", trail,
+    hojeTile("target", "Rumo à Approbation", lv.level, lv.pct + "% das frases firmes", trail,
       (b2 > 0 ? "B2 em " + formatDate(plan.b2, {month: "long", year: "numeric"}) : "Meta do B2 no Meu plano") + (move > 0 ? ", mudança em " + move.toLocaleString("pt-BR") + " dias." : ".")),
     hojeTile("book", "Aprendidas", learned.toLocaleString("pt-BR"), learned === 1 ? "frase" : "frases", null,
       acc.pct == null ? "Sem avaliações nos últimos 30 dias" : acc.pct + "% de acerto em 30 dias (" + plural(acc.reviews, "avaliação", "avaliações") + ")"),
@@ -168,6 +184,21 @@ function hojeTiles() {
   ];
 }
 
+/* “Agora há pouco”: depois de um treino (até 2 h, no mesmo dia), a Hoje diz o que foi feito antes do próximo passo.
+   No plantão, com tempo escolhido, diz também que a sugestão já cabe nesse tempo. */
+function hojeLastLine(load, next) {
+  let el = $("heroLast");
+  if (!el) {
+    el = h("p", {id: "heroLast", class: "hero-last", "aria-live": "polite"});
+    $("heroNext").parentNode.prepend(el);
+  }
+  const l = hoje.last, fresh = l && l.day === dateKey() && Date.now() - l.at < 2 * 3600e3 && (l.reviews || l.fresh);
+  el.hidden = !fresh;
+  if (fresh) fill(el, icon("check", 14), "Agora há pouco: " + sessionDoneText(l.reviews, l.fresh) + " em " + Math.max(1, Math.round(l.secs / 60)) + " min" + (l.left ? ". Ficou para depois: " + plural(l.left, "cartão", "cartões") + "." : "."));
+  const note = $("heroEta");
+  if (load.budget && next && next.id === "cards" && (load.plan.type === "plantao" || load.plan.type === "pos"))
+    note.textContent = "Cabe nos " + load.budget + " min que você tem hoje: as revisões mais urgentes primeiro.";
+}
 /* Monta a tela Hoje (chamado pelo renderHome do app.js, que cuida do resto: calendário, previsão, avisos). */
 function renderHoje(load) {
   const items = hojeRoute(load), next = hojeNext(items), m = hojeMinutes(load, items);
@@ -186,19 +217,33 @@ function renderHoje(load) {
   $("heroNext").textContent = !next ? "Tudo feito por hoje"
     : next.id === "cards" ? (total === 1 ? "1 cartão para hoje" : total + " cartões para hoje")
     : next.id === "reading" ? "Leitura com áudio, mais " + next.min + " min"
+    : next.id === "bookwords" ? "Palavras dos livros: " + next.meta
     : "Diário: 3 frases sobre o seu dia";
   $("heroDue").textContent = load.dueProd;
   $("heroNew").textContent = load.fresh;
   $("heroListen").textContent = load.dueListen;
   document.querySelector("#hero .hero-split").hidden = true; // o detalhe fica no roteiro
-  $("heroEta").textContent = total ? "Cerca de " + Math.max(1, Math.ceil(total * averageSeconds() / 60)) + " min de cartões"
+  $("heroEta").textContent = total ? "Produção: você lê a situação em português e fala em alemão."
     : next ? "Cartões em dia." : restrictedToday(load.plan) ? "Nada mais para hoje. Descanse." : "Se quiser mais: um molde, uma cena ou frases novas.";
   const cardsNext = next && next.id === "cards";
   const nextBtn = $("homeNext");
   nextBtn.hidden = !next || cardsNext;
-  if (next && !cardsNext) { fill(nextBtn, icon("play", 16), next.id === "reading" ? "Continuar a leitura" : "Escrever o diário"); nextBtn.onclick = () => hojeGo(next.id); }
+  if (next && !cardsNext) { fill(nextBtn, icon("play", 16), next.id === "reading" ? "Continuar a leitura" : next.id === "bookwords" ? "Revisar as palavras · " + next.time : "Escrever o diário"); nextBtn.onclick = () => hojeGo(next.id); }
   $("homeProduction").classList.toggle("primary", !!cardsNext);
-  $("homeProduction").textContent = load.dueProd + load.fresh ? "Treinar produção" : "Estudar mais novas";
+  // O botão diz a tarefa (revisar / aprender) e o tempo; o modo (produção) fica na linha de baixo.
+  const mins = Math.max(1, Math.ceil((load.dueProd + load.fresh) * averageSeconds() / 60));
+  $("homeProduction").textContent = load.dueProd ? "Começar revisão · ~" + mins + " min" : load.fresh ? "Aprender " + plural(load.fresh, "frase nova", "frases novas") + " · ~" + mins + " min" : "Estudar mais novas";
+  // Treino encerrado no meio: a porta principal é continuar de onde parou.
+  const resume = typeof resumeInfo === "function" ? resumeInfo() : null;
+  if (resume) {
+    fill($("homeProduction"), icon("play", 16), "Continuar treino · " + (resume.queue.length === 1 ? "falta 1 cartão" : "faltam " + resume.queue.length + " cartões"));
+    $("homeProduction").classList.add("primary");
+    $("homeProduction").hidden = false;
+    nextBtn.hidden = true;
+    $("heroNext").textContent = "Terminar o treino que você pausou";
+    $("heroEta").textContent = "Continua do cartão em que você parou.";
+  }
+  hojeLastLine(load, next);
   $("homeListening").textContent = load.dueListen ? "Treinar escuta (" + load.dueListen + ")" : "Treinar escuta";
   $("homeListening").hidden = !load.dueListen;
   $("hero").classList.toggle("done", !next);

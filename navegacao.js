@@ -15,8 +15,8 @@ const HUB_ROWS = {
   grammar: ["Gramática", "Notas, tabelas e exercícios de montar a frase."],
   artigos: ["Artigos", "der, die, das e o plural de cada substantivo, com revisão espaçada."],
   pron: ["Pronúncia", "Pares de sons parecidos, ouvindo e gravando."],
-  activation: ["Ativação", "10 frases já aprendidas de um tema para um monólogo livre."],
-  template: ["Molde", "Fale três variações de uma frase trocando as lacunas."],
+  activation: ["Falar de um tema", "10 frases já aprendidas de um tema para um monólogo livre."],
+  template: ["Variar frases", "Fale três variações de uma frase trocando as lacunas."],
   exam: ["Modo Prova", "Tarefas no formato da prova, com autoavaliação."],
   conversa: ["Conversa", "Parceira no seu nível, 4/3/2 e paciente simulado (FSP)."],
   scenes: ["Cenas", "Diálogos do dia a dia e do hospital para treinar a sua parte."],
@@ -81,10 +81,12 @@ function updateNav(view) {
   all(".nav button[data-view]").forEach(b => { if (b.dataset.view === view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
   all(".nav-hub").forEach(b => b.classList.toggle("on", b.dataset.hub === hub));
   all(".nav-sub").forEach(g => g.classList.toggle("open", g.dataset.sub === hub));
+  titleWatch(view);
   const back = $("hubBack"), showBack = view !== "hub" && hubViews(hub).length > 1;
   if (!back) return;
   back.hidden = !showBack;
   if (showBack) $("hubBackLabel").textContent = hubById(hub).label;
+  $("miniTitle").classList.toggle("after-long", showBack && hubById(hub).label.length > 8);
 }
 
 function renderHub() {
@@ -143,6 +145,7 @@ function actionSheet({title, sub, actions}) {
   if (!dlg) {
     dlg = h("dialog", {id: "actionSheet", class: "sheet", "aria-labelledby": "actionSheetTitle"});
     dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+    sheetDrag(dlg);
     document.body.append(dlg);
   }
   fill(dlg, h("div", {class: "sheet-body"},

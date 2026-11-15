@@ -32,8 +32,8 @@
     <button data-view="grammar" title="Gramática"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5z"/><path d="M8 7h6M8 11h6M8 15h3"/><path d="M18 3v18"/></svg><span>Gramática</span></button>
     <button data-view="artigos" title="Artigos (der, die, das)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="9.5" y="4" width="5" height="16" rx="1.5"/><rect x="16" y="4" width="5" height="16" rx="1.5"/></svg><span>Artigos</span></button>
     <button data-view="pron" title="Pronúncia"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v3"/><path d="M21.5 7.5v3M2.5 7.5v3"/></svg><span>Pronúncia</span></button>
-    <button data-view="activation" title="Ativação"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>Ativação</span></button>
-    <button data-view="template" title="Molde"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12h6" stroke-dasharray="2 2"/></svg><span>Molde</span></button>
+    <button data-view="activation" title="Ativação: falar sobre um tema com frases que você já sabe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg><span>Falar de um tema</span></button>
+    <button data-view="template" title="Molde: variar uma frase trocando as lacunas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12h6" stroke-dasharray="2 2"/></svg><span>Variar frases</span></button>
     <button data-view="exam" title="Modo Prova"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 2.5h4M12 2.5V6"/></svg><span>Modo Prova</span></button>
    </div></div>
    <button class="nav-hub" data-hub="falar" data-short="Falar" title="Falar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.6A7.5 7.5 0 1 1 20 12z"/><path d="M8.5 10.5h7M8.5 13.5h4.5"/></svg><span>Falar</span></button>
@@ -58,7 +58,7 @@
   </nav>
   <div class="sidebar-foot">
    <div class="streak" title="Dias seguidos de estudo"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.2 1-3.6 2.2-4.8.3 1.8 1.2 2.8 2.3 3.1C11 9 11 6 12 3z"/></svg><span id="streakMini" class="streak-text">0 dias</span></div>
-   <button id="themeToggle" class="icon-btn quiet" type="button" aria-label="Alternar tema"></button>
+   <span class="foot-btns"><button id="navSettings" class="icon-btn quiet" type="button" aria-label="Configurações" title="Configurações"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button><button id="themeToggle" class="icon-btn quiet" type="button" aria-label="Alternar tema"></button></span>
   </div>
  </aside>
 
@@ -69,6 +69,7 @@
    <button id="undoRating" class="quiet" type="button" disabled><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5 4 10l5 5"/><path d="M4 10h10a5 5 0 0 1 0 10h-3"/></svg>Desfazer <kbd>Z</kbd></button>
   </div>
   <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+  <div id="miniTitle" class="mini-title" aria-hidden="true"><span></span></div>
   <div id="hubBack" class="hub-back" hidden><button id="hubBackBtn" class="quiet" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span id="hubBackLabel"></span></button></div>
   <main id="main">
 
@@ -109,10 +110,10 @@
     <div class="hero-route"><h3>Roteiro de hoje</h3><ol id="homeRoute" class="route"></ol></div>
    </div>
    <div id="homeMetrics" class="home-tiles"></div>
-   <section class="panel"><div class="row between"><h2>Seus dias de estudo</h2><div class="heat-legend"><span>Menos</span><i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i><span>Mais</span><i class="hm hm-plantao"></i><span>Plantão</span></div></div><p id="heatmapInfo" class="muted"></p><div id="heatmap" class="heatmap"></div></section>
-   <div class="grid two">
+   <section id="homeHeat" class="panel home-heat"><div class="row between"><h2>Seus dias de estudo</h2><button id="heatToggle" class="quiet small" type="button" aria-controls="heatmap"></button><div class="heat-legend"><span>Menos</span><i class="hm l0"></i><i class="hm l1"></i><i class="hm l2"></i><i class="hm l3"></i><i class="hm l4"></i><span>Mais</span><i class="hm hm-plantao"></i><span>Plantão</span></div></div><p id="heatmapInfo" class="heat-info"></p><div id="heatmap" class="heatmap"></div></section>
+   <div class="grid two home-more">
     <section class="panel"><h2>Revisões previstas</h2><p class="muted">Próximos 7 dias, somando produção e escuta.</p><div id="forecast" class="bars"></div></section>
-    <section class="panel"><h2>Aprendidas</h2><p id="homeLearned" class="muted"></p><div id="layerMetrics"></div><div id="priorityMetrics" class="spaced"></div></section>
+    <section class="panel"><h2>Aprendidas por nível</h2><p id="homeLearned" class="muted"></p><div id="layerMetrics" class="level-metrics"></div></section>
    </div>
   </section>
 
@@ -130,7 +131,11 @@
      <button id="modeListening" type="button" aria-pressed="false"><b>Escuta</b><small>Áudio em alemão → você entende</small></button>
      <button id="modeDictation" type="button" aria-pressed="false"><b>Ditado</b><small>Áudio em alemão → você escreve exatamente</small></button>
     </div>
+    <p id="modeDesc" class="mode-desc" aria-live="polite"></p>
     <p id="dictationInfo" class="level-info" hidden>O ditado usa a fila da escuta. Maiúsculas, ä, ö, ü e ß contam; o app mostra que tipo de erro de grafia você cometeu. Ctrl+Espaço repete o áudio e Ctrl+Shift+Espaço repete devagar.</p>
+    <h3>Tema</h3>
+    <div id="themeChips" class="chips"></div>
+    <details class="filters-box"><summary>Filtros avançados <span id="sessionFilterCount" class="pill" hidden></span></summary><div id="sessionFilters" class="filters"></div><button id="clearSessionFilters" class="quiet small" type="button">Limpar filtros</button></details>
     <div class="setup-foot"><p id="sessionPreview" class="muted"></p><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div>
     <details class="train-opts"><summary>Opções de resposta</summary>
     <label id="typingRow" class="switch"><input id="typingMode" type="checkbox"><span><b id="typingTitle">Responder digitando</b><small id="typingHint"></small></span></label>
@@ -138,9 +143,6 @@
     </details>
     <p id="levelInfo" class="level-info"></p>
     <div id="leechBox" class="notice warn spaced" hidden><span>Algumas frases estão travando: você errou cada uma delas várias vezes. Vale um treino focado.</span><button id="leechButton" class="small" type="button"></button></div>
-    <h3>Tema</h3>
-    <div id="themeChips" class="chips"></div>
-    <details class="filters-box"><summary>Filtros avançados <span id="sessionFilterCount" class="pill" hidden></span></summary><div id="sessionFilters" class="filters"></div><button id="clearSessionFilters" class="quiet small" type="button">Limpar filtros</button></details>
     <div class="train-more"><button id="speedStart" type="button"><b>Rodada de velocidade</b><small>Mede quanto tempo você leva para começar a falar</small></button><button id="contStart" type="button"><b>Escuta contínua</b><small>Ouve e repete frases já estudadas, sem olhar a tela</small></button></div>
    </div>
    <div id="contPlayer" class="panel cont-player" hidden>
@@ -161,6 +163,7 @@
 
    <div id="sessionStage" class="session" hidden>
     <article id="flashCard" class="flash" tabindex="-1" aria-live="polite">
+     <div class="swipe-hint" aria-hidden="true"><span class="sw-good">Bom</span><span class="sw-again">Errei</span></div>
      <div class="flash-meta"><span id="cardRegister"></span><span id="cardState" class="state"></span></div>
      <div id="cardPrompt" class="prompt"></div>
      <div id="clozeBox" class="cloze" hidden></div>
@@ -191,12 +194,14 @@
       <button id="shadowButton" class="quiet" type="button" hidden title="Ouve a frase e grava você repetindo junto"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2l2-5 3 10 3-12 3 9 2-4h3"/></svg><span class="label">Shadowing</span> <kbd>S</kbd></button>
      </div>
      <div id="presentActions" class="present-actions" hidden><p class="muted">Ouça, leia e repita a frase em voz alta duas ou três vezes. Ela volta daqui a pouco para você tentar de memória.</p><div class="row center"><button id="presentContinue" class="primary lg" type="button">Repeti em voz alta · continuar <kbd>Espaço</kbd></button><button id="presentSkip" class="lg" type="button" title="Pula a etapa da lacuna">Já conheço <kbd>K</kbd></button></div></div>
+     <p id="cardStep" class="card-step" aria-live="polite"></p>
      <div class="reveal-row">
       <button id="speakCheck" class="lg" type="button" hidden></button>
       <button id="revealCard" class="primary lg reveal" type="button">Revelar resposta <kbd>Espaço</kbd></button>
      </div>
      <p id="speechStatus" class="speech-status" hidden></p>
      <div id="reasonRow" class="reason-row" hidden><span class="muted small-text">O que aconteceu? (opcional)</span><div id="reasonChips" class="chips"></div><button id="reasonGo" class="primary" type="button">Continuar <kbd>Espaço</kbd></button></div>
+     <p id="swipeTip" class="swipe-tip muted small-text" hidden>Deslize o cartão: para a direita, Bom; para a esquerda, Errei.</p>
      <div id="gradeRow" class="grades" hidden>
       <button data-grade="again" class="g-again" type="button"><span class="g-label">Errei</span><span id="ivl-again" class="g-ivl"></span><kbd>1</kbd></button>
       <button data-grade="hard" class="g-hard" type="button"><span class="g-label">Difícil</span><span id="ivl-hard" class="g-ivl"></span><kbd>2</kbd></button>
@@ -235,9 +240,10 @@
    <div id="f432Room" hidden></div>
    <div id="convRoom" hidden>
     <div class="panel scene-head">
-     <div class="row between"><button id="convBack" class="quiet small" type="button">← Temas</button><button id="convFinish" class="small" type="button">Terminar e ver erros</button></div>
+     <div class="row between"><button id="convBack" class="quiet small" type="button">← Temas</button><div class="row conv-head-act"><details id="convOpts" class="conv-opts"><summary>Opções</summary><div class="conv-opts-pop">
+     <div class="row spaced conv-opts-list"><label class="inline-check"><input id="convShowText" type="checkbox"> Mostrar o texto da parceira (desligue para treinar a escuta)</label><label class="inline-check"><input id="convAutoSend" type="checkbox"> Enviar direto depois de falar</label><label class="inline-check" title="Suave: só o que atrapalha o entendimento. Equilibrada: erros de verdade. Rígida: erros e dicas de estilo.">Correção de cada fala <select id="convCheck" class="cv-level"><option value="off">Desligada</option><option value="suave">Suave</option><option value="equilibrado">Equilibrada</option><option value="rigido">Rígida</option></select></label><label class="inline-check" title="Depois de cada resposta, um sinal toca e o app ouve; quando você para de falar, ele envia sozinho. Esc pausa."><input id="convHandsFree" type="checkbox"> Mãos livres (para usar só com fone)</label><label id="convBargeInWrap" class="inline-check" title="Com a voz neste computador e as mãos livres, o app ouve enquanto a parceira fala, e começar a falar a interrompe. Com alto-falantes, a própria voz dela pode interromper."><input id="convBargeIn" type="checkbox"> Falar interrompe a parceira (só com fone)</label></div>
+     </div></details><button id="convFinish" class="small" type="button">Terminar e ver erros</button></div></div>
      <h2 id="convTitle"></h2><p id="convSetting" class="muted"></p><div id="convMeta" class="tagline"></div>
-     <div class="row spaced"><label class="inline-check"><input id="convShowText" type="checkbox"> Mostrar o texto da parceira (desligue para treinar a escuta)</label><label class="inline-check"><input id="convAutoSend" type="checkbox"> Enviar direto depois de falar</label><label class="inline-check" title="Suave: só o que atrapalha o entendimento. Equilibrada: erros de verdade. Rígida: erros e dicas de estilo.">Correção de cada fala <select id="convCheck" class="cv-level"><option value="off">Desligada</option><option value="suave">Suave</option><option value="equilibrado">Equilibrada</option><option value="rigido">Rígida</option></select></label><label class="inline-check" title="Depois de cada resposta, um sinal toca e o app ouve; quando você para de falar, ele envia sozinho. Esc pausa."><input id="convHandsFree" type="checkbox"> Mãos livres (para usar só com fone)</label></div>
     </div>
     <div id="convMission" class="panel soft conv-mission" hidden></div>
     <div id="convChat" class="chat" aria-live="polite"></div>
@@ -328,8 +334,8 @@
    </section>
    <div id="planSummary" class="stats"></div>
    <div class="row spaced-bottom plan-actions"><button id="planApply" class="primary" type="button" hidden></button></div>
-   <section class="panel"><h2>Curso Nicos Weg</h2>
-    <p class="explain muted">As frases do reforço e as frases novas do A1 e do A2 seguem os capítulos do Nicos Weg e cobrem as palavras das listas oficiais do Goethe. Entre as frases novas, elas vêm logo depois das suas próprias, na ordem do curso, e só até o capítulo em que você está. Quando terminar o A1, escolha um capítulo do A2: o A1 inteiro continua liberado.</p>
+   <section class="panel"><h2>Capítulo do curso</h2>
+    <p class="explain muted">As frases do reforço e as frases novas do A1 e do A2 seguem os capítulos do curso A1/A2 e cobrem as palavras das listas oficiais do Goethe. Entre as frases novas, elas vêm logo depois das suas próprias, na ordem do curso, e só até o capítulo em que você está. Quando terminar o A1, escolha um capítulo do A2: o A1 inteiro continua liberado.</p>
     <div class="grid"><div class="field"><label for="nwChapter">Estou no capítulo</label><select id="nwChapter"></select></div></div>
     <p id="nwInfo" class="muted small-text"></p>
    </section>
@@ -346,7 +352,7 @@
   </section>
 
   <section id="view-template" class="view" hidden>
-   <header class="page-head"><p class="eyebrow" lang="de">Satzmuster</p><h1>Molde</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Satzmuster</p><h1>Variar frases</h1><p class="lede">Veja o molde e fale três variações próprias, trocando o que está nas lacunas. Não entra no agendamento.</p></header>
    <div class="panel tool-intro"><p class="tool-sample" lang="de">Ich hätte gern <span class="tool-gap">einen Kaffee</span>.</p><p class="muted">Troque o que está sublinhado e fale três variações suas.</p><div class="row between"><span id="templateCount" class="muted small-text"></span><button id="nextTemplate" class="primary" type="button">Sortear molde</button></div></div>
    <div id="templateStage" hidden>
     <div class="flash">
@@ -361,7 +367,7 @@
   </section>
 
   <section id="view-activation" class="view" hidden>
-   <header class="page-head"><p class="eyebrow" lang="de">Aktivieren</p><h1>Ativação</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
+   <header class="page-head"><p class="eyebrow" lang="de">Aktivieren</p><h1>Falar de um tema</h1><p class="lede">Sorteie 10 frases já aprendidas de um tema, faça um monólogo livre e leve as frases ao tutor.</p></header>
    <div class="panel tool-intro"><p class="tool-steps"><b>10 frases</b> que você já aprendeu <span aria-hidden="true">→</span> <b>um monólogo</b> livre <span aria-hidden="true">→</span> <b>sua gravação</b> para o tutor</p><div class="row"><button id="startActivation" class="primary" type="button">Sortear 10 frases</button><button id="copyActivation" type="button" hidden>Copiar lista para o tutor</button></div></div>
    <div id="activationStage" class="panel" hidden>
     <h2 id="activationTheme"></h2>
@@ -457,14 +463,15 @@
      <label class="switch spaced"><input id="setSounds" type="checkbox"><span><b>Sons discretos</b><small>Um toque curto ao acertar um cartão e ao fechar a meta do dia.</small></span></label>
    </section>
    <section class="panel"><h2>Áudio alemão</h2>
-    <div class="grid two spaced-bottom"><div class="field"><label for="audioSource">Fonte do áudio</label><select id="audioSource"><option value="neural">Voz neural embutida (recomendada)</option><option value="system">Voz do Windows</option></select></div><p id="audioSourceInfo" class="muted small-text align-end"></p></div>
+    <div class="grid two spaced-bottom"><div class="field"><label for="audioSource">Fonte do áudio</label><select id="audioSource"><option value="neural">Voz neural embutida (recomendada)</option><option value="system">Voz do computador</option></select></div><p id="audioSourceInfo" class="muted small-text align-end"></p></div>
     <label id="alternateRow" class="switch spaced-bottom"><input id="alternateVoices" type="checkbox"><span><b>Alternar vozes no treino de escuta</b><small>Quando a frase tem mais de uma voz gravada, elas se revezam, para o ouvido não se acostumar com uma voz só.</small></span></label>
-    <div class="grid two"><div class="field"><label for="voiceSelect">Voz do Windows (reserva)</label><select id="voiceSelect"></select></div><div class="field"><label for="speechRate">Velocidade: <span id="speechRateValue">0,9×</span></label><input id="speechRate" type="range" min="0.6" max="1.3" step="0.05" value="0.9"></div></div>
+    <div class="grid two"><div class="field"><label for="voiceSelect">Voz do computador (reserva)</label><select id="voiceSelect"></select></div><div class="field"><label for="speechRate">Velocidade: <span id="speechRateValue">0,9×</span></label><input id="speechRate" type="range" min="0.6" max="1.3" step="0.05" value="0.9"></div></div>
     <p id="voiceWarning" class="notice warn spaced" hidden>Não há voz alemã neste computador. Em Configurações do Windows → Hora e idioma → Idioma e região, adicione “Deutsch (Deutschland)” com o recurso de fala e reabra o aplicativo.</p>
     <button id="testVoice" type="button" class="spaced">Testar voz</button>
    </section>
    <section class="panel desktop-only"><h2>Conversa</h2>
-    <div class="grid two"><div class="field"><label for="convVoice">Voz da parceira</label><select id="convVoice"><option value="charon">Charon · Google (Jonas)</option><option value="aoede">Aoede · Google (Lena)</option><option value="system">Voz do Windows (offline, sem cota)</option></select></div><p id="convModelInfo" class="muted small-text align-end"></p></div>
+    <div class="grid two"><div class="field"><label for="convVoice">Voz da parceira</label><select id="convVoice"><option value="charon">Charon · Google (Jonas)</option><option value="aoede">Aoede · Google (Lena)</option><option value="system">Voz do computador (a de Configurações → Áudio)</option><option value="thorsten">Thorsten · neste computador (Jonas, teste)</option><option value="kerstin">Kerstin · neste computador (Lena, teste)</option></select></div><p id="convModelInfo" class="muted small-text align-end"></p></div>
+    <div class="row spaced"><label class="inline-check" title="Cada fala sua na Conversa fica guardada neste computador (WAV), com o que o Whisper ouviu e o que você enviou depois de corrigir. Serve para comparar o reconhecimento; nada sai do computador."><input id="convKeepRec" type="checkbox"> Guardar minhas falas para testar o reconhecimento</label><button id="convRecFolder" class="quiet small" type="button" hidden>Abrir a pasta</button></div>
     <div id="convKeyBox" class="subpanel spaced" hidden></div>
    </section>
    <section id="desktopPanel" class="panel" hidden><h2>Este computador</h2>
@@ -530,6 +537,7 @@
   <script src="catalog-etapa4.js"></script>
   <script src="catalog-menschen.js"></script>
   <script src="catalog-ajustes.js"></script>
+  <script src="catalog-revisao.js"></script>
 <script src="situacoes-de.js"></script>
 <script src="cenas-data.js"></script>
 <script src="gramatica-data.js"></script>
@@ -550,12 +558,18 @@
 <script src="leitura-extra.js"></script>
 <script src="leitura-ajuda.js"></script>
 <script src="leitura-celular.js"></script>
+<script src="vad.js"></script>
 <script src="conversa.js"></script>
+<script src="conversa-temas.js"></script>
+<script src="conversa-live.js"></script>
+<script src="conversa-foco.js"></script>
+<script src="conversa-sala.js"></script>
 <script src="minhas.js"></script>
 <script src="anotar.js"></script>
 <script src="monologo.js"></script>
 <script src="fsp.js"></script>
 <script src="missoes.js"></script>
+<script src="pessoas.js"></script>
 <script src="tutor.js"></script>
   <script src="exercicios.js"></script>
 <script src="escrita-data.js"></script>
@@ -563,6 +577,7 @@
 <script src="gramatica-erros.js"></script>
 <script src="gramatica-frase.js"></script>
 <script src="corretor.js"></script>
+<script src="gramatica-correcao.js"></script>
 <script src="gramatica-aula.js"></script>
 <script src="gramatica-ficha-ui.js"></script>
 <script src="gramlivro.js"></script>
@@ -574,7 +589,9 @@
 <script src="menschen-data.js"></script>
 <script src="menschen.js"></script>
 <script src="menschen-aula.js"></script>
+<script src="menschen-revisao.js"></script>
 <script src="navegacao.js"></script>
+<script src="gestos.js"></script>
 <script src="hoje.js"></script>
 <script src="app.js"></script>
 <script src="celular.js"></script>

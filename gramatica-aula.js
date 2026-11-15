@@ -17,7 +17,7 @@ const GRAM_GOALS = [
   ["verbos", "Verbos especiais", ["reflexiv", "lassen", "werden3", "futur", "vermutung"]],
   ["formal", "Hospital e textos formais", ["passiv", "passiv2", "passivers", "nominal", "konj1", "fvg"]]];
 const AULA_PRODUCE = 5, AULA_FIX = 3;
-const aula = {id: null, steps: [], i: 0, why: "", res: null, busy: false, clip: null, score: {prod: 0, prodN: 0, fix: 0, fixN: 0}};
+const aula = {id: null, steps: [], i: 0, why: "", res: null, busy: false, clip: null, score: {prod: 0, prodN: 0, prodHelp: 0, fix: 0, fixN: 0, fixHelp: 0}};
 
 function gramLevelOf(id) {
   const ch = GRAM_CHAPTER[id] ?? 0;
@@ -31,10 +31,15 @@ function aulaPool(id) {
 }
 /* Ouvir uma frase da aula: cartão do catálogo pela voz dele; frase da ficha pelo áudio da gramática. */
 function aulaSay(c) { if (c.ficha || c.marked) fichaSay(c.frase); else speakCard(c); }
-/* Aula de hoje: até 3 sugestões, cada uma com o motivo. */
+/* Quantas frases o aulaPool teria, sem sortear a ordem. */
+function aulaPoolSize(id, lv) {
+  const own = typeof fichaCards === "function" ? fichaCards(id).length : 0;
+  return own + gramWindow(exTopicList(id), 8, lv).filter(c => c.frase && !/\n/.test(c.frase) && c.frase.split(/\s+/).length <= 14 && c.traducao).length;
+}
+/* Aula de hoje: até 3 sugestões, cada uma com o motivo. Com as 3 achadas, não confere mais nenhum tópico. */
 function aulaPick() {
-  const infos = gramInfos(), byId = new Map(infos.map(x => [x.t.id, x])), out = [], seen = new Set();
-  const add = (id, why) => { if (!seen.has(id) && byId.has(id) && aulaPool(id).length >= 6) { seen.add(id); out.push({id, why}); } };
+  const infos = gramInfos(), byId = new Map(infos.map(x => [x.t.id, x])), out = [], seen = new Set(), lv = gramLevels();
+  const add = (id, why) => { if (out.length < 3 && !seen.has(id) && byId.has(id) && aulaPoolSize(id, lv) >= 6) { seen.add(id); out.push({id, why}); } };
   for (const x of infos.filter(y => y.errs).sort((a, b) => b.errs - a.errs)) add(x.t.id, plural(x.errs, "erro seu", "erros seus") + " nesta semana");
   for (const x of infos.filter(y => y.state === "revisar")) add(x.t.id, x.due ? "Hora de revisar: o último treino foi há " + plural(x.due, "dia", "dias") : "Ainda está escorregando nos exercícios");
   if (typeof MENSCHEN_LICOES !== "undefined" && typeof msCurrent === "function") {
@@ -117,7 +122,7 @@ function startAula(id, why = "") {
   const tracks = typeof gbTracksFor === "function" ? gbTracksFor(id) : [];
   const falar = tracks.length ? [{k: "falar", track: tracks[Math.floor(Math.random() * tracks.length)]}] : [];
   const steps = [{k: "entender"}, {k: "ver", cards: ver}, ...prod.map(card => ({k: "produzir", card})), ...falar, ...aulaFixItems(id, pool, used), {k: "usar"}];
-  Object.assign(aula, {id, steps, i: 0, why, res: null, busy: false, score: {prod: 0, prodN: 0, fix: 0, fixN: 0}});
+  Object.assign(aula, {id, steps, i: 0, why, res: null, busy: false, score: {prod: 0, prodN: 0, prodHelp: 0, fix: 0, fixN: 0, fixHelp: 0}});
   stopAudio();
   $("grammarList").hidden = true;
   $("grammarTrain").hidden = true;
@@ -198,11 +203,12 @@ function aulaSee(t, step) {
     h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: aulaNext}, "Agora é a sua vez")));
 }
 function aulaInputRow(onCheck, placeholder) {
-  const input = h("textarea", {id: "aulaInput", lang: "de", rows: "2", spellcheck: "false", autocomplete: "off", placeholder, readonly: !!aula.res});
-  input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (aula.res) aulaNext(); else onCheck(); } });
-  const voice = typeof speechAvailable === "function" && speechAvailable() && !aula.res;
+  const final = !!(aula.res && aula.res.final);
+  const input = h("textarea", {id: "aulaInput", lang: "de", rows: "2", spellcheck: "false", autocomplete: "off", placeholder, readonly: final});
+  input.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (final) aulaNext(); else onCheck(); } });
+  const voice = typeof speechAvailable === "function" && speechAvailable() && !final;
   return [input, h("div", {class: "row"},
-    aula.res ? null : h("button", {class: "primary", type: "button", disabled: aula.busy, onclick: onCheck}, aula.busy ? "Conferindo…" : "Conferir", h("kbd", null, "Enter")),
+    final ? null : h("button", {class: "primary", type: "button", disabled: aula.busy, onclick: onCheck}, aula.busy ? "Conferindo…" : aula.res ? "Conferir de novo" : "Conferir", h("kbd", null, "Enter")),
     voice ? h("button", {type: "button", class: aula.clip ? "danger-solid" : "", onclick: aulaVoice}, icon(aula.clip ? "stop" : "mic", 18), aula.clip ? "Parar" : "Falar") : null,
     aula.res ? null : h("button", {class: "quiet small", type: "button", onclick: () => onCheck(true)}, "Não sei"))];
 }
@@ -223,86 +229,149 @@ async function aulaVoice() {
   } catch (e) { setStatus("Não foi possível transcrever a fala: " + e.message, "error"); }
 }
 function aulaKeep(text) { const el = $("aulaInput"); if (el) el.value = text; }
-function aulaProduce(t, step) {
-  const c = step.card, r = aula.res;
+/* Uma tentativa com pistas (gramatica-correcao.js): Produzir e Consertar usam o mesmo passo.
+   1ª conferência conta para o tópico (pela regra, não pela frase inteira). Errou: a região e o tipo do problema; de novo:
+   uma pista mais explícita; de novo (ou “Ver a resposta”): a resposta comentada. O registro diz se foi sozinho, com pista ou vendo. */
+function aulaDetect(t) { return typed => { try { return !!t.detect({id: "K1-0000", frase: typed, tags: "Modus::Produktion Niveau::A2", traducao: "", situacao: ""}); } catch (e) { return null; } }; }
+function aulaAttempt(t, step, cfg) {
+  const r = aula.res, kind = cfg.kind, sc = aula.score;
+  const finish = (res, code) => {
+    res.final = true; res.code = code;
+    gramHelpLog([t.id], code);
+    if (res.diag && res.diag.topicOk && res.tries > 0 && code !== "s") sc[kind + "Help"]++;
+    if (kind === "fix" && step.key && res.diag && (res.diag.exact || res.diag.grade === "ok")) gramMarkFixed(step.key);
+  };
   const check = async giveUp => {
-    if (aula.busy || aula.res) return;
+    if (aula.busy || (aula.res && aula.res.final)) return;
+    const res = aula.res || {tries: 0, help: 0};
     const typed = giveUp === true ? "" : ($("aulaInput").value || "").trim();
     if (!typed && giveUp !== true) { $("aulaInput").focus(); return; }
+    if (!typed) {
+      if (!res.tries) { gramRecord([t.id], false); sc[kind + "N"]++; }
+      res.diag = res.diag || gramDiagnose({model: cfg.model, typed: ""});
+      res.typed = res.typed || "";
+      aula.res = res; finish(res, res.diag.topicOk ? "s" : "m"); res.grade = "no";
+      renderAula(); aulaKeep(res.typed); return;
+    }
     aula.busy = true; renderAula(); aulaKeep(typed);
-    const d = typed ? diffLine(c.frase, typed) : null, it = formItem(c, t.id);
-    const words = typed.split(/\s+/).map(normWord);
-    const keyOk = !typed ? false : !(it && it.blank) || words.includes(normWord(it.blank.right));
-    const lt = typed ? await ltCheck(typed) : null, ltErr = (lt || []).filter(m => m.cat !== "STYLE");
-    let grade = !typed ? "no" : d.pct >= .85 && keyOk ? "ok" : d.pct >= .6 ? "quase" : "no";
-    if (grade === "ok" && ltErr.some(m => m.cat === "GRAMMAR")) grade = "quase";
-    gramRecord([t.id], grade === "ok");
-    aula.score.prodN++; if (grade === "ok") aula.score.prod++;
+    const lt = await ltCheck(typed);
+    const diag = gramDiagnose({model: cfg.model, typed, wrong: cfg.wrong, detect: aulaDetect(t), lt, topic: t.id});
     aula.busy = false;
-    aula.res = {grade, typed, d, keyOk, it, lt: ltErr};
+    if (!res.tries) { gramRecord([t.id], diag.topicOk); sc[kind + "N"]++; if (diag.topicOk) sc[kind]++; res.firstOk = diag.topicOk; }
+    res.tries++; res.typed = typed; res.diag = diag; res.ltOn = lt !== null; res.grade = diag.grade;
+    aula.res = res;
+    if (diag.grade === "ok") finish(res, res.tries === 1 && !res.peek ? "s" : String(Math.max(1, Math.min(2, res.help || 1))));
+    else if (res.tries >= 3) finish(res, res.firstOk ? "s" : "m");
+    else res.help = Math.min(2, res.tries);
     renderAula(); aulaKeep(typed);
+    if (!res.final) { const el = $("aulaInput"); if (el) el.focus(); }
   };
-  const situ = String(c.situacao || "").replace(/^\[(du|Sie|ihr|neutro|escrito)\]\s*/, "");
-  return h("div", {class: "aula-step"},
-    h("p", {class: "label", text: "Como se diz em alemão?"}),
-    h("p", {class: "aula-pt", text: c.traducao}),
-    situ ? h("p", {class: "muted small-text", text: situ}) : null,
-    ...aulaInputRow(check, "Escreva ou fale a frase em alemão"),
-    r ? aulaProduceResult(t, c, r) : null);
+  const view = h("div", {class: "aula-step"}, ...cfg.head,
+    ...aulaInputRow(check, cfg.placeholder),
+    r && !r.final ? aulaHintView(t, step, cfg, r) : null,
+    r && r.final ? aulaFinalView(t, step, cfg, r) : null);
+  if (!r && cfg.prefill) setTimeout(() => { const el = $("aulaInput"); if (el && !el.value) el.value = cfg.prefill; }, 0);
+  return view;
 }
-function aulaProduceResult(t, c, r) {
-  const msg = {ok: "Certo!", quase: "Quase: compare com a frase modelo.", no: r.typed ? "Compare com a frase modelo." : "Esta é a frase:"}[r.grade];
-  return h("div", {class: "aula-result " + r.grade},
+/* Ainda não: a sua frase com o problema sublinhado e a pista; nada da resposta. */
+function aulaHintView(t, step, cfg, r) {
+  const p1 = gcHint1(r.diag, t), p2 = r.help >= 2 ? gcHint2(r.diag, cfg.model, cfg.it) : null;
+  const marked = gcMarkTyped(r.typed, r.diag);
+  return h("div", {class: "aula-result " + (r.diag.topicOk ? "quase" : "no"), dataset: {help: String(r.help)}},
+    h("p", {class: "aula-status", text: r.diag.topicOk ? "Quase. Tente de novo." : "Ainda não. Tente de novo."}),
+    h("p", {class: "aula-de gc-typed", lang: "de"}, ...marked.map(x => x.bad ? h("span", {class: "gc-bad", text: x.text}) : x.text)),
+    h("p", {class: "gc-lead", text: p1.lead}),
+    h("p", {class: "small-text", text: p1.ask}),
+    p2 ? h("div", {class: "gc-hint2"}, h("p", {class: "label", text: "Mais uma pista"}), ...p2.lines.map(x => h("p", {class: "small-text", text: x})),
+      p2.skeleton ? h("p", {class: "aula-de gc-skel", lang: "de", text: p2.skeleton}) : null,
+      !p2.lines.length && !p2.skeleton ? h("p", {class: "small-text", text: t.short}) : null) : null,
+    h("div", {class: "row"},
+      r.help < 2 ? h("button", {class: "small", type: "button", onclick: () => { r.help = 2; renderAula(); aulaKeep(r.typed); }}, "Mais uma pista") : null,
+      h("button", {class: "quiet small", type: "button", onclick: () => { r.peek = true; openGrammarDialog(t.id); }}, iconText("book", "Ver a regra", 15)),
+      h("button", {class: "quiet small", type: "button", onclick: () => {
+        r.final = true; r.code = r.firstOk ? "s" : "m"; gramHelpLog([t.id], r.code); renderAula(); aulaKeep(r.typed);
+      }}, "Ver a resposta")));
+}
+/* As três perguntas, separadas: regra, sentido, outros erros. */
+function aulaDiagView(t, r) {
+  const g = r.diag, name = t.title.split(/[:(]/)[0].trim().toLowerCase(), words = g.ruleWords.length ? " (" + g.ruleWords.slice(0, 3).join(" … ") + ")" : "";
+  const line = (cls, label, text) => h("li", {class: "gc-" + cls}, h("span", {class: "gc-mark", "aria-hidden": "true", text: cls === "ok" ? "✓" : cls === "no" ? "✗" : "·"}), h("b", {text: label + ": "}), text);
+  const rule = {ok: line("ok", "Regra", "você acertou " + (words ? "a parte da regra" + words : name) + "."),
+    no: line("no", "Regra", "a parte da regra ainda não" + words + "."),
+    absent: line("na", "Regra", "você não usou " + name + ". Tudo bem se foi de propósito."),
+    unknown: line("na", "Regra", "não deu para conferir só a regra nesta frase.")}[g.rule];
+  const meaning = {ok: line("ok", "Sentido", g.exact ? "igual à frase modelo." : "as palavras batem com o pedido."),
+    perto: line("na", "Sentido", "algumas palavras diferem do modelo. Pode ser outra forma certa."),
+    longe: line("no", "Sentido", "a frase ficou diferente do pedido.")}[g.meaning];
+  const other = !r.typed ? null : g.others.length ? line("na", "Outros pontos", g.rule === "ok" ? "não contam para este tópico." : "veja abaixo.")
+    : r.ltOn ? line("ok", "Outros erros", "o corretor não encontrou.") : line("na", "Outros erros", "sem o corretor neste aparelho.");
+  return h("ul", {class: "gc-diag"}, rule, meaning, other);
+}
+function aulaFinalView(t, step, cfg, r) {
+  const g = r.diag, ok = g.grade === "ok";
+  const helped = {s: "", 1: " na 2ª tentativa, com pista", 2: " com a 2ª pista", m: ""}[r.code] || "";
+  const msg = !r.typed ? "Esta é a frase:" : ok ? (g.exact ? "Certo" : "Certo do jeito que importa") + helped + "!" : g.topicOk ? "A regra está certa; veja o resto." : "Compare com a frase modelo.";
+  const cmpBox = h("div", {class: "gc-compare"});
+  if (r.cmp) gcCompareView(cmpBox, r, t);
+  return h("div", {class: "aula-result " + (ok ? "ok" : g.topicOk ? "quase" : "no")},
     h("p", {class: "aula-status", text: msg}),
-    r.typed ? h("div", null, h("p", {class: "muted small-text", text: "Frase modelo (verde = igual ao que você escreveu):"}), r.d.line)
-      : h("p", {class: "aula-de", lang: "de", text: c.frase}),
-    r.it && r.it.blank && !r.keyOk && r.typed ? h("p", {class: "aula-key small-text"}, "A parte da regra: ", h("b", {lang: "de", text: r.it.blank.right.replace(/[.,!?]+$/, "")})) : null,
-    r.lt && r.lt.length ? [h("p", {class: "label", text: "O corretor encontrou"}), ltList(r.typed, r.lt)] : null,
+    r.typed ? aulaDiagView(t, r) : null,
+    r.typed && !g.exact ? h("div", null, h("p", {class: "muted small-text", text: cfg.kind === "fix" ? "A versão de referência (verde = igual ao que você escreveu):" : "Frase modelo (verde = igual ao que você escreveu):"}), diffLine(cfg.model, r.typed).line)
+      : h("p", {class: "aula-de", lang: "de", text: cfg.model}),
+    g.others.length ? ltList(r.typed, g.others) : null,
+    cfg.why ? h("p", {class: "small-text", text: cfg.why}) : null,
+    cmpBox,
     h("div", {class: "row"},
       h("button", {class: "primary", type: "button", onclick: aulaNext}, "Próximo", h("kbd", null, "Enter")),
-      h("button", {class: "small", type: "button", onclick: () => aulaSay(c)}, iconText("volume", "Ouvir")),
-      r.grade !== "ok" && r.typed ? h("button", {class: "quiet small", type: "button", onclick: e => {
-        e.currentTarget.remove(); gramUndoMiss([t.id]); gramRecord([t.id], true); aula.score.prod++; r.grade = "ok"; saveProgress(); toast("Contei como certo.", "success");
-      }}, "A minha versão também está certa") : null));
+      cfg.say ? h("button", {class: "small", type: "button", onclick: cfg.say}, iconText("volume", "Ouvir")) : null,
+      !ok && r.typed && !r.cmp && typeof convAvailable === "function" && convAvailable() ? h("button", {class: "small", type: "button", onclick: async e => {
+        e.currentTarget.disabled = true; e.currentTarget.textContent = "Comparando…";
+        r.cmp = await gcCompare(t, cfg.pt || "", cfg.model, r.typed);
+        renderAula(); aulaKeep(r.typed);
+      }}, "Comparar minha resposta") : null,
+      !ok && r.typed ? h("button", {class: "quiet small", type: "button", onclick: e => { e.currentTarget.remove(); aulaCountOwn(t, step, cfg, r); }}, "A minha versão também está certa") : null));
+}
+/* Você decide: conta como certo (desfaz o erro contado) e, no Consertar, tira o erro da fila. */
+function aulaCountOwn(t, step, cfg, r) {
+  if (!r.firstOk) { gramRecord([t.id], true); gramUndoMiss([t.id]); aula.score[cfg.kind]++; r.firstOk = true; }
+  r.diag = {...r.diag, grade: "ok", topicOk: true}; r.grade = "ok";
+  if (cfg.kind === "fix" && step.key) gramMarkFixed(step.key);
+  saveProgress(); toast("Contei como certo.", "success");
+  renderAula(); aulaKeep(r.typed);
+}
+function gcCompareView(box, r, t) {
+  const c = r.cmp;
+  if (c.state === "fail") return fill(box, h("p", {class: "muted small-text", text: "Não foi possível comparar agora. Leve a frase para o tutor."}));
+  if (c.state === "incerto") return fill(box, h("p", {class: "small-text"}, h("b", {text: "A IA não conseguiu decidir com segurança. "}), c.text || "", " Na dúvida, leve a frase para o tutor."));
+  fill(box,
+    h("p", {class: "small-text"}, h("b", {text: c.state === "certo" ? "A IA acha que a sua versão também está certa. " : "A IA acha que há um erro. "}), c.text),
+    c.fixed ? h("p", {class: "aula-de", lang: "de"}, "→ ", c.fixed) : null,
+    h("p", {class: "muted small-text", text: "É uma opinião da IA, não um veredito: se concordar, use “A minha versão também está certa”."}));
+}
+function aulaProduce(t, step) {
+  const c = step.card, it = formItem(c, t.id);
+  const situ = String(c.situacao || "").replace(/^\[(du|Sie|ihr|neutro|escrito)\]\s*/, "");
+  return aulaAttempt(t, step, {kind: "prod", model: c.frase, wrong: it && it.wrong, it, pt: c.traducao, say: () => aulaSay(c), placeholder: "Escreva ou fale a frase em alemão",
+    head: [h("p", {class: "label", text: "Como se diz em alemão?"}), h("p", {class: "aula-pt", text: c.traducao}), situ ? h("p", {class: "muted small-text", text: situ}) : null]});
 }
 function aulaFix(t, step) {
-  const r = aula.res;
-  const check = async giveUp => {
-    if (aula.busy || aula.res) return;
-    const typed = giveUp === true ? "" : ($("aulaInput").value || "").trim();
-    const ok = !!typed && gramErrNorm(typed) === gramErrNorm(step.correct);
-    gramRecord([t.id], ok);
-    if (ok && step.key) gramMarkFixed(step.key);
-    aula.score.fixN++; if (ok) aula.score.fix++;
-    aula.res = {ok, typed};
-    renderAula(); aulaKeep(typed);
-  };
-  const view = h("div", {class: "aula-step"},
-    h("p", {class: "label", text: step.key ? "Uma frase sua (" + step.src + "): conserte" : "Esta frase tem um erro: escreva certa"}),
-    h("p", {class: "aula-wrong", lang: "de", text: step.errado}),
-    step.pt ? h("p", {class: "muted small-text", text: step.pt}) : null,
-    ...aulaInputRow(check, "Escreva a frase certa"),
-    r ? h("div", {class: "aula-result " + (r.ok ? "ok" : "no")},
-      h("p", {class: "aula-status", text: r.ok ? "Certo!" : "A certa é:"}),
-      r.ok ? null : (r.typed ? diffLine(step.correct, r.typed).line : h("p", {class: "aula-de", lang: "de", text: step.correct})),
-      step.why ? h("p", {class: "small-text", text: step.why}) : h("p", {class: "small-text muted", text: t.short}),
-      h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: aulaNext}, "Próximo", h("kbd", null, "Enter")))) : null);
-  // A sua frase errada já vem no campo, para você consertar só o que precisa.
-  if (!r) setTimeout(() => { const el = $("aulaInput"); if (el && !el.value) el.value = step.errado; }, 0);
-  return view;
+  return aulaAttempt(t, step, {kind: "fix", model: step.correct, wrong: step.errado, pt: step.pt || "", prefill: step.errado, placeholder: "Escreva a frase certa",
+    why: step.why || t.short, say: () => fichaSay(step.correct),
+    head: [h("p", {class: "label", text: step.key ? "Uma frase sua (" + step.src + "): conserte" : "Esta frase tem um erro: escreva certa"}),
+      h("p", {class: "aula-wrong", lang: "de", text: step.errado}), step.pt ? h("p", {class: "muted small-text", text: step.pt}) : null]});
 }
 function aulaUse(t) {
   const r = aula.res, ex = t.examples && t.examples[0];
   const check = async giveUp => {
     if (aula.busy || aula.res) return;
     const typed = giveUp === true ? "" : ($("aulaInput").value || "").trim();
-    if (!typed) { aula.res = {typed: ""}; renderAula(); return; }
+    if (!typed) { aula.res = {typed: "", final: true}; renderAula(); return; }
     aula.busy = true; renderAula(); aulaKeep(typed);
     let uses = null;
     try { uses = !!t.detect({id: "K1-0000", frase: typed, tags: "Modus::Produktion Niveau::A2", traducao: "", situacao: ""}); } catch (e) { uses = null; }
     const lt = await ltCheck(typed);
     aula.busy = false;
-    aula.res = {typed, uses, lt: (lt || []).filter(m => m.cat !== "STYLE"), ltOn: lt !== null};
+    aula.res = {typed, uses, lt: (lt || []).filter(m => m.cat !== "STYLE"), ltOn: lt !== null, final: true};
     renderAula(); aulaKeep(typed);
   };
   return h("div", {class: "aula-step"},
@@ -324,7 +393,9 @@ function aulaEnd(t) {
   const s = aula.score, x = gramInfos().find(y => y.t.id === t.id), next = aulaPick().find(p => p.id !== t.id);
   return h("div", {class: "aula-step aula-end"},
     h("h2", {text: "Aula concluída"}),
-    h("p", null, "Produzir: ", h("b", {text: s.prod + " de " + s.prodN}), s.fixN ? [" · Consertar: ", h("b", {text: s.fix + " de " + s.fixN})] : null),
+    h("p", null, "Produzir: ", h("b", {text: s.prod + " de " + s.prodN}), " de primeira", s.prodHelp ? ", mais " + s.prodHelp + " com pista" : "",
+      s.fixN ? [" · Consertar: ", h("b", {text: s.fix + " de " + s.fixN}), s.fixHelp ? " (+" + s.fixHelp + " com pista)" : ""] : null),
+    h("p", {class: "muted small-text", text: "Só a parte da regra conta para o tópico: erro de outro assunto não derruba esta aula."}),
     x ? h("p", null, "Agora ", h("b", {text: t.title}), " está: ", gramBadge(x.state)) : null,
     h("div", {class: "row"},
       next ? h("button", {class: "primary", type: "button", onclick: () => startAula(next.id, next.why)}, "Próxima aula: " + GRAMMAR_BY_ID.get(next.id).title) : null,

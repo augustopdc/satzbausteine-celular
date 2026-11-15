@@ -157,7 +157,7 @@ function levelStats() {
   const stats = {};
   for (const lv of LEVELS) stats[lv] = {total: 0, learned: 0, unseen: 0};
   for (const c of cards) {
-    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c) || msLocked(c) || isHiddenCard(c) || isProvaCard(c)) continue;
+    if (tag(c, "Modus") !== "Produktion" || isMedical(c) || isMine(c) || nwLocked(c) || msLocked(c) || isHiddenCard(c) || isProvaCard(c) || isMenschenOnly(c)) continue;
     const s = stats[tag(c, "Niveau")];
     if (!s) continue;
     s.total++;
@@ -188,14 +188,15 @@ function levelSummary() {
 }
 
 // ---------- Metas “Já consigo…” ----------
+// Tópicos novos desde a revisão de nov/2026 (Einkaufen, Patient); os antigos ficam para frases próprias e catálogos velhos.
 const has = (key, ...values) => c => values.some(v => hasTag(c, key, v));
 const lv = (...levels) => c => levels.includes(tag(c, "Niveau"));
 const and = (...fns) => c => fns.every(f => f(c));
 const CANDO = [
   {id: "apresentar", text: "Cumprimentar, me apresentar e me despedir", when: and(has("Funktion", "Cumprimentar", "Apresentar", "Despedir"), lv("A1", "A2"))},
   {id: "entender", text: "Pedir para repetir e checar se entendi", when: has("Funktion", "PedirRepeticao", "PedirLentidao", "ChecarCompreensao", "SinalizarCompreensao")},
-  {id: "compras", text: "Fazer compras e pedir serviços simples", when: and(has("Thema", "Konsum", "Dienstleistung"), lv("A1", "A2"))},
-  {id: "consulta", text: "Explicar sintomas e marcar consultas", when: and(has("Thema", "Gesundheit"), lv("A1", "A2", "B1"))},
+  {id: "compras", text: "Fazer compras e pedir serviços simples", when: and(has("Thema", "Einkaufen", "Dienstleistung", "Konsum"), lv("A1", "A2"))},
+  {id: "consulta", text: "Explicar sintomas e marcar consultas", when: and(has("Thema", "Patient", "Gesundheit"), lv("A1", "A2", "B1"))},
   {id: "telefone", text: "Resolver coisas por telefone", when: c => hasTag(c, "Thema", "Telefon") || hasTag(c, "Funktion", "TelefoneAbertura") || hasTag(c, "Funktion", "TelefoneFecho")},
   {id: "burocracia", text: "Resolver burocracia em repartições", when: c => hasTag(c, "Thema", "Behoerde") || (hasTag(c, "Thema", "Ankunft") && hasTag(c, "Bezug", "GER_Servicos"))},
   {id: "moradia", text: "Procurar, visitar e alugar um apartamento", when: has("Thema", "Wohnen")},
@@ -266,9 +267,15 @@ function topicsFor(card) {
   topicCache.set(card.id, found);
   return found;
 }
+/* Índice tópico → frases, na ordem do catálogo. Depende só do catálogo: refeito quando a lista de frases muda. */
+let topicIndex = null;
 function topicCards(topicId) {
-  const t = GRAMMAR_BY_ID.get(topicId);
-  return t ? cards.filter(c => topicsFor(c).includes(topicId)) : [];
+  if (!topicIndex || topicIndex.src !== cards || topicIndex.n !== cards.length) {
+    const map = new Map();
+    for (const c of cards) for (const id of topicsFor(c)) { if (!map.has(id)) map.set(id, []); map.get(id).push(c); }
+    topicIndex = {src: cards, n: cards.length, map};
+  }
+  return (topicIndex.map.get(topicId) || []).slice();
 }
 function grammarChips(card) {
   const priority = ["konj1", "partizip", "nominal", "vermutung", "passivers", "fvg", "genpraep", "konnektb2", "plusquam", "konj2verg", "passiv2", "lassen", "zuinf", "obwohl", "temporal", "indem", "futur", "ndekl", "relativ", "indirekt", "umzu", "alswenn", "doppelkonj", "zweiobjekt", "daworter", "deshalb",

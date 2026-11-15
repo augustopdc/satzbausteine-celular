@@ -47,11 +47,17 @@ function rdVerbBridges(text, notesW) {
     for (let j = s; j <= e; j++) if (rdIsVerb(words[j], j, notesW)) verbs.push(j);
     if (e - s >= 2) {
       const last = verbs[verbs.length - 1];
-      if (RD_SUBORD.has(first) && verbs.length && last - lead >= 2) out.push({a: lead, b: last, kind: "neben"});
+      if (RD_SUBORD.has(first) && verbs.length && last - lead >= 2) {
+        // “dass … verwandelt hat”: o infinitivo/particípio colado antes do verbo do fim entra no bloco final (c).
+        const c = last - 1;
+        out.push(verbs.includes(c) && c - lead >= 2 && rdNonFinite(words[c], notesW) ? {a: lead, b: last, c, kind: "neben"} : {a: lead, b: last, kind: "neben"});
+      }
       else if (verbs.length >= 2 && rdIsAux(words[verbs[0]], notesW)) {
         // A 2ª parte é um infinitivo ou particípio (finden, gesehen), nunca outro verbo conjugado (lernte).
         const tail = verbs.slice(1).filter(j => rdNonFinite(words[j], notesW)).pop();
-        if (tail != null && tail - verbs[0] >= 2) out.push({a: verbs[0], b: tail, kind: "klammer"});
+        // Dois particípios com o mesmo auxiliar (“hat … geschnitten und … gelegt”): os de antes de und/oder também entram (m).
+        const m = tail == null ? [] : verbs.slice(1).filter(j => j < tail && j - verbs[0] >= 2 && rdNonFinite(words[j], notesW) && /^(und|oder|sowie)$/i.test(words[j + 1] || ""));
+        if (tail != null && tail - verbs[0] >= 2) out.push(m.length ? {a: verbs[0], b: tail, m, kind: "klammer"} : {a: verbs[0], b: tail, kind: "klammer"});
       }
       else if (verbs.length === 1) { const sep = sepParticle(text, verbs[0], notesW); if (sep && sep.k <= e && sep.k - verbs[0] >= 2) out.push({a: verbs[0], b: sep.k, kind: "trennbar"}); }
     }
@@ -63,11 +69,16 @@ function rdVerbBridges(text, notesW) {
 function rdBridgeNotes(i) {
   if (i < 0 || readingState().bridges === false || !reading.book) return [];
   const {words} = sentenceTokens(reading.order[i].text);
-  return rdVerbBridges(reading.order[i].text, reading.book.notes && reading.book.notes.w).map((b, n) => h("p", {class: "rd-bridge-note"},
-    h("b", {class: "vb-" + (n + 1), lang: "de", text: words[b.a]}), " … ", h("b", {class: "vb-" + (n + 1), lang: "de", text: words[b.b]}), ": " + RD_BRIDGE_TIP[b.kind] + "."));
+  // Passar o mouse numa nota acende o par no texto e apaga um pouco o resto da frase (CSS, pelo data-vb).
+  return rdVerbBridges(reading.order[i].text, reading.book.notes && reading.book.notes.w).map((b, n) => h("p", {class: "rd-bridge-note", dataset: {vb: String(n + 1)}},
+    h("b", {class: "vb-" + (n + 1), lang: "de", text: words[b.a]}), " … ",
+    ...(b.m || []).flatMap(j => [h("b", {class: "vb-" + (n + 1), lang: "de", text: words[j]}), " … "]),
+    h("b", {class: "vb-" + (n + 1), lang: "de", text: (b.c != null ? words[b.c] + " " : "") + words[b.b]}), ": " + RD_BRIDGE_TIP[b.kind] + "."));
 }
 const RD_BRIDGE_TIP = {neben: "a conjunção manda o verbo para o fim", klammer: "o verbo se divide: a 2ª parte fecha a frase", trennbar: "verbo separável: o prefixo vai para o fim"};
-/* Na frase escolhida: as duas partes ganham a mesma cor e, se estiverem na mesma linha, um arco que se desenha entre elas. */
+/* Na frase escolhida: as duas partes ganham a mesma cor e um arco que se desenha da 1ª até a 2ª; a 2ª dá um “pouso” leve
+   quando o arco chega. Em linhas diferentes, a parte de baixo ganha um sublinhado que se desenha na cor da ponte (o olho
+   aprende a saltar até o fim da oração). Particípios a mais com o mesmo auxiliar (b.m) e o bloco final da subordinada (b.c) ganham a mesma cor. */
 function rdDrawBridges(i, animate = true) {
   const text = $("rdText");
   if (!text) return;
@@ -83,24 +94,36 @@ function rdDrawBridges(i, animate = true) {
     text.vbWatch.observe(text);
   }
   text.querySelectorAll(".rd-bridge").forEach(x => x.remove());
-  for (const w of text.querySelectorAll(".rd-w.vb")) { w.classList.remove("vb", "vb-1", "vb-2", "vb-3"); w.removeAttribute("title"); }
+  for (const w of text.querySelectorAll(".rd-w.vb")) { w.classList.remove("vb", "vb-1", "vb-2", "vb-3", "vb-land", "vb-close"); w.removeAttribute("title"); }
   if (i < 0 || readingState().bridges === false || !reading.book) return;
   const el = text.querySelector('.rd-s[data-i="' + i + '"]');
   if (!el) return;
   const ws = [...el.querySelectorAll(".rd-w")], bridges = rdVerbBridges(reading.order[i].text, reading.book.notes && reading.book.notes.w);
-  bridges.forEach((b, n) => {
-    const A = ws[b.a], B = ws[b.b];
-    if (!A || !B) return;
-    for (const w of [A, B]) { w.classList.add("vb", "vb-" + (n + 1)); w.title = RD_BRIDGE_TIP[b.kind]; }
-    const ra = A.getClientRects()[0], rb = B.getClientRects()[0];
-    if (!ra || !rb || Math.abs(ra.top - rb.top) > 4) return;
-    const w = rb.left + rb.width / 2 - (ra.left + ra.width / 2), lift = Math.min(7, 3 + w * .02);
-    const svg = svgEl("svg", {class: "rd-bridge" + (animate ? "" : " still"), width: (w + 4).toFixed(1), height: (lift + 4).toFixed(1), "aria-hidden": "true"});
-    svg.style.left = (ra.width / 2 - 2).toFixed(1) + "px";
+  if (animate) void text.offsetWidth; // o pouso recomeça mesmo se a palavra já tinha a classe
+  const arc = (host, left, w, lift, d, k, cls = "") => {
+    const svg = svgEl("svg", {class: "rd-bridge" + cls + (animate ? "" : " still"), width: (w + 4).toFixed(1), height: (lift + 4).toFixed(1), "aria-hidden": "true"});
+    svg.style.left = left.toFixed(1) + "px";
     svg.style.top = (-lift - 3).toFixed(1) + "px";
-    const y = lift + 3, d = "M2 " + y.toFixed(1) + " C2 " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + y.toFixed(1);
-    svg.append(svgEl("path", {class: "vb-arc vb-" + (n + 1), d, pathLength: "100"}));
-    A.append(svg);
+    svg.append(svgEl("path", {class: "vb-arc vb-" + k, d, pathLength: "100"}));
+    host.append(svg);
+  };
+  bridges.forEach((b, n) => {
+    const A = ws[b.a], C = b.c != null ? ws[b.c] : null, B = C || ws[b.b], k = n + 1;
+    if (!A || !B) return;
+    const ends = [A, ...(b.m || []).map(j => ws[j]), ws[b.b], C].filter(Boolean);
+    for (const w of ends) { w.classList.add("vb", "vb-" + (n + 1)); w.title = RD_BRIDGE_TIP[b.kind]; }
+    if (animate) for (const w of ends.slice(1)) w.classList.add("vb-land");
+    const ra = A.getClientRects()[0], rb = B.getClientRects()[0];
+    if (!ra || !rb) return;
+    if (Math.abs(ra.top - rb.top) <= 4) {
+      // Mesma linha: arco alto o bastante para não raspar nos tremas e maiúsculas do meio.
+      const w = rb.left + rb.width / 2 - (ra.left + ra.width / 2), lift = Math.min(11, 4.5 + w * .025), y = lift + 3;
+      arc(A, ra.width / 2 - 2, w, lift, "M2 " + y.toFixed(1) + " C2 " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + (y - lift).toFixed(1) + " " + (w + 2).toFixed(1) + " " + y.toFixed(1), k);
+      return;
+    }
+    // Linhas diferentes: arco nenhum (entre as linhas ele parecia preso à palavra de cima); as partes que estão noutra
+    // linha ganham um sublinhado na cor da ponte que se desenha da esquerda para a direita (CSS .vb-close).
+    for (const w of ends.slice(1)) { const r = w.getClientRects()[0]; if (r && Math.abs(r.top - ra.top) > 4) w.classList.add("vb-close"); }
   });
 }
 window.addEventListener("resize", () => { if (reading.book && reading.sel >= 0 && currentView === "reading") rdDrawBridges(reading.sel, false); });
@@ -118,18 +141,22 @@ function rdDecorateText(text) {
 }
 
 // ---------- Abertura e fechamento do capítulo ----------
-/* Antes de ler: uma linha do resumo e as 5 palavras novas mais frequentes do capítulo (toque para ouvir). */
+/* Antes de ler: as 5 palavras novas mais frequentes do capítulo (toque para ouvir) e, recolhido, o resumo do capítulo
+   ANTERIOR para lembrar onde a história parou. O resumo deste capítulo nunca aparece aqui (entregaria a história):
+   fica no fim do capítulo e no botão “Resumo”, para quem pedir. */
 function rdOpeningNode() {
-  const book = reading.book, c = book.notes && book.notes.c && book.notes.c[reading.ch];
-  const line = c ? String(c).split(/(?<=[.!?])\s+/)[0] : "";
+  const book = reading.book, prev = reading.ch > 0 && book.notes && book.notes.c ? book.notes.c[reading.ch - 1] : "";
   // Só substantivos, verbos e adjetivos (palavras como “wie” e “auch” não ajudam a entender a história).
   const words = typeof chapterGlossary === "function" ? chapterGlossary(reading.order, book.notes && book.notes.w, reading.ch, 40).filter(w => ["substantivo", "verbo", "adjetivo"].includes(w.classe)).slice(0, 5) : [];
-  if (!line && !words.length) return null;
-  return h("aside", {class: "rd-open", lang: "pt-BR"},
-    h("p", {class: "label", text: "Antes de ler"}),
-    line ? h("p", {class: "rd-open-line", text: line}) : null,
-    words.length ? h("div", {class: "rd-open-words"}, ...words.map(w => h("button", {class: "rd-open-word", type: "button", title: "Ouvir", onclick: () => speak(w.lema || w.w)},
-      h("b", {lang: "de", text: w.lema || w.w}), w.pt ? h("span", {text: w.pt}) : null))) : null);
+  if (!prev && !words.length) return null;
+  // Depois que a leitura do capítulo começou (já passou das primeiras frases), o bloco fica recolhido numa linha.
+  const ca = typeof chapterRange === "function" ? chapterRange(reading.ch)[0] : 0, started = reading.sel > ca + 2;
+  const body = [words.length ? h("div", {class: "rd-open-words"}, ...words.map(w => h("button", {class: "rd-open-word", type: "button", title: "Ouvir", onclick: () => speak(w.lema || w.w)},
+      h("b", {lang: "de", text: w.lema || w.w}), w.pt ? h("span", {text: w.pt}) : null))) : null,
+    prev ? h("details", {class: "rd-open-recap"}, h("summary", null, "Lembrar o capítulo anterior"), h("p", {class: "rd-open-line", text: prev})) : null];
+  if (started) return h("details", {class: "rd-open rd-open-mini", lang: "pt-BR"},
+    h("summary", null, "Antes de ler" + (words.length ? " · " + plural(words.length, "palavra nova", "palavras novas") : "")), ...body);
+  return h("aside", {class: "rd-open", lang: "pt-BR"}, h("p", {class: "label", text: "Antes de ler"}), ...body);
 }
 /* Fim do capítulo: o que você fez hoje e o próximo passo à vista. */
 function rdClosingNode() {
@@ -137,9 +164,11 @@ function rdClosingNode() {
   const min = typeof readingLog === "function" ? Math.round(((readingLog().days[dateKey()] || {}).ms || 0) / 60000) : 0;
   const saved = typeof savedWordsOf === "function" ? savedWordsOf(book.id).filter(x => { const i = reading.byId.get(x.sid); return i != null && reading.order[i].ch === reading.ch; }).length : 0;
   const next = () => { reading.ch++; reading.sel = -1; reading.cycle = null; stopReadingAudio(); renderBook(); window.scrollTo({top: 0}); saveBookPosition(); };
+  const summary = book.notes && book.notes.c && book.notes.c[reading.ch];
   return h("section", {class: "rd-close", lang: "pt-BR"},
     h("p", {class: "label", text: "Fim do capítulo " + (reading.ch + 1)}),
     h("p", {class: "rd-close-stats"}, h("b", {text: min + " min"}), " de leitura hoje", saved ? ", " : "", saved ? h("b", {text: String(saved)}) : null, saved ? (saved === 1 ? " palavra guardada neste capítulo" : " palavras guardadas neste capítulo") : ""),
+    summary ? h("details", {class: "rd-close-summary"}, h("summary", null, "Conferir o que aconteceu (resumo)"), h("p", {text: summary})) : null,
     last ? h("p", {class: "rd-close-next", text: "Você chegou ao fim do livro."})
       : h("p", {class: "rd-close-next"}, "Próximo: ", h("b", {lang: "de", text: book.chapters[reading.ch + 1].title})),
     h("div", {class: "row"},

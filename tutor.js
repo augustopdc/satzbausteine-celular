@@ -38,6 +38,7 @@ function tutorPackData(days, revlog, now = Date.now()) {
   const convSessions = (((progress.practice || {}).conversa || {}).sessions || []).filter(s => s.at >= since);
   const convErrors = [], seen = new Set();
   for (const s of convSessions.slice().reverse()) for (const e of s.errors || []) {
+    if (e.tipo === "microfone") continue; // provável erro da transcrição: não é para o tutor
     const k = (e.errado + "→" + e.certo).toLowerCase();
     if (!seen.has(k)) { seen.add(k); convErrors.push({...e, topic: s.topic}); }
   }
@@ -70,7 +71,7 @@ function tutorText(d, points) {
   const lines = ["Satz · pacote para a aula", "Período: " + formatDate(dateKey(new Date(d.since))) + " a " + formatDate(dateKey()) + " · nível atual " + d.level,
     tutorCounts(d) + ".", ""];
   if (d.stuck.length) { lines.push("Frases que mais travaram no treino:"); d.stuck.forEach(x => lines.push("- " + x.card.frase + " (" + x.card.traducao + ") · errei " + x.n + "×")); lines.push(""); }
-  if (d.convErrors.length) { lines.push("Erros nas conversas (corrigidos pela IA; conferir):"); d.convErrors.forEach(e => lines.push("- " + e.errado + " → " + e.certo + (e.explicacao ? " · " + e.explicacao : ""))); lines.push(""); }
+  if (d.convErrors.length) { lines.push("Erros nas conversas (corrigidos pela IA; conferir):"); d.convErrors.forEach(e => lines.push("- " + e.errado + " → " + e.certo + (e.tipo === "microfone" ? " [talvez a transcrição]" : "") + (e.explicacao ? " · " + e.explicacao : ""))); lines.push(""); }
   if (d.f432.length) { lines.push("Monólogos 4/3/2 (palavras por minuto na 1ª → 3ª rodada):"); d.f432.forEach(s => lines.push("- " + formatDate(dateKey(new Date(s.at))) + ": " + s.rounds.map(f432Wpm).join(" → ") + " palavras/min, " + s.rounds.map(r => r.pauses).join(" → ") + " pausas")); lines.push(""); }
   if (d.toCheck.length) {
     lines.push("Cartões criados pela IA para conferir (marque cada um: certo, corrigir com a frase certa ou descartar):");

@@ -12,13 +12,14 @@ const MS_PRODUCE = 5;
 function msState() {
   if (!progress.practice) progress.practice = {};
   const s = progress.practice.menschen;
-  if (!s || typeof s !== "object") progress.practice.menschen = {passos: {}, words: {}};
-  else { if (!s.passos) s.passos = {}; if (!s.words) s.words = {}; }
+  if (!s || typeof s !== "object") progress.practice.menschen = {passos: {}, words: {}, rev: {}};
+  else { if (!s.passos) s.passos = {}; if (!s.words) s.words = {}; if (!s.rev) s.rev = {}; }
   return progress.practice.menschen;
 }
 function sanitizeMenschen(src) {
-  const out = {passos: {}, words: {}};
+  const out = {passos: {}, words: {}, rev: {}};
   if (!src || typeof src !== "object") return out;
+  if (typeof sanitizeMsRev === "function") out.rev = sanitizeMsRev(src.rev);
   for (const [k, v] of Object.entries(src.passos || {})) if (/^\d{1,2}-[a-z0-9]{1,20}$/.test(k) && Number(v) > 0) out.passos[k] = Number(v);
   for (const [k, s] of Object.entries(src.words || {})) {
     if (!k.trim() || k.length > 80 || !s || typeof s !== "object") continue;
@@ -32,6 +33,7 @@ function mergeMenschen(local, incoming) {
   const out = sanitizeMenschen(local), inc = sanitizeMenschen(incoming);
   for (const [k, v] of Object.entries(inc.passos)) out.passos[k] = Math.max(out.passos[k] || 0, v);
   for (const [k, s] of Object.entries(inc.words)) if (!out.words[k] || s.at > out.words[k].at) out.words[k] = s;
+  if (typeof mergeMsRev === "function") out.rev = mergeMsRev(out.rev, inc.rev);
   return out;
 }
 function msPassoKey(n, id) { return n + "-" + id; }
@@ -165,7 +167,7 @@ function msGoPhase(j) {
   P.i = Math.max(0, Math.min(P.phases.length - 1, j));
   P.res = null;
   P.busy = false;
-  if (P.phases[P.i] === "fim" && !P.review) { msState().passos[msPassoKey(P.n, P.id)] = Date.now(); saveProgress(); }
+  if (P.phases[P.i] === "fim" && !P.review && !P.mix) { msState().passos[msPassoKey(P.n, P.id)] = Date.now(); saveProgress(); }
   msRenderPasso();
   window.scrollTo({top: 0});
   const el = $("msInput");
@@ -178,15 +180,15 @@ function msNextButton(label) {
 }
 function msPassoView(box) {
   const P = menschen.passo, l = msLessonData(P.n);
-  const p = P.review ? null : l.passos.find(x => x.id === P.id), cur = P.phases[P.i];
+  const p = P.review || P.mix ? null : l.passos.find(x => x.id === P.id), cur = P.phases[P.i];
   const k = p ? l.passos.indexOf(p) : -1;
-  const nav = P.review ? null : h("ol", {class: "aula-nav ms-nav"}, ...P.phases.filter(x => x !== "fim").map((x, j) =>
+  const nav = !p ? null : h("ol", {class: "aula-nav ms-nav"}, ...P.phases.filter(x => x !== "fim").map((x, j) =>
     h("li", {class: (j < P.i ? "done" : "") + (j === P.i ? " here" : "")}, h("button", {type: "button", onclick: () => msGoPhase(j)}, MS_PHASES[x]))));
   const head = h("div", {class: "ms-passo-head"},
     h("button", {class: "quiet small", type: "button", onclick: () => msClosePasso()}, iconText("back", "Lektion " + l.n)),
     h("p", {class: "ms-kicker", text: p ? "Passo " + (k + 1) + " de " + l.passos.length + " · " + p.pag : "Revisão"}),
-    h("h2", {class: "ms-passo-title", text: p ? p.titulo : "Palavras para revisar"}), nav);
-  const body = cur === "fim" ? msPassoEnd(l, p)
+    h("h2", {class: "ms-passo-title", text: p ? p.titulo : P.mix ? "Revisão misturada" : "Palavras para revisar"}), nav);
+  const body = cur === "fim" ? msPassoEnd(l, p) : cur === "mix" ? msPhMix()
     : {sobre: msPhSobre, palavras: msPhPalavras, ouvir: msPhOuvir, regra: msPhRegra, produzir: msPhProduzir, usar: msPhUsar}[cur](l, p);
   fill(box, head, body);
   if (cur === "ouvir") msMountOuvir(l, p);
@@ -490,6 +492,8 @@ function msPhUsar(l, p) {
 function msPassoEnd(l, p) {
   const P = menschen.passo;
   if (P.review) return msDrillEnd(P.drill);
+  if (P.mix) return msMixEnd();
+  const fechoOn = typeof msFechoOpen === "function" && !!l.conversa && convAvailable();
   const k = l.passos.indexOf(p), next = l.passos.slice(k + 1).find(x => !msPassoDone(l.n, x.id)) || l.passos[k + 1];
   const pr = P.prod;
   return h("div", {class: "aula-step aula-end"},
@@ -498,14 +502,19 @@ function msPassoEnd(l, p) {
       P.words.n ? ["Palavras: ", h("b", {text: P.words.ok + " de " + P.words.n}), " de primeira"] : null,
       P.words.n && pr && pr.n ? " · " : null,
       pr && pr.n ? ["Frases: ", h("b", {text: pr.ok + " de " + pr.n})] : null) : null,
+    p.frases && p.frases.length && typeof msRevEntry === "function" && msRevEntry(l, p) ? h("p", {class: "muted small-text", text: "As frases deste passo voltam na revisão misturada " + msRevWhen(msRevEntry(l, p).due) + ", junto com as de outros passos."}) : null,
+    !next && fechoOn ? h("p", {class: "muted small-text", text: "Você fez todos os passos. Falta fechar a lição falando: 5 minutos de conversa sobre o tema."}) : null,
     h("div", {class: "row"},
+      !next && fechoOn ? h("button", {class: "primary", type: "button", onclick: () => msFechoOpen(l)}, iconText("chat", "Fechar a lição falando")) : null,
       next ? h("button", {class: "primary", type: "button", onclick: () => msOpenPasso(l.n, next.id)}, "Passo " + (l.passos.indexOf(next) + 1) + ": " + next.titulo) : null,
-      h("button", {class: next ? "" : "primary", type: "button", onclick: () => msClosePasso()}, "Voltar à lição")));
+      h("button", {class: next || fechoOn ? "" : "primary", type: "button", onclick: () => msClosePasso()}, "Voltar à lição")));
 }
 
 // ---------- A página da lição ----------
 function msAulaHome(l, blocks) {
   const next = msNextPasso(l), doneN = l.passos.filter(p => msPassoDone(l.n, p.id)).length, due = msDueWords().length;
+  const fecho = typeof msFechoItem === "function" ? msFechoItem(l) : null;
+  const fechoTodo = !!fecho && !next && convAvailable() && !msFechoBest(l.n);
   const hero = h("div", {class: "panel ms-hero"},
     next ? [
       h("p", {class: "ms-kicker", text: doneN ? "Continue de onde parou · " + doneN + " de " + l.passos.length + " passos feitos" : "Comece por aqui · a lição tem " + l.passos.length + " passos, na ordem do livro"}),
@@ -515,18 +524,20 @@ function msAulaHome(l, blocks) {
       h("button", {class: "primary", type: "button", onclick: () => msOpenPasso(l.n, next.id)}, iconText("play", doneN ? "Continuar" : "Começar a aula"))]
     : [h("p", {class: "ms-kicker", text: "Lição completa"}),
       h("h3", {class: "ms-hero-title", text: "Você fez os " + l.passos.length + " passos da Lektion " + l.n}),
-      h("p", {class: "muted", text: "Revise as palavras, refaça um passo quando quiser e marque a próxima lição quando a aula do curso chegar lá."})],
+      h("p", {class: "muted", text: fechoTodo ? "Falta só usar tudo isso falando: uma conversa de 5 minutos sobre o tema da lição, e o app marca o que você usar."
+        : "Revise as palavras, refaça um passo quando quiser e marque a próxima lição quando a aula do curso chegar lá."}),
+      fechoTodo ? h("button", {class: "primary", type: "button", onclick: () => msFechoOpen(l)}, iconText("chat", "Fechar a lição falando")) : null],
     h("div", {class: "ms-bar"}, h("span", {style: "width:" + Math.round(doneN / l.passos.length * 100) + "%"})));
   const list = h("ol", {class: "ms-passos", "aria-label": "Passos da lição"}, ...l.passos.map((p, k) => {
     const done = msPassoDone(l.n, p.id);
     return h("li", null, h("button", {class: "ms-passo" + (done ? " done" : "") + (p === next ? " next" : ""), type: "button", onclick: () => msOpenPasso(l.n, p.id)},
       h("span", {class: "ms-passo-n"}, done ? icon("check", 16) : String(k + 1)),
       h("span", {class: "ms-passo-txt"}, h("b", {text: p.titulo}), h("span", {class: "muted small-text", text: p.pag}))));
-  }));
+  }), fecho);
   const review = due ? h("div", {class: "panel ms-review"},
     h("p", null, h("b", {text: String(due)}), " " + (due === 1 ? "palavra para revisar hoje" : "palavras para revisar hoje")),
     h("button", {type: "button", onclick: msOpenReview}, iconText("repeat", "Revisar agora"))) : null;
   const all = h("details", {class: "ms-all"}, h("summary", null, h("b", {text: "Tudo da Lektion " + l.n}),
     h("span", {class: "muted small-text", text: "metas, frases, gramática, áudios, palavras e conversa, sem ordem"})), h("div", {class: "ms-grid"}, ...blocks));
-  return [h("div", {class: "ms-home"}, hero, h("div", {class: "panel ms-passos-box"}, h("h3", {text: "Os passos"}), list), review), all];
+  return [h("div", {class: "ms-home"}, hero, h("div", {class: "panel ms-passos-box"}, h("h3", {text: "Os passos"}), list), typeof msMixPanel === "function" ? msMixPanel() : null, review), all];
 }

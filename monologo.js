@@ -35,7 +35,13 @@ function f432Words(text) { return String(text || "").split(/\s+/).filter(w => /\
 // ---------- Tela inicial (dentro da Conversa) ----------
 function f432SetupNode() {
   const topics = CONV_TOPICS.filter(t => !t.role && t.id !== "frei");
-  const select = h("select", {"aria-label": "Tema do relato"}, ...topics.map(t => h("option", {value: t.id}, t.pt)));
+  // Com os temas novos (conversa-temas.js) a lista é longa: vai em grupos, um por categoria.
+  const cats = typeof CONV_CATS !== "undefined" ? CONV_CATS["Temas"] : [];
+  const opt = t => h("option", {value: t.id}, t.pt);
+  const select = h("select", {"aria-label": "Tema do relato"}, ...(cats.length
+    ? [...cats.map(([id, label]) => { const list = topics.filter(t => t.cat === id); return list.length ? h("optgroup", {label}, ...list.map(opt)) : null; }),
+      ...topics.filter(t => !cats.some(([id]) => id === t.cat)).map(opt)]
+    : topics.map(opt)));
   const mode = h("select", {"aria-label": "Duração das rodadas"}, h("option", {value: "curto"}, "2 · 1,5 · 1 min (recomendado no início)"), h("option", {value: "classico"}, "4 · 3 · 2 min (clássico)"));
   mode.value = F432_MODES[settings.f432Mode] ? settings.f432Mode : "curto";
   mode.addEventListener("change", () => { settings.f432Mode = mode.value; saveSettings(); });
@@ -163,7 +169,7 @@ async function f432Finish() {
   try {
     const r = await window.satzDesktop.convChat([{role: "system", content: `You are a German teacher for Luiz, a Brazilian learner (level ${convLevel()}). He told the same story three times, each time with less time (4/3/2 fluency technique). Below are the transcripts (transcribed speech: ignore capitalization and punctuation). Focus on round 3. ${CONV_ERROR_RULES} At most 5 errors and 3 style notes, only the most important; empty lists if there is nothing. Then: elogio (one short encouraging sentence in Brazilian Portuguese, mentioning a concrete improvement between the rounds if there is one), dica (one concrete tip in Brazilian Portuguese for the next time) and frases (up to 3 useful correct German sentences based on what he wanted to say). Answer as JSON.`},
       {role: "user", content: f432.rounds.map((r, k) => "Round " + (k + 1) + ": " + (r.text || "(nothing understood)")).join("\n\n")}],
-      {kind: "summary", temperature: .2, maxTokens: 1200, schema: {...CONV_SUMMARY_SCHEMA, properties: {...CONV_SUMMARY_SCHEMA.properties, dica: {type: "string"}}}});
+      {kind: "summary", temperature: .2, maxTokens: 2400, schema: {...CONV_SUMMARY_SCHEMA, properties: {...CONV_SUMMARY_SCHEMA.properties, dica: {type: "string"}}}});
     j = parseLooseJson(r.text);
   } catch (e) { setStatus("Não consegui montar o retorno: " + cleanIpcError(e, "erro"), "error"); }
   if (token !== f432.token) return;
@@ -192,13 +198,7 @@ function f432RenderFeedback() {
     trend ? h("p", {text: trend}) : null,
     fb.elogio ? h("p", {text: fb.elogio}) : null,
     fb.dica ? h("p", {class: "notice", text: "Dica para a próxima vez: " + fb.dica}) : null,
-    h("h4", {text: fb.errors.length ? "Os erros mais importantes" : "Nenhum erro importante encontrado"}),
-    fb.errors.length ? h("ul", {class: "conv-errors"}, ...fb.errors.map(e => h("li", null,
-      h("p", null, h("s", {lang: "de", text: e.errado}), " → ", h("b", {lang: "de", text: e.certo}),
-        h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir a forma correta", onclick: () => convSpeak(e.certo)}, icon("volume", 16)),
-        convCardButton({erro: {...e, frase: f432LineWith(e.errado)}})),
-      h("p", {class: "muted small-text", text: e.explicacao})))) : null,
-    ...convStyleList(fb.style || []),
+    ...convErrorsBlock(fb.errors, fb.style || [], f432LineWith),
     fb.frases.length ? h("h4", {text: "Frases para praticar"}) : null,
     fb.frases.length ? h("ul", {class: "conv-errors"}, ...fb.frases.map(f => h("li", null, h("p", null, h("span", {lang: "de", text: f}),
       h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir a frase", onclick: () => convSpeak(f)}, icon("volume", 16)), convCardButton({frase: f}))))) : null,

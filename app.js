@@ -3,7 +3,7 @@
    Carregados antes: fsrs.js (FSRS), catalog*.js (frases) e audio-index.js (áudios embutidos). */
 
 const APP_VERSION = "1.9.0";
-const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1+menschen821";
+const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1+menschen969+revisao2";
 const KEY_PROGRESS = "satzbausteine.progress.v1";
 const KEY_SETTINGS = "satzbausteine.settings.v1";
 const KEY_CATALOG_FALLBACK = "satzbausteine.catalog.v1";
@@ -23,7 +23,8 @@ const BUNDLED_CARDS = [
   ...(typeof FRASES_NICOSWEG_A2 !== "undefined" ? FRASES_NICOSWEG_A2 : []),
   ...(typeof FRASES_ETAPA4 !== "undefined" ? FRASES_ETAPA4 : []),
   ...(typeof FRASES_MENSCHEN !== "undefined" ? FRASES_MENSCHEN : [])
-].map(c => typeof aplicarAjustes === "function" ? aplicarAjustes(c) : c);
+].map(c => typeof aplicarAjustes === "function" ? aplicarAjustes(c) : c)
+  .map(c => typeof aplicarRevisao === "function" ? aplicarRevisao(c) : c);
 
 const REF_GROUPS = [
   {title: "QECR · interação, produção e mediação", items: [
@@ -51,7 +52,7 @@ const REF_GROUPS = [
     ["FSP_Dokumentation", "Documentação e Arztbrief"], ["FSP_Fallvorstellung", "Arzt-Arzt-Gespräch e apresentação de caso"],
     ["FSP_Fachbegriffe", "Termos técnicos ↔ linguagem leiga"]]},
   {title: "Vida na Alemanha", items: [["Ankunft", "Chegada: burocracia, moradia, banco e Approbation"]]},
-  {title: "Curso", items: [["NicosWeg", "Nicos Weg A1 e A2 (Deutsche Welle) + Wortlisten A1 e A2 do Goethe"], ["Menschen", "Menschen A2.1 e A2.2 (Hueber), livro do curso particular"]]}
+  {title: "Curso", items: [["NicosWeg", "Reforço do curso A1 e A2 + Wortlisten A1 e A2 do Goethe"], ["Menschen", "Menschen A2.1 e A2.2 (Hueber), livro do curso particular"]]}
 ];
 const REF_LABELS = new Map(REF_GROUPS.flatMap(g => g.items));
 
@@ -61,21 +62,26 @@ const REGISTER_CHIPS = {
   neutro: ["neutro", "sem tratamento marcado"], escrito: ["escrito", "texto escrito"]
 };
 const THEME_LABELS = {
-  Alltag: "Dia a dia", Arbeit: "Trabalho", Freundschaft: "Amizade", Bildung: "Educação", Behoerde: "Repartições", Kultur: "Cultura",
-  Wohnen: "Moradia", Dienstleistung: "Serviços", Reisen: "Viagens", Medien: "Mídia", Gesundheit: "Saúde", Technologie: "Tecnologia",
-  Telefon: "Telefone", Mobilitaet: "Mobilidade", Versicherung: "Seguros", Konsum: "Consumo", Geld: "Dinheiro", Umwelt: "Meio ambiente",
-  Ernaehrung: "Alimentação", Gleichstellung: "Igualdade", Migration: "Migração", Nachbarn: "Vizinhos", Ehrenamt: "Voluntariado",
-  Sport: "Esporte", Medizin: "Medicina (FSP)", Fachbegriffe: "Termos médicos", Ankunft: "Chegada na Alemanha", Meine: "Minhas frases", NicosWeg: "Reforço · Nicos Weg",
-  Menschen: "Curso · Menschen"
+  // Tópicos por assunto (revisão das frases, nov/2026). Os antigos ficam para cartões salvos antes (minhas frases, catálogo velho no celular).
+  Gespraech: "Conversa e cortesia", Zahlen: "Números, horas e datas", Ich: "Sobre você", Familie: "Família", Freundschaft: "Amigos e vida social",
+  Nachbarn: "Vizinhos", Alltag: "Rotina", Wohnen: "Moradia", Ernaehrung: "Comida e restaurante", Einkaufen: "Compras", Dienstleistung: "Serviços",
+  Mobilitaet: "Transporte e cidade", Reisen: "Viagem e turismo", Wetter: "Tempo e estações", Freizeit: "Lazer e cultura", Sport: "Esporte",
+  Medien: "Celular, internet e mídia", Ankunft: "Chegada na Alemanha", Behoerde: "Repartições", Geld: "Banco e dinheiro", Versicherung: "Seguros e contratos",
+  Telefon: "Ao telefone", Arbeit: "Trabalho", Lernen: "Aprender alemão", Bildung: "Escola e formação", Patient: "Saúde como paciente",
+  Anamnese: "Consulta: anamnese", Untersuchung: "Consulta: exame e explicação", Klinik: "Hospital com colegas", Fachbegriffe: "Termos médicos",
+  Gesellschaft: "Sociedade e opinião", Meine: "Minhas frases",
+  Kultur: "Cultura", Gesundheit: "Saúde", Technologie: "Tecnologia", Konsum: "Consumo", Umwelt: "Meio ambiente", Gleichstellung: "Igualdade",
+  Migration: "Migração", Ehrenamt: "Voluntariado", Medizin: "Medicina", NicosWeg: "Dia a dia", Menschen: "Dia a dia"
 };
+// “Medicina” = o que era Medizin/Fachbegriffe antes dos tópicos novos (Bereich::Medizin, posto pela revisão de nov/2026).
 const MEDICAL_THEMES = new Set(["Medizin", "Fachbegriffe"]);
-const FEATURED_THEMES = ["Meine", "Menschen", "NicosWeg", "Medizin", "Fachbegriffe", "Ankunft"];
+const FEATURED_THEMES = ["Meine", "Gespraech", "Anamnese", "Klinik", "Fachbegriffe", "Ankunft"];
 const TAG_VALUE_LABELS = {
   Register: {Sie: "Sie · formal", du: "du · informal", neutral: "Neutro", formell: "Formal (escrito)", umgangssprachlich: "Coloquial", ihr: "ihr · plural"},
   Modus: {Produktion: "Produção", Verstehen: "Compreensão"},
   Schicht: {1: "K1 · base", 2: "K2 · intermediária", 3: "K3 · avançada"},
   Prio: {1: "Prioridade 1", 2: "Prioridade 2", 3: "Prioridade 3"},
-  Quelle: {Kernliste: "Lista principal", Medizin: "Módulo médico", Ankunft: "Módulo chegada", Meine: "Minhas frases", NicosWeg: "Reforço Nicos Weg", Menschen: "Reforço Menschen"},
+  Quelle: {Kernliste: "Lista principal", Medizin: "Módulo médico", Ankunft: "Módulo chegada", Meine: "Minhas frases", NicosWeg: "Reforço do curso A1/A2", Menschen: "Reforço Menschen"},
   Thema: THEME_LABELS
 };
 const FUNCTION_FIXES = {
@@ -84,7 +90,7 @@ const FUNCTION_FIXES = {
   CartaAbertura: "Carta: abertura", CartaFecho: "Carta: fecho", TelefoneAbertura: "Telefone: abertura", TelefoneFecho: "Telefone: fecho",
   ElogiarSocial: "Elogiar (social)", Eigene: "Frase própria"
 };
-const THEME_NAMES = {"Wohnen": "moradia", "Behoerde": "Bürgeramt", "Arbeit": "emprego", "Gesundheit": "paciente", "Umwelt": "plástico", "Reisen": "viagem", "Medien": "redes", "Konsum": "consumo", "Ernaehrung": "alimentação e trabalho", "Bildung": "estudos", "Freundschaft": "amizades e vida social", "Versicherung": "seguro", "Gleichstellung": "igualdade de direitos", "Migration": "migração e integração", "Sport": "esportes e atividade física", "Kultur": "livros", "Technologie": "tecnologia e IA", "Mobilitaet": "trânsito", "Geld": "banco", "Ehrenamt": "voluntariado", "Telefon": "telefonema", "Dienstleistung": "compras", "Nachbarn": "vizinhos e convivência", "Alltag": "rotina", "Medizin": "plantão no hospital", "Fachbegriffe": "explicar termos médicos a um paciente", "Ankunft": "primeiras semanas na Alemanha", "NicosWeg": "o dia a dia (curso Nicos Weg)", "Menschen": "família, casa e o dia a dia (livro Menschen)"};
+const THEME_NAMES = {"Gespraech": "uma conversa qualquer", "Zahlen": "horários e compromissos", "Ich": "você e seus planos", "Familie": "a sua família", "Freundschaft": "amizades e vida social", "Nachbarn": "vizinhos e convivência", "Alltag": "rotina", "Wohnen": "moradia", "Ernaehrung": "comida e restaurante", "Einkaufen": "compras", "Dienstleistung": "serviços e consertos", "Mobilitaet": "transporte", "Reisen": "viagem", "Wetter": "o tempo", "Freizeit": "lazer, filmes e séries", "Sport": "esportes e atividade física", "Medien": "celular e internet", "Ankunft": "primeiras semanas na Alemanha", "Behoerde": "Bürgeramt", "Geld": "banco", "Versicherung": "seguro", "Telefon": "telefonema", "Arbeit": "emprego", "Lernen": "aprender alemão", "Bildung": "estudos", "Patient": "você como paciente", "Anamnese": "anamnese", "Untersuchung": "explicar um exame ao paciente", "Klinik": "plantão no hospital", "Fachbegriffe": "explicar termos médicos a um paciente", "Gesellschaft": "sociedade e opinião"};
 const FILTER_KEYS = [["Schicht", "Camada"], ["Prio", "Prioridade"], ["Modus", "Modo"], ["Niveau", "Nível"], ["Thema", "Tema"], ["Register", "Registro"], ["Funktion", "Função"], ["Bezug", "Referência"]];
 
 // ---------- Estado ----------
@@ -103,7 +109,7 @@ let progress = emptyProgress();
 let settings = {newLimit: 6, reviewLimit: "", newOrder: "recommended", voice: "", rate: .9, retention: .9, theme: "auto", typing: false,
   welcomeDismissed: false, provaPack: false, sounds: false, orderV2: false, audioSource: "neural", alternateVoices: true, medShare: 0, plan: null, fsrsWeights: null, fsrsInfo: null, readingGoal: 60,
   presentNew: true, levelGate: false, unlockV1: false, nwChapter: 7, msLesson: 1, germanSituations: false, genderColors: true, showRubric: "auto", achieved: [], sceneShowOther: true, sceneHelp: "auto",
-  convVoice: "charon", convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado"};
+  convVoice: "thorsten", voiceLocalV1: false, convShowText: true, convAutoSend: false, convHandsFree: false, convCheck: "equilibrado", convBargeIn: false, convKeepRec: false, convTone: "leve"};
 const session = {mode: "production", active: false, leech: false, label: "", queue: [], steps: new Map(), card: null, step: "produce", cardVoice: "", revealed: false,
   done: 0, failed: 0, fresh: 0, grades: {}, startedAt: 0, shownAt: 0, undo: [], extraNew: 0, extraReviews: 0, extraReviewsDay: "", speech: "idle", dictation: false, diktat: null};
 let templateCard = null, templateVariation = 0, activationCards = [], activationRound = 0;
@@ -197,6 +203,19 @@ function setWidth(el, pct) { el.style.width = Math.max(0, Math.min(100, pct)) + 
 
 const ICONS = {
   volume: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  // Categorias da Conversa (conversa-temas.js)
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-6h4v6"/>',
+  ball: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5l3.8 2.8-1.4 4.5H9.6l-1.4-4.5z"/><path d="M12 3v4.5M20.6 9.5l-4.8.8M17.3 19.3l-2.9-4.5M6.7 19.3l2.9-4.5M3.4 9.5l4.8.8"/>',
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/><path d="M3 13h18"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/>',
+  scale: '<path d="M12 4v16M7 20h10M5 7h14"/><path d="M5 7l-3 6.5a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6.5a3 3 0 0 0 6 0z"/>',
+  cart: '<circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17.5" cy="19.5" r="1.5"/><path d="M2.5 3.5h3l2.4 11.5h11l2-8H6.3"/>',
+  train: '<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10.5h14M9 14h.01M15 14h.01M8 21l2-4M16 21l-2-4"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>',
+  heart: '<path d="M12 20s-7.5-4.6-9.2-9.2A4.8 4.8 0 0 1 12 7.2a4.8 4.8 0 0 1 9.2 3.6C19.5 15.4 12 20 12 20z"/>',
+  hospital: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M12 7v6M9 10h6M10 21v-4h4v4"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.6a3.5 3.5 0 0 1 0 6.8M17.5 14.2A6.5 6.5 0 0 1 21.5 20"/>',
   slow: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l-3.5-4"/>',
   play: '<path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
@@ -233,7 +252,16 @@ const ICONS = {
   speech: '<circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M17 6.5a4 4 0 0 1 0 5M19.5 4a7.5 7.5 0 0 1 0 10"/>',
   chat: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2.5 21.5z"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
-  lineHeight: '<path d="M11 6h9M11 12h9M11 18h9"/><path d="M5.5 4v16M3 6.5 5.5 4 8 6.5M3 17.5 5.5 20 8 17.5"/>'
+  lineHeight: '<path d="M11 6h9M11 12h9M11 18h9"/><path d="M5.5 4v16M3 6.5 5.5 4 8 6.5M3 17.5 5.5 20 8 17.5"/>',
+  // Estante da Leitura
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  bookmark: '<path d="M6.5 3.5h11v17l-5.5-4-5.5 4z"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/>',
+  list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/>',
+  more: '<path d="M5.5 12h.01M12 12h.01M18.5 12h.01" stroke-width="3"/>',
+  library: '<path d="M4 4h3.5v16H4zM9.5 4H13v16H9.5z"/><path d="m15.2 5.2 3.3-.9 3 15.4-3.3.9z"/>'
 };
 /* Ícone + texto como filhos de h(): h("button", null, iconText("play", "Tocar")). */
 function iconText(name, text, size = 16) { return [icon(name, size), text]; }
@@ -441,7 +469,9 @@ function hasTag(card, key, value) { return tagValues(card, key).includes(value);
    o pacote Prova Goethe B2 (formato da prova: debate, Vortrag, resumo de texto…) só entra com a opção ligada. */
 function isHiddenCard(card) { return hasTag(card, "Ausblenden", "1"); }
 function isProvaCard(card) { return hasTag(card, "Paket", "Prova"); }
-function isMedical(card) { return tagValues(card, "Thema").some(t => MEDICAL_THEMES.has(t)); }
+/* Frase de exercício do Menschen (revisão de nov/2026): fica na aula guiada e em “Estudar estas frases”, fora do treino do dia a dia. */
+function isMenschenOnly(card) { return hasTag(card, "Nur", "Menschen"); }
+function isMedical(card) { return hasTag(card, "Bereich", "Medizin") || tagValues(card, "Thema").some(t => MEDICAL_THEMES.has(t)); }
 function functionLabel(value) {
   if (FUNCTION_FIXES[value]) return FUNCTION_FIXES[value];
   const words = value.replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -634,6 +664,7 @@ function showView(view) {
   if (currentView === "grammar" && view !== "grammar" && typeof gbStop === "function") gbStop();
   if (currentView !== view) stopAudio();
   currentView = view;
+  document.body.dataset.view = view;
   all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; e.classList.remove("vt"); });
   updateNav(view);
   if (view === "home") renderHome();
@@ -735,17 +766,22 @@ function renderHome() {
   renderShiftToday(load);
   renderHoje(load);
   const goal = nextCando();
-  $("heroGoal").textContent = goal ? "Próxima meta: " + goal.text.toLowerCase() + " (" + Math.round(goal.pct * 100) + "%)" : "";
+  // Meta concreta (o que você já consegue fazer), com o estado em palavras; o número fica como detalhe.
+  if (goal) {
+    const state = goal.pct < .1 ? "começando" : goal.pct < .5 ? "em desenvolvimento" : "quase lá";
+    const bar = h("i");
+    setWidth(bar, goal.pct / CANDO_DONE * 100);
+    fill($("heroGoal"), h("span", {class: "goal-label", text: "Próxima meta"}), h("b", {text: goal.text}),
+      h("span", {class: "goal-state", title: goal.learned + " de " + goal.total + " frases dessa meta já estudadas; ela fica pronta com " + Math.round(CANDO_DONE * 100) + "%."}, h("span", {class: "goal-bar"}, bar), state));
+  } else $("heroGoal").replaceChildren();
   const st = streak(), learned = cards.filter(studied).length;
   $("homeLearned").textContent = learned.toLocaleString("pt-BR") + (learned === 1 ? " frase" : " frases") + (cards.length ? " · " + (learned / cards.length * 100).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "% do catálogo" : "");
-  for (const [target, key] of [["layerMetrics", "Schicht"], ["priorityMetrics", "Prio"]]) {
-    const rows = [];
-    for (let n = 1; n <= 3; n++) {
-      const subset = cards.filter(c => tag(c, key) === String(n)), done = subset.filter(studied).length;
-      rows.push(progressRow(key === "Schicht" ? "K" + n + (n === 1 ? " · base" : n === 2 ? " · intermediária" : " · avançada") : "Prioridade " + n, done, subset.length));
-    }
-    $(target).replaceChildren(...rows);
-  }
+  // Por nível do Quadro Europeu (A1…B2) + alemão médico; as camadas K1–K3 e as prioridades do catálogo não dizem nada a quem estuda.
+  const rows = HOME_LEVELS.map(([lv, name]) => {
+    const subset = lv === "med" ? cards.filter(isMedical) : cards.filter(c => tag(c, "Niveau") === lv && !isMedical(c));
+    return levelRow(lv === "med" ? "FSP" : lv, name, subset.filter(studied).length, subset.length);
+  });
+  $("layerMetrics").replaceChildren(...rows);
   renderHeatmap();
   renderForecast();
   renderBackupReminder();
@@ -832,6 +868,15 @@ function updateNavBadges(pending, st) {
   if (hubBadge) { hubBadge.textContent = badge.textContent; hubBadge.hidden = !pending; }
   $("streakMini").textContent = st + (st === 1 ? " dia" : " dias");
 }
+const HOME_LEVELS = [["A1", "Iniciante"], ["A2", "Básico"], ["B1", "Intermediário"], ["B2", "Avançado"], ["med", "Alemão médico"]];
+function levelRow(code, name, done, total) {
+  const bar = h("span"), pct = total ? done / total * 100 : 0;
+  setWidth(bar, pct);
+  return h("div", {class: "progress-row level-row" + (done ? "" : " is-empty")},
+    h("span", {class: "pr-label"}, h("span", {class: "lv-pill", text: code}), h("span", {text: name})),
+    h("span", {class: "pr-value", text: done ? done.toLocaleString("pt-BR") + " de " + total.toLocaleString("pt-BR") : total.toLocaleString("pt-BR") + " frases"}),
+    h("div", {class: "track", role: "img", "aria-label": Math.round(pct) + "%"}, bar));
+}
 function progressRow(label, done, total) {
   const bar = h("span");
   setWidth(bar, total ? done / total * 100 : 0);
@@ -863,13 +908,38 @@ function renderHeatmap() {
     const shift = v < 0 ? "normal" : dayType(dateKey(d));
     const label = v < 0 ? "" : (v || "Nenhuma") + " atividade" + (v === 1 ? "" : "s") + " · " + d.toLocaleDateString("pt-BR", {weekday: "short", day: "numeric", month: "short"})
       + (shift !== "normal" ? " · " + SHIFT_LABELS[shift].toLowerCase() : "");
-    return h("span", {class: "hm l" + level + (v === 0 && (shift === "plantao" || shift === "pos") ? " hm-plantao" : ""), title: label || null});
+    return h("span", {class: "hm l" + level + (v === 0 && (shift === "plantao" || shift === "pos") ? " hm-plantao" : "") + (dateKey(d) === dateKey(today) ? " hm-today" : ""),
+      title: label || null, role: label ? "img" : null, "aria-label": label || null, "data-label": label || null});
   }));
-  const active = cells.filter(([, v]) => v > 0).length;
-  $("heatmapInfo").textContent = active ? active + (active === 1 ? " dia" : " dias") + " com estudo nas últimas " + weeks + " semanas" : "Seus dias de estudo aparecerão aqui.";
+  // Ao lado: o número grande e dois fatos tirados das mesmas células (nada estimado).
+  const studied = cells.filter(([, v]) => v > 0), active = studied.length;
+  const week = cells.filter(([, v]) => v >= 0).slice(-7).filter(([, v]) => v > 0).length;
+  const avg = active ? Math.round(studied.reduce((s, [, v]) => s + v, 0) / active) : 0;
+  const info = $("heatmapInfo");
+  if (!active) fill(info, h("span", {class: "heat-sub", text: "Seus dias de estudo aparecerão aqui."}));
+  else fill(info, h("span", {class: "heat-big"}, h("b", {text: active}), " " + (active === 1 ? "dia" : "dias") + " com estudo"), h("span", {class: "sr-only", text: " "}),
+    h("span", {class: "heat-sub", text: "nas últimas " + weeks + " semanas"}), h("span", {class: "sr-only", text: ". "}),
+    h("span", {class: "heat-facts"},
+      h("span", null, h("b", {text: week}), " dos últimos 7 dias", h("span", {class: "sr-only", text: "; "})),
+      h("span", null, h("b", {text: avg}), " " + (avg === 1 ? "atividade" : "atividades") + " por dia de estudo")),
+    h("span", {class: "heat-day", "aria-live": "polite"}));
+  // Calendário recolhido por padrão: o resumo ao lado basta no dia a dia; abrir fica guardado.
+  const open = localStorage.getItem("satzbausteine.heatOpen") === "1";
+  $("homeHeat").classList.toggle("collapsed", !open);
+  $("heatToggle").textContent = open ? "Recolher" : "Ver calendário";
+  $("heatToggle").setAttribute("aria-expanded", String(open));
+  if (!box.dataset.bound) {
+    box.dataset.bound = "1";
+    $("heatToggle").addEventListener("click", () => { localStorage.setItem("satzbausteine.heatOpen", $("homeHeat").classList.contains("collapsed") ? "1" : "0"); renderHeatmap(); });
+    // Passar o mouse ou tocar num dia mostra o detalhe embaixo do resumo (o title continua para quem usa o mouse).
+    const show = e => { const c = e.target.closest(".hm[data-label]"), out = info.querySelector(".heat-day"); if (c && out) out.textContent = c.dataset.label; };
+    box.addEventListener("pointerover", show);
+    box.addEventListener("click", show);
+  }
 }
 function renderForecast() {
   const counts = forecastCounts(7), max = Math.max(1, ...counts);
+  $("forecast").classList.toggle("empty", !counts.some(Boolean));
   $("forecast").replaceChildren(...counts.map((n, i) => {
     const d = new Date(dateAfter(i) + "T12:00:00"), bar = h("i");
     bar.style.height = Math.max(3, n / max * 100) + "%";
@@ -938,7 +1008,7 @@ function renderNicosWeg() {
       const n = names === NW2_CHAPTERS ? NW_A2_BASE + i : i;
       return h("option", {value: String(n), text: (i ? "Capítulo " + i : "Início") + " · " + name});
     });
-    select.append(h("optgroup", {label: "Nicos Weg A1"}, ...opts(NW_CHAPTERS)), h("optgroup", {label: "Nicos Weg A2"}, ...opts(NW2_CHAPTERS)));
+    select.append(h("optgroup", {label: "A1"}, ...opts(NW_CHAPTERS)), h("optgroup", {label: "A2"}, ...opts(NW2_CHAPTERS)));
   }
   select.value = String(Number.isFinite(Number(settings.nwChapter)) ? settings.nwChapter : 18);
   const nw = cards.filter(c => nwChapter(c) !== null);
@@ -1076,7 +1146,7 @@ function orderNew(unseen, gated) {
   // depois do seu não ficam bloqueados: só vêm depois, misturados ao resto pela ordem recomendada.
   const nwRank = c => { if (msLesson(c) !== null && !msLocked(c)) return msLesson(c) - 100; const ch = nwChapter(c); return ch === null || nwLocked(c) ? 99 : ch; };
   unseen.sort((a, b) => isMine(b) - isMine(a) || nwRank(a) - nwRank(b) || sortNew(a, b));
-  for (let i = unseen.length - 1; i >= 0; i--) if (isHiddenCard(unseen[i]) || (!settings.provaPack && isProvaCard(unseen[i]))) unseen.splice(i, 1);
+  for (let i = unseen.length - 1; i >= 0; i--) if (isHiddenCard(unseen[i]) || isMenschenOnly(unseen[i]) || (!settings.provaPack && isProvaCard(unseen[i]))) unseen.splice(i, 1);
   const open = gated ? unlockedLevels() : null;
   // O reforço do curso já liberado pelo capítulo (“Estou no capítulo”, “Estou na Lektion”) não espera a progressão por nível.
   return open ? unseen.filter(c => isMine(c) || nwChapter(c) !== null || msLesson(c) !== null || open.has(tag(c, "Niveau"))) : unseen;
@@ -1092,6 +1162,7 @@ function leechCards(mode) {
     .sort((a, b) => (modeProgress(b.id, mode).lapses || 0) - (modeProgress(a.id, mode).lapses || 0));
 }
 function renderPracticeSetup() {
+  $("modeDesc").textContent = session.dictation ? "Ouça a frase em alemão e escreva exatamente o que ouviu." : session.mode === "listening" ? "Ouça a frase em alemão e confira se entendeu." : "Leia a situação em português e responda em alemão, em voz alta.";
   $("themeChips").replaceChildren(...themeChips("session", renderPracticeSetup));
   const n = activeFilterCount("session");
   $("sessionFilterCount").textContent = n ? n + (n === 1 ? " ativo" : " ativos") : "";
@@ -1140,8 +1211,14 @@ function startSession(options = {}) {
   $("sessionDone").hidden = true;
   $("contPlayer").hidden = true;
   if (!queue.length) { showSessionEmpty(options.custom || session.leech ? null : dayPlan()); return; }
-  Object.assign(session, {active: true, queue, steps: new Map(queue.map(id => [id, initialStep(id)])), card: null, revealed: false, done: 0, failed: 0, fresh: 0,
+  session.resume = null;
+  beginSession(queue, new Map(queue.map(id => [id, initialStep(id)])));
+}
+/* Liga a sessão com a fila e as etapas (nova ou retomada depois de “Encerrar”). */
+function beginSession(queue, steps, resumed = false) {
+  Object.assign(session, {active: true, resumed, queue, steps, card: null, revealed: false, done: 0, failed: 0, fresh: 0, intro: 0,
     grades: {again: 0, hard: 0, good: 0, easy: 0}, startedAt: Date.now(), undo: [], diktat: null, gapPick: new Map()});
+  $("sessionDone").hidden = true;
   document.body.classList.add("focus");
   $("focusBar").hidden = false;
   $("sessionStage").hidden = false;
@@ -1236,10 +1313,14 @@ function renderSessionCard() {
   $("cardAnswerBox").hidden = true;
   $("gradeRow").hidden = true;
   $("rubric").hidden = true;
+  $("swipeTip").hidden = true;
   $("reasonRow").hidden = true;
   $("presentActions").hidden = !present;
   $("revealCard").hidden = present;
+  // Uma linha só dizendo o que fazer agora (a lista de atalhos fica embaixo).
+  $("cardStep").textContent = present ? "" : typing ? (listening ? "Escreva o que ouviu" : "Escreva a resposta em alemão") : listening ? "Ouça e diga o que entendeu" : cloze ? "Diga a frase com a parte que falta, em voz alta" : "Responda em voz alta, depois revele";
   $("shadowButton").hidden = true;
+  sessionHint(present ? "present" : typing ? "typing" : "ask");
   setSpeechState(present || session.dictation ? "hidden" : "idle");
   const total = session.done + session.queue.length;
   $("cardCounter").textContent = (session.done + 1) + " de " + total;
@@ -1247,13 +1328,34 @@ function renderSessionCard() {
   $("undoRating").disabled = !session.undo.length;
   const flash = $("flashCard");
   flash.classList.remove("enter");
-  void flash.offsetWidth;
-  flash.classList.add("enter");
+  // Vindo de uma avaliação, a cópia do cartão anterior sai por cima e este já está no lugar (cardGhost).
+  if (session.ghosted) session.ghosted = false;
+  else { void flash.offsetWidth; flash.classList.add("enter"); }
   if (present) showAnswer(card, null);
   if (typing) input.focus(); else flash.focus({preventScroll: true});
   if (listening || present) speakSession();
   const next = byId.get(session.queue[1]);
   if (next) preloadCard(next, voiceForSession(next, true));
+}
+/* Atalhos só da etapa atual embaixo do cartão; a lista completa abre no “Todos os atalhos”. */
+const SESSION_HINTS = {
+  present: [["Espaço", "continuar"], ["K", "já conheço"], ["R", "ouvir"], ["D", "devagar"]],
+  ask: [["Espaço", "revelar"], ["F", "falar e conferir"], ["R", "ouvir"], ["D", "devagar"]],
+  typing: [["Enter", "conferir"], ["Esc", "encerrar"]],
+  grade: [["1–4", "avaliar"], ["Espaço", "Bom"], ["R", "ouvir"], ["Z", "desfazer"]]
+};
+const SESSION_HINT_ALL = "Espaço revela · Espaço de novo = Bom · 1–4 avalia (1 e 2 pedem o motivo; repita a tecla para seguir) · R repete · D devagar · F fala e confere · S shadowing · K já conheço · Z desfaz · Esc encerra";
+function sessionHint(step) {
+  const box = document.querySelector("#sessionStage .hint");
+  if (!box) return;
+  box.dataset.step = step;
+  const list = (SESSION_HINTS[step] || []).filter(([k]) => !(k === "F" && !speechAvailable()));
+  const all = h("span", {class: "hint-all", hidden: !session.hintAll, text: SESSION_HINT_ALL});
+  fill(box,
+    h("span", {class: "hint-now"}, ...list.flatMap(([k, what], i) => [i ? " · " : "", h("kbd", {text: k}), " " + what])),
+    h("button", {class: "quiet small hint-more", type: "button", "aria-expanded": String(!!session.hintAll),
+      onclick: e => { session.hintAll = !session.hintAll; all.hidden = !session.hintAll; e.currentTarget.setAttribute("aria-expanded", String(session.hintAll)); }}, "Todos os atalhos"),
+    all);
 }
 function escapeRegExp(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 const PT_SHORT = new Set(["em", "da", "de", "do", "no", "na", "se", "um", "ao", "as", "os", "ou", "eu", "tu", "me", "te", "já", "é", "e", "o", "a", "só", "há", "lá"]);
@@ -1395,7 +1497,10 @@ function revealCard(answer) {
   $("flashCard").classList.add("revealed");
   $("gradeRow").hidden = false;
   $("rubric").hidden = !showRubric();
+  $("swipeTip").hidden = !(showRubric() && window.matchMedia("(pointer: coarse)").matches);
   $("revealCard").hidden = true;
+  $("cardStep").textContent = "Confira com a resposta e avalie como saiu";
+  sessionHint("grade");
   $("shadowButton").hidden = !(usesNeural(card) && canRecord());
   setSpeechState("hidden");
   $("flashCard").focus({preventScroll: true});
@@ -1419,6 +1524,8 @@ function continuePresentation(skip = false) {
   session.queue.shift();
   session.queue.splice(Math.min(skip ? 5 : 3, session.queue.length), 0, card.id);
   session.done++;
+  session.intro++;
+  session.ghosted = cardGhost();
   renderSessionCard();
 }
 function rateCard(grade) {
@@ -1461,7 +1568,9 @@ function rateCard(grade) {
     session.steps.set(id, mode === "production" && clozeParts(card) ? "cloze" : "produce");
     session.queue.splice(Math.min(2, session.queue.length), 0, id);
   } else session.steps.set(id, "produce");
-  if (grade !== "again" && !prev) checkAchievements();
+  // A conta das metas leva ~150 ms: fica para depois da troca de cartão.
+  if (grade !== "again" && !prev) setTimeout(checkAchievements, 300);
+  session.ghosted = session.queue.length ? cardGhost() : false;
   if (session.queue.length) renderSessionCard(); else finishSession();
 }
 /* Bom e Fácil seguem na hora; Errei e Difícil abrem antes os motivos (opcionais). */
@@ -1505,38 +1614,87 @@ function exitFocus() {
 }
 function endSession() {
   if (!session.active) return;
-  if (session.done) finishSession();
-  else { exitFocus(); renderPracticeSetup(); }
+  // Encerrar no meio: o resumo diz o que foi feito e oferece continuar de onde parou.
+  if (session.done) finishSession({stopped: session.queue.length > 0});
+  else {
+    // Retomou e saiu sem fazer nada: a fila guardada continua valendo.
+    if (session.resumed && session.resumeFrom) session.resume = session.resumeFrom;
+    exitFocus(); renderPracticeSetup(); renderHome();
+  }
 }
-function finishSession() {
+/* Cartões que ficaram na fila ao encerrar (com a etapa de cada um), para “Continuar treino”. */
+function resumeInfo() {
+  const r = session.resume;
+  if (!r || r.day !== dateKey() || r.mode !== session.mode || r.dictation !== !!session.dictation) return null;
+  const queue = r.queue.filter(id => byId.has(id));
+  return queue.length ? {...r, queue} : null;
+}
+function resumeSession() {
+  const r = resumeInfo();
+  session.resume = null;
+  if (!r) { startSession(); return; }
+  session.leech = r.leech;
+  session.label = r.label;
+  $("contPlayer").hidden = true;
+  beginSession(r.queue, new Map(r.queue.map(id => [id, r.steps[id] || initialStep(id)])), true);
+  session.resumeFrom = r;
+}
+/* Texto curto do que a sessão fez (resumo e “Agora há pouco” da Hoje). */
+function sessionDoneText(reviews, fresh) {
+  const parts = [];
+  if (reviews) parts.push(plural(reviews, "avaliação", "avaliações"));
+  if (fresh) parts.push(plural(fresh, "frase nova", "frases novas"));
+  return parts.length ? parts.join(" e ") : "nenhuma avaliação";
+}
+function finishSession(opts = {}) {
+  const stopped = !!opts.stopped && session.queue.length > 0;
+  const left = stopped ? session.queue.length : 0;
+  session.resume = stopped ? {day: dateKey(), mode: session.mode, dictation: !!session.dictation, leech: session.leech, label: session.label,
+    queue: session.queue.slice(), steps: Object.fromEntries(session.queue.map(id => [id, session.steps.get(id) || "produce"]))} : null;
   exitFocus();
   const reviews = GRADES.reduce((a, g) => a + (session.grades[g] || 0), 0);
-  const pct = reviews ? Math.round((reviews - (session.grades.again || 0)) / reviews * 100) : 0;
+  const pct = reviews ? Math.round((reviews - (session.grades.again || 0)) / reviews * 100) : null;
+  const secs = (Date.now() - session.startedAt) / 1000;
   const tomorrow = forecastCounts(2)[1];
+  if (typeof hoje !== "undefined") hoje.last = {at: Date.now(), day: dateKey(), reviews, fresh: session.fresh, secs, left};
   const dist = h("div", {class: "dist", role: "img", "aria-label": GRADES.map(g => GRADE_LABELS[g] + ": " + (session.grades[g] || 0)).join(", ")},
     ...GRADES.filter(g => session.grades[g]).map(g => h("span", {class: "d-" + g, style: "flex:" + session.grades[g], title: GRADE_LABELS[g] + ": " + session.grades[g]})));
+  // Terminou a fila: o próximo passo vem do roteiro da Hoje (leitura, diário…), não um “volte amanhã” genérico.
+  const next = !stopped && typeof hojeRoute === "function" ? hojeNext(hojeRoute(todayLoad()).filter(i => i.id !== "cards" || !i.done)) : null;
+  const nextBtn = next && next.id !== "cards"
+    ? h("button", {class: "primary", onclick: () => hojeGo(next.id)}, icon("play", 16), "Próximo: " + next.title + (next.time ? " · " + next.time : ""))
+    : null;
+  const title = stopped ? "Treino pausado" : session.leech ? "Frases difíceis revisadas" : "Sessão concluída";
+  const sub = stopped
+    ? "Você fez " + sessionDoneText(reviews, session.intro) + ". " + (left === 1 ? "Falta 1 cartão" : "Faltam " + left + " cartões") + " desta sessão."
+    : next ? (next.id === "cards" ? "Ainda há cartões para hoje." : "Cartões feitos. Agora o roteiro segue com " + next.title.toLowerCase() + ".")
+    : streak() > 1 ? "Tudo feito por hoje. Sequência de " + streak() + " dias." : "Tudo feito por hoje.";
   const box = $("sessionDone");
+  box.classList.toggle("paused", stopped);
   fill(box,
-    h("div", {class: "summary-icon"}, icon("check", 30)),
-    h("h2", {text: session.leech ? "Frases difíceis revisadas" : "Sessão concluída"}),
-    h("p", {class: "muted", text: streak() > 1 ? "Sequência de " + streak() + " dias. Continue amanhã!" : "Bom trabalho. Volte amanhã para manter o ritmo."}),
+    h("div", {class: "summary-icon"}, icon(stopped ? "pause" : "check", 30)),
+    h("h2", {text: title}),
+    h("p", {class: "muted summary-sub", text: sub}),
     h("div", {class: "summary-stats"},
-      h("div", null, h("b", {text: reviews}), h("span", {text: "avaliações"})),
-      h("div", null, h("b", {text: pct + "%"}), h("span", {text: "de acerto"})),
-      h("div", null, h("b", {text: formatDuration((Date.now() - session.startedAt) / 1000)}), h("span", {text: "de treino"})),
+      h("div", null, h("b", {text: reviews}), h("span", {text: reviews === 1 ? "avaliação" : "avaliações"})),
+      pct == null ? null : h("div", null, h("b", {text: pct + "%"}), h("span", {text: "de acerto"})),
+      h("div", null, h("b", {text: formatDuration(secs)}), h("span", {text: "de treino"})),
       h("div", null, h("b", {text: session.fresh}), h("span", {text: session.fresh === 1 ? "frase nova" : "frases novas"}))),
     reviews ? dist : null,
     reviews ? h("div", {class: "dist-legend"}, ...GRADES.map(g => h("span", null, h("i", {class: "d-" + g}), GRADE_LABELS[g] + " " + (session.grades[g] || 0)))) : null,
     diktatSessionNode(),
-    h("p", {class: "muted", text: tomorrow ? "Amanhã: " + tomorrow + (tomorrow === 1 ? " revisão prevista." : " revisões previstas.") : "Nenhuma revisão prevista para amanhã."}),
-    h("div", {class: "row center"},
-      h("button", {class: "primary", onclick: () => startSession()}, "Outra sessão"),
+    stopped ? null : h("p", {class: "muted", text: tomorrow ? "Amanhã: " + tomorrow + (tomorrow === 1 ? " revisão prevista." : " revisões previstas.") : "Nenhuma revisão prevista para amanhã."}),
+    h("div", {class: "row center summary-actions"},
+      stopped ? h("button", {id: "resumeSession", class: "primary", onclick: resumeSession}, icon("play", 16), "Continuar treino") : nextBtn,
+      !stopped && (!next || next.id === "cards") ? h("button", {class: "primary", onclick: () => startSession()}, "Outra sessão") : null,
       h("button", {onclick: () => showView("home")}, "Voltar ao início")));
   box.hidden = false;
   window.scrollTo({top: 0});
   renderPracticeSetup();
   renderHome();
   flushAll();
+  const first = box.querySelector("button.primary");
+  if (first && currentView === "practice") first.focus({preventScroll: true});
 }
 
 // ---------- Microfone: clipes curtos ----------
@@ -1555,7 +1713,8 @@ async function startClip(maxMs) {
   const timer = setTimeout(() => { if (mr.state === "recording") mr.stop(); }, maxMs);
   return {done, stop() { clearTimeout(timer); if (mr.state === "recording") mr.stop(); return done; }};
 }
-async function blobToWav16k(blob) {
+/* range = {from, to} em segundos: só esse trecho (a Conversa manda só a parte em que você falou). */
+async function blobToWav16k(blob, range) {
   const ctx = new AudioContext();
   let audio;
   try { audio = await ctx.decodeAudioData(await blob.arrayBuffer()); } finally { ctx.close(); }
@@ -1564,7 +1723,11 @@ async function blobToWav16k(blob) {
   src.buffer = audio;
   src.connect(off.destination);
   src.start();
-  const data = (await off.startRendering()).getChannelData(0);
+  let data = (await off.startRendering()).getChannelData(0);
+  if (range) {
+    const a = Math.max(0, Math.floor((range.from || 0) * 16000)), b = Math.min(data.length, Math.ceil((range.to == null ? audio.duration : range.to) * 16000));
+    if (b - a >= 8000) data = data.subarray(a, b);
+  }
   const view = new DataView(new ArrayBuffer(44 + data.length * 2));
   const text = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
   text(0, "RIFF"); view.setUint32(4, 36 + data.length * 2, true); text(8, "WAVE"); text(12, "fmt ");
@@ -1574,9 +1737,14 @@ async function blobToWav16k(blob) {
   return view.buffer;
 }
 function speechAvailable() { return !!(window.satzDesktop && desktopInfo && desktopInfo.speech && desktopInfo.speech.available) && canRecord(); }
-async function transcribeBlob(blob, long) {
-  const wav = await blobToWav16k(blob);
-  const result = await window.satzDesktop.transcribe(wav, {long: !!long});
+/* opts.fast = modelo pequeno mesmo com o “mais preciso” escolhido (Conversa: tempo de resposta); opts.range = trecho em segundos.
+   Fora do modo longo, a janela do Whisper (-ac) acompanha a duração: ~50 quadros por segundo + folga, mínimo 384
+   (com menos, ele fica mais lento e corta; medido com as falas do usuário em 10/11/2026). */
+function whisperCtx(seconds) { return Math.min(1500, Math.max(384, Math.ceil(seconds * 50) + 100)); }
+async function transcribeBlob(blob, long, opts = {}) {
+  const wav = await blobToWav16k(blob, opts.range);
+  const seconds = (wav.byteLength - 44) / 32000;
+  const result = await window.satzDesktop.transcribe(wav, {long: !!long, fast: !!opts.fast, ac: long ? 0 : whisperCtx(seconds)});
   return (result && result.text || "").trim();
 }
 
@@ -2075,6 +2243,8 @@ function cachedPlayer(url) {
 }
 function preloadCard(card, voice) { if (usesNeural(card)) cachedPlayer(audioUrl(card, voice || PRIMARY_VOICE)); }
 function stopAudio() {
+  if (typeof convInterrupt === "function") convInterrupt();
+  localSpeech.seq++;
   if (audioPlayer) audioPlayer.pause();
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 }
@@ -2096,19 +2266,74 @@ function renderVoices() {
   const select = $("voiceSelect");
   if (!select) return;
   select.replaceChildren();
-  if (!("speechSynthesis" in window)) {
-    select.append(new Option("Síntese de voz indisponível", ""));
-    $("voiceWarning").hidden = !!NEURAL_AUDIO.size;
+  voices = "speechSynthesis" in window ? window.speechSynthesis.getVoices().filter(v => /^de(?:-|_)/i.test(v.lang) && v.localService) : [];
+  const local = [["thorsten", "Thorsten · neste computador"], ["kerstin", "Kerstin · neste computador"]].filter(([v]) => localSpeech.voices[v]);
+  local.forEach(([v, label]) => select.append(new Option(label, "piper:" + v)));
+  voices.forEach(v => select.append(new Option(v.name.replace(/^Microsoft /, "") + " (" + v.lang + ")", v.voiceURI)));
+  if (!select.options.length) {
+    select.append(new Option("speechSynthesis" in window ? "Nenhuma voz alemã disponível" : "Síntese de voz indisponível", ""));
+    $("voiceWarning").hidden = NEURAL_AUDIO.size > 0 && settings.audioSource !== "system";
     return;
   }
-  voices = window.speechSynthesis.getVoices().filter(v => /^de(?:-|_)/i.test(v.lang) && v.localService);
-  if (!voices.length) { select.append(new Option("Nenhuma voz alemã disponível", "")); $("voiceWarning").hidden = NEURAL_AUDIO.size > 0 && settings.audioSource !== "system"; return; }
   $("voiceWarning").hidden = true;
-  voices.forEach(v => select.append(new Option(v.name.replace(/^Microsoft /, "") + " (" + v.lang + ")", v.voiceURI)));
-  if (settings.voice && voices.some(v => v.voiceURI === settings.voice)) select.value = settings.voice;
-  else { select.value = voices[0].voiceURI; settings.voice = select.value; saveSettings(); }
+  const values = [...select.options].map(o => o.value);
+  if (settings.voice && values.includes(settings.voice)) select.value = settings.voice;
+  else {
+    // Sem escolha válida: Thorsten quando existe; senão a 1ª voz do Windows. No PC, só grava depois de saber se o Piper está instalado.
+    select.value = values[0];
+    if (!window.satzDesktop || localSpeech.loaded) { settings.voice = select.value; saveSettings(); }
+  }
+}
+/* Voz do computador para o que não tem áudio gravado: no PC, o Piper (Thorsten ou Kerstin, resources\piper) no lugar
+   da voz do Windows (este PC nem tem voz alemã do Windows); sem o Piper (ou no celular), a voz do sistema.
+   settings.voice = "piper:thorsten" | "piper:kerstin" | voiceURI de uma voz do Windows. */
+const localSpeech = {voices: {}, cache: new Map(), seq: 0};
+function localSpeechVoice() {
+  if (!window.satzDesktop || !window.satzDesktop.ttsLocal) return "";
+  const m = /^piper:(thorsten|kerstin)$/.exec(settings.voice || "");
+  if (m) return localSpeech.voices[m[1]] ? m[1] : "";
+  if (settings.voice && voices.some(v => v.voiceURI === settings.voice)) return "";
+  return localSpeech.voices.thorsten ? "thorsten" : "";
+}
+async function loadLocalSpeech() {
+  if (!window.satzDesktop || !window.satzDesktop.ttsLocalStatus) return;
+  try { const s = await window.satzDesktop.ttsLocalStatus(); localSpeech.voices = {thorsten: !!s.thorsten, kerstin: !!s.kerstin}; } catch (e) { localSpeech.voices = {}; }
+  localSpeech.loaded = true;
+  renderVoices();
+}
+function speakLocal(text, slow, voice) {
+  stopAudio();
+  const my = ++localSpeech.seq, key = voice + "|" + text;
+  const done = (async () => {
+    let url = localSpeech.cache.get(key);
+    if (!url) {
+      const r = await window.satzDesktop.ttsLocal(text, {voice});
+      if (!r || !r.audio) return;
+      url = URL.createObjectURL(new Blob([r.audio], {type: "audio/wav"}));
+      localSpeech.cache.set(key, url);
+      if (localSpeech.cache.size > 300) { const [k, u] = localSpeech.cache.entries().next().value; localSpeech.cache.delete(k); URL.revokeObjectURL(u); }
+    }
+    if (my !== localSpeech.seq) return;
+    const player = new Audio(url), rate = (Number(settings.rate) || .9) * (slow ? .75 : 1);
+    player.defaultPlaybackRate = rate; player.playbackRate = rate;
+    audioPlayer = player;
+    await player.play();
+    await waitForEnd(player, 400);
+  })().catch(e => {
+    if (my !== localSpeech.seq || (e && e.name === "AbortError")) return;
+    if (/não está instalada|parou/.test(String(e && e.message))) localSpeech.voices[voice] = false;
+    speakSystem(text, slow);
+  });
+  return {done};
 }
 function speak(text, slow = false) {
+  const clean = String(text || "").replace(/<[^>]*>/g, "");
+  const voice = localSpeechVoice();
+  if (voice && clean.trim()) return speakLocal(clean, slow, voice);
+  speakSystem(clean, slow);
+  return null;
+}
+function speakSystem(text, slow = false) {
   if (audioPlayer) audioPlayer.pause();
   if (!("speechSynthesis" in window)) { setStatus("Síntese de voz indisponível neste computador.", "error"); return; }
   const utterance = new SpeechSynthesisUtterance(text.replace(/<[^>]*>/g, ""));
@@ -2261,7 +2486,7 @@ function applyImportedSettings(s) {
   if (Number.isInteger(Number(s.msLesson)) && Number(s.msLesson) >= 1 && Number(s.msLesson) <= 24) settings.msLesson = Number(s.msLesson);
   if (typeof s.levelGate === "boolean") settings.levelGate = s.levelGate;
   if (typeof s.mineReview === "boolean") settings.mineReview = s.mineReview;
-  if (["charon", "aoede", "system"].includes(s.convVoice)) settings.convVoice = s.convVoice;
+  if (["charon", "aoede", "system", "thorsten", "kerstin"].includes(s.convVoice)) settings.convVoice = s.convVoice;
   if (["curto", "classico"].includes(s.f432Mode)) settings.f432Mode = s.f432Mode;
   if (s.plan && typeof s.plan === "object") {
     const plan = {};
@@ -2504,8 +2729,8 @@ function renderSettings() {
   $("audioSource").disabled = !NEURAL_AUDIO.size;
   const voiceNames = Object.values(AUDIO_VOICES).map(v => v.label);
   $("audioSourceInfo").textContent = NEURAL_AUDIO.size
-    ? NEURAL_AUDIO.size.toLocaleString("pt-BR") + " frases com áudio neural embutido (vozes " + new Intl.ListFormat("pt-BR", {type: "conjunction"}).format(voiceNames) + "). Frases importadas depois usam a voz do Windows."
-    : "Áudio neural não encontrado nesta instalação; usando a voz do Windows.";
+    ? NEURAL_AUDIO.size.toLocaleString("pt-BR") + " frases com áudio neural embutido (vozes " + new Intl.ListFormat("pt-BR", {type: "conjunction"}).format(voiceNames) + "). Frases importadas depois usam a voz do computador."
+    : "Áudio neural não encontrado nesta instalação; usando a voz do computador.";
   $("alternateVoices").checked = !!settings.alternateVoices;
   $("setLevelGate").checked = !!settings.levelGate;
   $("setProvaPack").checked = !!settings.provaPack;
@@ -2571,10 +2796,15 @@ function refreshAll() {
 function bindEvents() {
   initNav();
   $("themeToggle").addEventListener("click", cycleTheme);
+  $("navSettings").addEventListener("click", () => navGo("settings", "fade"));
   $("appMenuBtn").addEventListener("click", () => { if (window.satzDesktop && window.satzDesktop.appMenu) window.satzDesktop.appMenu().catch(() => {}); });
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", syncTitleBar);
   $("tsvInput").addEventListener("change", async e => { await importTSV(Array.from(e.target.files)); e.target.value = ""; });
-  $("homeProduction").addEventListener("click", () => { showView("practice"); setSessionMode("production"); startSession(); });
+  $("homeProduction").addEventListener("click", () => {
+    showView("practice");
+    if (resumeInfo()) { resumeSession(); return; }
+    setSessionMode("production"); startSession();
+  });
   $("homeListening").addEventListener("click", () => { showView("practice"); setSessionMode("listening"); startSession(); });
   $("dismissWelcome").addEventListener("click", () => { settings.welcomeDismissed = true; saveSettings(); $("welcome").hidden = true; });
   $("reminderExport").addEventListener("click", exportProgress);
@@ -2794,6 +3024,8 @@ async function init() {
   if (!settings.orderV2) { if (settings.newOrder === "priority") settings.newOrder = "recommended"; settings.orderV2 = true; }
   // Nada bloqueado (pedido do usuário em 26/10/2026): a progressão por nível vira só ordem. Uma vez; vale nos outros aparelhos.
   if (!settings.unlockV1) { settings.levelGate = false; settings.unlockV1 = true; saveSettings(); settings.syncAt = Date.now(); safeWrite(KEY_SETTINGS, settings); }
+  // Sem Google Cloud (11/11/2026: o usuário desativou o faturamento): a parceira da Conversa passa para o Piper, uma vez.
+  if (!settings.voiceLocalV1) { if (settings.convVoice === "charon") settings.convVoice = "thorsten"; else if (settings.convVoice === "aoede") settings.convVoice = "kerstin"; settings.voiceLocalV1 = true; safeWrite(KEY_SETTINGS, settings); }
   applyTheme();
   await loadProgress();
   db = await openCatalogDB();
@@ -2813,11 +3045,13 @@ async function init() {
   refreshCards();
   populateExams();
   bindEvents();
+  initGestures();
   if ("speechSynthesis" in window) {
     renderVoices();
     window.speechSynthesis.addEventListener?.("voiceschanged", renderVoices);
     setTimeout(renderVoices, 600);
   }
+  loadLocalSpeech();
   $("appVersion").textContent = APP_VERSION;
   if (window.satzDesktop) {
     try { desktopInfo = await window.satzDesktop.info(); } catch (e) { desktopInfo = null; }
@@ -2830,6 +3064,7 @@ async function init() {
   if (typeof cloudSync === "function") cloudSync({force: true});
   // Textos da Escrita que ficaram sem correção (o app fechou no meio, ou vieram do celular sem sincronização nova).
   if (typeof escritaPump === "function") setTimeout(escritaPump, 6000);
+  setTimeout(gramPrewarm, 1200);
   await offerRestore();
 }
 init().then(() => { document.documentElement.dataset.ready = "true"; }).catch(e => {

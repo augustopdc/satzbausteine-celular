@@ -162,7 +162,7 @@ function rdWebRender() {
   const box = $("readingLibrary");
   if (!box || reading.book || currentView !== "reading") return;
   const local = rdLocalList(), books = (rdWeb.index || {books: []}).books || [];
-  const ids = [...new Set([...books.map(b => b.id), ...Object.keys(local)])];
+  const ids = rdSortBooks([...new Set([...books.map(b => b.id), ...Object.keys(local)])], id => rdWebBook(id).b);
   rdAssignCovers(ids.map(id => rdWebBook(id).b));
   const items = ids.map(id => {
     const {remote, mine, busy, outdated, b} = rdWebBook(id);
@@ -178,5 +178,7 @@ function rdWebRender() {
     items.length ? rdShelf(items)
       : emptyState("bookOpen", "Nenhum livro no celular ainda", "No PC, abra a Leitura e toque em “Enviar para o celular” no livro."),
     h("p", {class: "muted small-text", text: "Os livros ficam no seu repositório privado e, depois de baixados, neste aparelho. O áudio vem em partes, uma por capítulo (cerca de 1/3 do tamanho original). A explicação de palavras novas pela IA só existe no PC."})));
+  rdHeadActions();
+  if (reading.query) rdApplyFilter(reading.query);
 }
 if (window.satzDesktop && window.satzDesktop.onCloudBookProgress) window.satzDesktop.onCloudBookProgress(rdOnSendProgress);

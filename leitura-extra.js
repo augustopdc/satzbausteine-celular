@@ -125,29 +125,58 @@ function rdTick() {
   if (!d.c && d.ms >= RD_DAY_MIN) { d.c = 1; progress.days[day] = Number(progress.days[day] || 0) + 1; saveProgress(); return; }
   if (d.ms % 60000 < RD_TICK) saveProgress();
 }
-/* Diário: total da semana em destaque, barra grossa e uma coluna por dia (altura = minutos); hoje fica marcado na cor do app. */
+/* Diário: os minutos da semana em destaque, quanto falta e uma coluna por dia, com a linha da meta do dia
+   (a meta da semana ÷ 7). Cada dia diz por escrito o que a cor mostra: passar o mouse (ou o foco) abre a data e os minutos.
+   Quando a meta da semana fecha, uma confirmação aparece uma vez só. */
+const RD_WEEKDAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const KEY_READING_GOAL_SEEN = "satzbausteine.reading.goalSeen";
+function rdDayLabel(day) {
+  const s = new Date(day + "T12:00:00").toLocaleDateString("pt-BR", {weekday: "long", day: "numeric", month: "short"});
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 function rdDiaryNode() {
-  const w = rdWeek(), min = Math.round(w.ms / 60000), pct = Math.min(100, w.ms / (w.goal * 60000) * 100);
-  const bar = h("span"); setWidth(bar, pct);
-  const goal = h("select", {"aria-label": "Meta semanal de leitura"}, ...[15, 30, 60, 90, 120, 180].map(m => new Option(m + " min por semana", String(m))));
+  // Esta semana ou a passada (seletor no alto do diário); a passada não tem “hoje” nem comemoração.
+  const past = reading.diaryWeek === 1;
+  const w = rdWeek(past ? new Date(Date.now() - 7 * DAY_MS) : new Date()), min = Math.round(w.ms / 60000), pct = Math.min(100, w.ms / (w.goal * 60000) * 100), done = pct >= 100;
+  const today = dateKey(), left = Math.max(1, w.goal - min);
+  const dayGoal = w.goal / 7, mins = w.per.map(x => Math.round(x.ms / 60000));
+  // A coluna cheia vale uma vez e meia a meta do dia, ou o maior dia, o que for maior.
+  const top = Math.max(dayGoal * 1.5, ...mins, 1);
+  const bar = h("span");
+  rdGrow(bar, "diary", pct);
+  const goal = h("select", {class: "rd-goal-select", "aria-label": "Meta semanal de leitura"}, ...[15, 30, 60, 90, 120, 180].map(m => new Option(m + " min", String(m))));
   goal.value = String(w.goal);
-  goal.addEventListener("change", () => { settings.readingGoal = Number(goal.value); saveSettings(); renderLibrary(); });
-  const names = ["S", "T", "Q", "Q", "S", "S", "D"], today = dateKey();
-  // A coluna cheia vale a meta do dia (meta da semana ÷ 7) ou o maior dia, o que for maior.
-  const top = Math.max(w.goal / 7, ...w.per.map(x => x.ms / 60000), 1);
-  const days = w.active === 1 ? "1 dia" : w.active + " dias";
-  return h("section", {class: "panel rd-diary"},
-    h("div", {class: "rd-diary-head"}, h("h2", {text: "Diário de leitura"}), goal),
-    h("p", {class: "rd-diary-total"}, h("b", {text: String(min)}), h("span", {text: " de " + w.goal + " min nesta semana"})),
-    h("div", {class: "track rd-diary-track" + (pct >= 100 ? " done" : "")}, bar),
-    h("p", {class: "small-text rd-diary-sub", text: pct >= 100 ? "Meta cumprida. Você leu em " + days + "." : w.active ? "Você leu em " + days + ". Faltam " + Math.max(1, w.goal - min) + " min." : "Ainda sem leitura nesta semana."}),
-    h("div", {class: "rd-week"}, ...w.per.map((x, i) => {
-      const m = Math.round(x.ms / 60000), col = h("i");
-      if (m) col.style.height = Math.max(8, Math.min(100, m / top * 100)) + "%";
-      return h("div", {class: "rd-week-day" + (x.day === today ? " today" : x.day > today ? " future" : "") + (x.ms >= 60000 ? " on" : ""), title: x.day + ": " + m + " min"},
-        h("span", {class: "rd-week-col"}, col), h("b", {text: names[i]}), h("small", {text: m ? m + " min" : ""}));
-    })),
-    h("p", {class: "muted small-text rd-diary-note", text: "Conta o tempo com o livro aberto e você lendo ou ouvindo; pausas longas não contam. Cinco minutos no dia já valem para a sequência de estudo, e o resumo vai no Pacote para a aula."}));
+  goal.addEventListener("change", () => { settings.readingGoal = Number(goal.value); saveSettings(); rdRerender(); });
+  const weekSel = h("select", {class: "rd-week-select", "aria-label": "Semana do diário"}, new Option("Esta semana", "0"), new Option("Semana passada", "1"));
+  weekSel.value = past ? "1" : "0";
+  weekSel.addEventListener("change", () => { reading.diaryWeek = Number(weekSel.value); rdRerender(); });
+  const week = w.per[0].day, fresh = !past && done && localStorage.getItem(KEY_READING_GOAL_SEEN) !== week;
+  if (fresh) localStorage.setItem(KEY_READING_GOAL_SEEN, week);
+  const sub = past ? (done ? "Meta cumprida na semana passada." : !min ? "Nenhuma leitura na semana passada." : "Faltaram " + left + " min para a meta.")
+    : done ? (fresh ? "Meta da semana cumprida. Bom ritmo." : "Meta da semana cumprida.")
+    : !min ? "Nenhuma leitura ainda nesta semana. Dez minutos já contam."
+    : "Faltam " + left + " min para sua meta semanal.";
+  const chart = h("div", {class: "rd-chart", role: "list", "aria-label": "Minutos lidos em cada dia da semana"},
+    ...w.per.map((x, i) => {
+      const m = mins[i], future = x.day > today, met = m >= dayGoal && m > 0, col = h("i");
+      if (m) rdGrow(col, "day|" + x.day, Math.max(8, m / top * 100), "height"); else col.style.height = "0";
+      const what = future ? "ainda não chegou" : m ? m + " min" + (met ? ", meta do dia" : "") : "sem leitura";
+      const label = rdDayLabel(x.day) + (x.day === today ? " (hoje)" : "") + ": " + what;
+      return h("div", {class: "rd-day" + (x.day === today ? " today" : "") + (future ? " future" : "") + (m ? " on" : "") + (met ? " met" : ""), role: "listitem", tabindex: "0", "aria-label": label},
+        h("span", {class: "rd-day-col"}, col),
+        h("span", {class: "rd-day-name"}, h("span", {text: RD_WEEKDAYS[i]})),
+        h("span", {class: "rd-tip", role: "tooltip", "aria-hidden": "true"}, h("b", {text: rdDayLabel(x.day) + (x.day === today ? " · hoje" : "")}), h("span", {text: what.charAt(0).toUpperCase() + what.slice(1)})));
+    }));
+  const [title, explain] = titled("h2", "Diário de leitura", "Conta o tempo com o livro aberto e você lendo ou ouvindo; pausas longas não contam. Cinco minutos no dia já valem para a sequência de estudo, e o resumo da semana vai no Pacote para a aula. A coluna escura é dia em que você bateu a meta do dia (a meta da semana dividida por 7).");
+  return h("section", {class: "panel rd-diary" + (done ? " done" : "") + (fresh ? " celebrate" : "")},
+    h("div", {class: "rd-diary-head"}, h("div", {class: "rd-diary-t"}, icon("chart", 20), title), weekSel),
+    explain,
+    h("p", {class: "rd-diary-total"}, h("b", {text: String(min)}), h("span", {class: "rd-diary-of", text: " de " + w.goal + " min"}),
+      done ? h("span", {class: "rd-diary-badge"}, icon("check", 14), h("span", {text: "Meta cumprida"})) : null),
+    h("div", {class: "rd-diary-track" + (done ? " done" : ""), role: "progressbar", "aria-label": "Meta da semana", "aria-valuenow": String(min), "aria-valuemin": "0", "aria-valuemax": String(w.goal)}, bar),
+    h("p", {class: "rd-diary-sub", text: sub}),
+    chart,
+    h("div", {class: "rd-diary-foot"}, h("label", {class: "rd-goal"}, h("span", {class: "rd-goal-t"}, icon("target", 20), h("span", {text: "Meta semanal"})), goal)));
 }
 function rdDiarySummary(days, now = Date.now()) {
   const since = now - days * DAY_MS, log = readingLog().days;

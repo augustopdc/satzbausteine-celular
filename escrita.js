@@ -337,7 +337,7 @@ function escritaHome(box) {
         h("p", {class: "muted small-text", text: "Mensagem com 3 pontos, no formato da prova Goethe."}),
         h("div", {class: "row"}, h("button", {class: "small primary", type: "button", onclick: startTask}, "Começar"),
           h("details", {class: "es-more"}, h("summary", {text: "Outra tarefa"}), select,
-            tasks.locked ? h("p", {class: "muted small-text", text: "Mais " + tasks.locked + " aparecem conforme você avança no Nicos Weg."}) : null))),
+            tasks.locked ? h("p", {class: "muted small-text", text: "Mais " + tasks.locked + " aparecem conforme você avança nos capítulos do curso."}) : null))),
       escritaBookCard()),
     escritaEvolution(stats),
     h("section", {class: "es-diary-list"},

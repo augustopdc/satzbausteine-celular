@@ -169,7 +169,7 @@ async function fspFinish(mine) {
   let j = null;
   try {
     const r = await window.satzDesktop.convChat([{role: "system", content: fspEvalPrompt(caso, convLevel())},
-      {role: "user", content: convTranscript()}], {kind: "fsp", temperature: .1, maxTokens: 1200, schema: CONV_SUMMARY_SCHEMA});
+      {role: "user", content: convTranscript()}], {kind: "fsp", temperature: .1, maxTokens: 2400, schema: CONV_SUMMARY_SCHEMA});
     j = parseLooseJson(r.text);
   } catch (e) { setStatus("Não consegui avaliar: " + cleanIpcError(e, "erro"), "error"); }
   conv.finished = true;
@@ -204,13 +204,7 @@ function renderFspSummary(caso, ev, fb, {words, turns, secs, ok}) {
           convCardButton({frase: q}, "conv-card-style"))))) : null))),
     h("h4", {text: "Atitudes"}),
     h("ul", {class: "fsp-att"}, ...ev.attitudes.map(a => h("li", {class: a.done ? "ok" : "miss", text: (a.done ? "✓ " : "✗ ") + a.label}))),
-    h("h4", {text: fb.errors.length ? "Erros de alemão mais importantes" : "Nenhum erro de alemão importante encontrado"}),
-    fb.errors.length ? h("ul", {class: "conv-errors"}, ...fb.errors.map(e => h("li", null,
-      h("p", null, h("s", {lang: "de", text: e.errado}), " → ", h("b", {lang: "de", text: e.certo}),
-        h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir a forma correta", onclick: () => convSpeak(e.certo)}, icon("volume", 16)),
-        convCardButton({erro: {...e, frase: convLineWith(e.errado)}})),
-      h("p", {class: "muted small-text", text: e.explicacao})))) : null,
-    ...convStyleList(fb.style),
+    ...convErrorsBlock(fb.errors, fb.style, convLineWith, fb.errors.some(e => e.tipo !== "microfone") ? "Erros de alemão mais importantes" : "Nenhum erro de alemão importante encontrado"),
     h("p", {class: "muted small-text", text: "A avaliação é automática e o caso foi escrito pelo Claude: confira as dúvidas com o tutor. Na prova real, o paciente costuma falar mais rápido e com mais detalhes."}),
     h("div", {class: "row"},
       h("button", {class: "primary", type: "button", onclick: () => openConversaTopic(fspTopic(caso))}, "Atender de novo"),
@@ -223,13 +217,13 @@ function fspSetupNode() {
   const sessions = convData().sessions.filter(s => s.fsp);
   return h("section", {class: "scene-group"},
     ...titled("h2", "FSP: paciente simulado", "Você é o médico e faz a anamnese completa, como na prova: o paciente só conta o que você perguntar. No fim, você vê o que descobriu, o que faltou (com perguntas-modelo) e os erros de alemão. O paciente fala no seu nível."),
-    h("div", {class: "scene-grid"}, ...FSP_CASOS.map(c => {
+    h("div", {class: "scene-grid"}, ...FSP_CASOS.map((c, k) => {
       const mine = sessions.filter(s => s.topic === "fsp-" + c.id), best = mine.reduce((m, s) => Math.max(m, s.fsp.found / Math.max(1, s.fsp.total)), 0);
       return h("article", {class: "scene-card"},
         h("div", {class: "scene-top"}, h("span", {class: "tag", text: "FSP"}), h("span", {class: "tag", text: "Sie"}), mine.length ? h("span", {class: "tag", text: "melhor " + Math.round(best * 100) + "%"}) : null),
         h("h3", {text: c.titulo}),
         h("p", {class: "muted small-text", text: c.nome + ", " + c.idade + " anos"}),
-        h("div", {class: "row"}, h("button", {class: "primary small", type: "button", disabled: !(conv.status && conv.status.installed), onclick: () => openConversaTopic(fspTopic(c))}, "Atender")));
+        h("div", {class: "row"}, h("button", {class: (k === 0 ? "primary " : "") + "small", type: "button", disabled: !(conv.status && conv.status.installed), onclick: () => openConversaTopic(fspTopic(c))}, "Atender")));
     })));
 }
 /* Modo Prova → “Fazer com a IA como paciente”. */
