@@ -189,6 +189,21 @@ main { width: 100%; max-width: 1060px; margin: 0 auto; padding: 1.8rem 2.2rem 2r
   .streak { padding: 0; }
   main, .footer { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
+/* Tablet (toque, mais largo que o celular): menu lateral com alvos de dedo, ícones maiores. */
+@media (min-width: 601px) and (pointer: coarse) {
+  .nav { gap: 6px; }
+  .nav button { min-height: 52px; }
+  .nav svg { width: 25px; height: 25px; }
+  .nav-sub button { min-height: 46px; }
+  .sidebar-foot button { min-width: 48px; min-height: 48px; }
+  .sidebar-foot svg { width: 24px; height: 24px; }
+}
+@media (min-width: 601px) and (max-width: 920px) and (pointer: coarse) {
+  :root { --sidebar: 84px; }
+  .nav button { padding: .6rem; }
+  .nav .nav-ring { position: absolute; top: 5px; right: 5px; width: 15px; height: 15px; margin: 0; }
+  .nav-badge { top: 4px; right: 4px; }
+}
 
 /* Páginas */
 .view:not([hidden]) { animation: fadeOnly .22s ease-out; }
@@ -938,13 +953,13 @@ input[type="date"], input[type="time"] { width: 100%; min-height: 42px; border: 
 .rd-look #rdPickBtn { justify-self: start; }
 /* Livro aberto: some o cabeçalho da página; em tela cheia, também o menu do app. */
 body.book-open #view-reading > .page-head { display: none; }
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   body.reading-focus .sidebar, body.reading-focus .footer { display: none !important; }
   body.reading-focus .app { grid-template-columns: minmax(0, 1fr); }
   body.reading-focus main { max-width: 1140px; padding-top: 1rem; }
   body.reading-focus .reader { grid-template-columns: minmax(0, 1fr) 340px; gap: 2rem; }
 }
-@media (max-width: 600px) { #rdFocusBtn { display: none; } }
+@media (max-width: 600px), (max-width: 1024px) and (pointer: coarse) { #rdFocusBtn { display: none; } }
 .reader-controls { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .reader-controls .icon-btn { font-size: 1rem; }
 .reader { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1.4rem; align-items: start; }
@@ -1041,10 +1056,14 @@ body.book-open #view-reading > .page-head { display: none; }
 /* ---------- Leitura no celular: barra fina em cima, player embaixo, gaveta da frase ---------- */
 .rd-player { flex-wrap: nowrap; }
 .rd-sheet-head { display: none; }
-@media (max-width: 600px) {
+@media (max-width: 600px), (max-width: 1024px) and (pointer: coarse) {
   :root { --rdplayer: calc(58px + env(safe-area-inset-bottom)); }
   /* Livro aberto: some a barra de abas (o ← volta para os livros) e o título da página. */
   body.book-open .sidebar, body.book-open .reader-head { display: none; }
+  /* Tablet em pé (601–1024 px, toque): o menu lateral some e a página ocupa a largura toda, como no celular. */
+  body.book-open .app { grid-template-columns: minmax(0, 1fr); }
+  body.book-open .main-col { border: 0; border-radius: 0; margin-top: 0; }
+  body.book-open .footer { display: none; }
   body.book-open main { padding-bottom: calc(var(--rdplayer) + 46vh); padding-top: .6rem; }
   body.book-open .toasts { bottom: calc(var(--rdplayer) + .6rem); }
   .reader-bar.rd-bar-phone { flex-wrap: nowrap; gap: .4rem; padding: .35rem .45rem; margin-bottom: .7rem; transition: transform .2s ease, opacity .2s ease; }
@@ -1054,6 +1073,8 @@ body.book-open #view-reading > .page-head { display: none; }
   .rd-look { position: fixed; left: .75rem; right: .75rem; top: auto; width: auto; margin-top: .5rem; max-height: 70vh; overflow: auto; }
   .rd-look-more { gap: .5rem; flex-wrap: wrap; }
   .reader-text { padding: 0 .3rem; }
+  /* No tablet a linha de 68 caracteres fica no meio da tela, não encostada à esquerda. */
+  .reader > .reader-text { justify-self: center; width: 100%; }
   .rd-chips { margin-bottom: .8rem; }
   /* Player: faixa fixa embaixo, na altura do polegar. */
   .rd-player {
@@ -1071,6 +1092,9 @@ body.book-open #view-reading > .page-head { display: none; }
     overscroll-behavior: contain; transition: max-height var(--t-sheet) var(--ease);
   }
   .reader-detail.rd-sheet.full { max-height: calc(100vh - var(--rdplayer) - 3.5rem); }
+  /* A regra da barra do Windows (html.wco .reader-detail) prendia o topo da gaveta e a esticava até a tela inteira. */
+  html.wco .reader-detail.rd-sheet { top: auto; max-height: 50vh; align-content: start; }
+  html.wco .reader-detail.rd-sheet.full { max-height: calc(100vh - var(--rdplayer) - 3.5rem - var(--tb)); }
   .reader-detail.rd-sheet[hidden] { display: none; }
   .rd-sheet-head { display: flex; position: sticky; top: 0; z-index: 1; justify-content: center; align-items: center; margin: 0 -1.1rem; padding: .35rem 0 .1rem; background: var(--surface); }
   .rd-grip { width: 100%; min-height: 26px; border: 0; background: transparent; padding: 0; display: flex; justify-content: center; }
@@ -1080,6 +1104,12 @@ body.book-open #view-reading > .page-head { display: none; }
   .reader-detail.rd-sheet section + section { padding-top: .7rem; }
 }
 
+/* Tablet em pé: o texto vira uma página de livro, como no PC (papel, margens, justificado com hifenização). */
+@media (min-width: 601px) and (max-width: 1024px) and (pointer: coarse) {
+  #view-reading .reader > .reader-text { max-width: 720px; box-sizing: border-box; padding: 2.4rem clamp(1.8rem, 5vw, 3rem) 3rem;
+    background: var(--rd-paper); border-radius: 14px; box-shadow: var(--rd-lift); }
+  #view-reading .reader-text .rd-p { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+}
 /* ---------- Escrita ---------- */
 #view-escrita.es-open > .page-head { display: none; }
 .es-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
@@ -1326,7 +1356,7 @@ body.book-open #view-reading > .page-head { display: none; }
 /* Hierarquia de bordas: o cartão principal de cada tela é um pouco mais redondo que os demais. */
 .hero, .rd-continue { border-radius: 16px; }
 /* Player da leitura no PC: uma pílula só, com a linha do capítulo embaixo da barra. */
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   .rd-player { background: var(--surface-2); border-radius: 99px; padding: 4px; gap: 2px; }
   .rd-player .icon-btn { border: 0; background: transparent; border-radius: 50%; width: 36px; height: 36px; min-height: 36px; }
   @media (hover: hover) { .rd-player .icon-btn:hover { background: var(--surface); } }
@@ -1482,7 +1512,7 @@ html.wco .reader-detail { top: calc(var(--rdbar, 60px) + 14px + var(--tb)); max-
 .rd-diary-note { margin-top: .3rem !important; font-size: .78rem; }
 /* Barra do livro: navegação | player (o play manda) | ferramentas discretas */
 .rd-nav { display: flex; align-items: center; gap: .2rem; }
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   .reader-bar { gap: .6rem 1rem; }
   .rd-nav #rdChapter { border-color: transparent; background-color: transparent; font-weight: 650; max-width: 260px; }
   @media (hover: hover) { .rd-nav #rdChapter:hover { background-color: var(--surface-2); } }
@@ -1705,6 +1735,10 @@ p.titled { margin: 0; font-weight: 600; }
   transition: grid-template-rows .35s var(--ease), opacity .25s, margin .35s var(--ease), border-color .25s; }
 .reader-text .rd-pt.fold > span { overflow: hidden; min-height: 0; }
 .reader-text .rd-pt.fold.open { grid-template-rows: 1fr; opacity: 1; margin: .3rem 0 .75rem; border-left-color: var(--line-strong); }
+/* Fechada, a tradução não ocupa lugar nenhum: antes ela era um bloco de altura zero e partia o parágrafo, uma frase por linha (15/11/2026). */
+.reader-text .rd-pt.fold:not(.open) { display: none; }
+@media (prefers-reduced-motion: no-preference) { .reader-text .rd-pt.fold.open { animation: rd-fold-in .35s var(--ease) both; } }
+@keyframes rd-fold-in { from { grid-template-rows: 0fr; opacity: 0; margin-top: 0; margin-bottom: 0; border-left-color: transparent; } }
 /* Capitular no começo do capítulo. */
 .rd-p.rd-first::first-letter { float: left; font-size: 3.4em; line-height: .82; font-weight: 600; margin: .08em .09em 0 0; color: var(--accent-strong); }
 /* Antes de ler / fim do capítulo */
@@ -1738,7 +1772,7 @@ p.titled { margin: 0; font-weight: 600; }
 .rd-away { justify-content: flex-start; gap: .4rem; min-height: 34px; padding: .3rem .7rem; border: 0; border-radius: 99px; background: var(--accent-soft); color: var(--accent-strong); font-size: .82rem; }
 .rd-away > svg { transform: rotate(-90deg); }
 /* Barra do livro: some ao rolar para baixo também no PC e volta ao rolar para cima ou com o mouse no topo. */
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   .reader-bar { transition: transform .35s var(--ease), opacity .25s; }
   body.rd-bar-up .reader-bar { transform: translateY(calc(-100% - 24px)); opacity: 0; pointer-events: none; }
 }
@@ -2773,6 +2807,8 @@ html:has(.flash.dragging), html:has(.flash.dragging) body { overflow-x: clip; }
   #view-home .home-heat > #heatmapInfo { grid-column: 1; grid-row: 2; min-height: 0; padding: 0; border: 0; }
   #view-home .heat-day:empty { display: none; }
 }
+/* Tablet em pé e PC estreito: os 4 indicadores em 2 × 2 (com 3 por linha, o último ficava sozinho). */
+@media (min-width: 601px) and (max-width: 1099px) { #view-home .home-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Celular */
 @media (max-width: 600px) {
@@ -3133,7 +3169,7 @@ body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
 /* Painel: o cartão fica parado; só o conteúdo entra, rápido, quando a frase muda. */
 @media (prefers-reduced-motion: no-preference) { #rdDetail.rd-swap > * { animation: rd-swap .2s var(--ease-out) both; } }
 @keyframes rd-swap { from { opacity: 0; transform: translateY(4px); } }
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   /* Página: papel claro, cantos de 14 px, linha de ~70 caracteres, sem borda. */
   #view-reading .reader { grid-template-columns: minmax(0, 1fr) 312px; gap: 1.75rem; }
   body.reading-focus #view-reading .reader { grid-template-columns: minmax(0, 1fr) 320px; gap: 2rem; }
@@ -3608,7 +3644,7 @@ body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
 #view-reading .rd-open-mini > summary { cursor: pointer; width: fit-content; font-size: .86rem; font-weight: 600; color: var(--ink-3); }
 #view-reading .rd-open-mini[open] > summary { margin-bottom: .6rem; }
 #view-reading .rd-open-mini > .rd-open-recap { margin-top: .5rem; }
-@media (min-width: 601px) {
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
   /* Um eixo só: a barra tem a largura da página + painel, e as duas colunas ficam juntas no centro. */
   #view-reading #readingBook { --rd-col: 800px; max-width: calc(var(--rd-col) + 1.75rem + 312px); margin-inline: auto; }
   body.reading-focus #view-reading #readingBook { max-width: calc(var(--rd-col) + 2rem + 320px); }

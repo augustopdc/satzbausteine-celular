@@ -785,7 +785,7 @@ function rdWatchBar() {
   reading.barObs.observe(bar);
 }
 // ---------- Celular: player embaixo, gaveta da frase e barra que se esconde ao rolar ----------
-const rdPhoneMq = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(max-width: 600px)") : null;
+const rdPhoneMq = typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(max-width: 600px), (max-width: 1024px) and (pointer: coarse)") : null;
 function rdPhone() { return !!(rdPhoneMq && rdPhoneMq.matches); }
 if (rdPhoneMq && rdPhoneMq.addEventListener) rdPhoneMq.addEventListener("change", () => { if (reading.book && reading.view === "text" && !$("readingBook").hidden) renderBook(); });
 /* Altura coberta embaixo (player + gaveta aberta), para a frase escolhida não ficar escondida. */
