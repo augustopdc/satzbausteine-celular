@@ -3770,3 +3770,45 @@ dialog { overscroll-behavior: contain; }
   .sidebar { background: var(--sidebar-bg) !important; }
   .focus-bar, .toast, .sidebar, .hub-back, .scene-controls, .reader-bar, .rd-player, .mini-title { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 }
+
+/* ---------- Leitura: painel em dois cartões e página mais cheia (imagem de referência do Luiz, 15/11/2026) ----------
+   Só no layout do PC (no celular e no tablet em pé o painel é a gaveta, sem cartões dentro). */
+/* Na gaveta (celular e tablet em pé) os cartões não aparecem: o título da gramática fica como os outros rótulos. */
+.rd-gram-title { display: flex; align-items: center; gap: .4rem; margin: 0 0 .4rem; font-size: .78rem; font-weight: 600; color: var(--ink-2); }
+.rd-gram-title svg { width: 14px; height: 14px; }
+.reader-detail.rd-sheet .rd-card-main { display: grid; gap: inherit; }
+@media (min-width: 1025px), (min-width: 601px) and (pointer: fine), (min-width: 601px) and (pointer: none) {
+  #view-reading .reader-detail:has(> .rd-card) { gap: 1rem; padding: 0; background: transparent; box-shadow: none; }
+  #view-reading .reader-detail > .rd-card { display: grid; gap: 1.1rem; padding: 1.3rem 1.35rem; border-radius: 16px; background: var(--rd-paper); box-shadow: var(--rd-lift); }
+  #view-reading .reader-detail.away > .rd-card-main > :not(.rd-away) { opacity: .5; transition: opacity .3s; }
+  #view-reading .reader-detail.away > .rd-card-main { opacity: 1; }
+  #view-reading .rd-card-main .rd-away { border-radius: 99px; }
+  /* A palavra em verde e grande; o gênero fica no artigo colorido da linha de baixo. */
+  #view-reading .rd-card .rd-word-top .rd-word-form { color: var(--accent-strong); font-size: 2.15rem; font-weight: 700; letter-spacing: -.01em; }
+  #view-reading .rd-card .rd-word-simple > .rd-meaning { font-size: 1.35rem; font-weight: 550; color: var(--ink-2); }
+  #view-reading .rd-card .rd-word-sum { color: var(--ink-3); }
+  #view-reading .rd-card .rd-word-acts .icon-btn { width: 46px; height: 46px; min-height: 46px; border-radius: 12px; border-color: var(--line); background: var(--rd-paper); }
+  #view-reading .rd-card .rd-more > summary { color: var(--accent-strong); }
+  #view-reading .rd-card .rd-sentence { padding-top: 1.1rem; border-top: 1px solid var(--line); }
+  #view-reading .rd-card .rd-sentence .rd-sec-label { font-weight: 500; color: var(--ink-3); text-transform: none; letter-spacing: 0; font-size: .9rem; }
+  #view-reading .rd-card .rd-sentence .rd-translation { font-size: 1.15rem; line-height: 1.5; color: var(--ink-2); margin-bottom: 1rem; }
+  #view-reading .rd-card .rd-sentence .rd-translation::before { content: "“"; }
+  #view-reading .rd-card .rd-sentence .rd-translation::after { content: "”"; }
+  /* Ações em pílula: Ouvir e Devagar lado a lado; Criar cartão embaixo, na largura toda, com o “⋯” ao lado. */
+  #view-reading .rd-card .rd-acts > button { min-height: 44px; border-radius: 99px; font-size: .98rem; }
+  #view-reading .rd-card .rd-acts { display: grid; gap: .55rem; grid-template-columns: 1fr 1fr; grid-template-areas: "a b" "c c"; }
+  #view-reading .rd-card .rd-acts > button:nth-child(1) { grid-area: a; }
+  #view-reading .rd-card .rd-acts > button:nth-child(2) { grid-area: b; }
+  #view-reading .rd-card .rd-acts > button:nth-child(3) { grid-area: c; margin-right: 3rem; }
+  #view-reading .rd-card .rd-acts > .rd-acts-more { grid-area: c; justify-self: end; align-self: center; }
+  #view-reading .rd-card .rd-acts > button:not(.rd-act-main) { border-color: var(--line-strong); background: var(--rd-paper); }
+  /* Cartão da gramática: título com ícone, fio âmbar e as regras com ícone de ficha. */
+  #view-reading .rd-gram.rd-card { gap: .75rem; }
+  #view-reading .rd-gram-title { gap: .55rem; margin: 0; font-size: 1.05rem; font-weight: 650; color: var(--ink); }
+  #view-reading .rd-gram-title svg { width: 18px; height: 18px; color: var(--accent-strong); }
+  #view-reading .rd-gram.rd-card .rd-tip { padding-left: 1rem; }
+  #view-reading .rd-gram.rd-card .rd-tip-text { font-size: .98rem; line-height: 1.55; }
+  #view-reading .rd-gram.rd-card .rd-topic-link { font-size: .92rem; font-weight: 500; color: var(--ink-2); padding: .3rem 0; }
+  /* Título do capítulo grande, em letra de livro. */
+  #view-reading .rd-h { font-size: 2.2rem; font-weight: 700; line-height: 1.2; letter-spacing: -.015em; margin: .2rem 0 1.2rem; }
+}

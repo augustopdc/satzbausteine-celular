@@ -571,7 +571,7 @@ async function openBook(id, keepPlace, preloaded) {
   reading.focus = s.focus !== false;
   reading.lookOpen = false; reading.summaryOpen = null; reading.sheet = null;
   reading.fs = Math.min(1.8, Math.max(.9, Number(s.fs) || 1.24));
-  reading.lh = [1.6, 1.85, 2.15].includes(Number(s.lh)) ? Number(s.lh) : 1.85;
+  reading.lh = [1.6, 1.85, 2.15].includes(Number(s.lh)) ? Number(s.lh) : 1.6;
   reading.pick = []; reading.wk = -1; reading.picking = false;
   reading.view = "text";
   renderBook();
@@ -1166,19 +1166,20 @@ function renderDetail() {
   const changed = box.dataset.sel !== String(i);
   box.dataset.sel = String(i);
   if (changed) rdPanelSwap(box);
+  const wordPart = picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null;
   fill(box, rdSheetHead(),
-    picked && typeof exprDetail === "function" ? exprDetail(i, reading.pick) : reading.word ? (full ? wordDetail(reading.word, i, reading.wk) : wordCard(reading.word, i, reading.wk)) : null,
-    // Painel simples: o que a frase diz e o que fazer com ela vêm primeiro; a gramática fica num bloco à parte, mais discreto.
-    !full ? h("section", {class: "rd-sentence"},
+    full ? wordPart : null,
+    // Painel simples em dois cartões: a palavra e o que a frase diz (com o que fazer com ela) num; a gramática no outro.
+    !full ? h("div", {class: "rd-card rd-card-main"}, wordPart, h("section", {class: "rd-sentence"},
       h("p", {class: "label rd-sec-label", text: "Nesta frase"}),
       note && note.pt ? (reading.ptMode === "pedir"
         ? h("button", {class: "quiet small", type: "button", onclick: e => e.currentTarget.replaceWith(h("p", {class: "rd-translation", text: note.pt}))}, "Ver tradução")
         : h("p", {class: "rd-translation", text: note.pt})) : null,
       h("div", {class: "row rd-acts"}, ...listen, toCard,
         h("details", {class: "rd-acts-more"}, h("summary", {class: "icon-btn", title: "Mais ações", "aria-label": "Mais ações"}, "⋯"),
-          h("div", {class: "rd-acts-menu panel"}, copyBtn, typeof passageButton === "function" ? passageButton(i) : null)))) : null,
-    !full && (tip || (typeof rdBridgeNotes === "function" && rdBridgeNotes(i).length)) ? h("section", {class: "rd-gram"},
-      h("p", {class: "label rd-sec-label", text: "Gramática"}),
+          h("div", {class: "rd-acts-menu panel"}, copyBtn, typeof passageButton === "function" ? passageButton(i) : null))))) : null,
+    !full && (tip || (typeof rdBridgeNotes === "function" && rdBridgeNotes(i).length)) ? h("section", {class: "rd-gram rd-card"},
+      h("p", {class: "rd-gram-title"}, icon("book", 18), "Gramática"),
       typeof rdBridgeNotes === "function" ? rdBridgeNotes(i) : null,
       !tip ? null : h("div", {class: "rd-tip"}, h("p", {class: "rd-tip-text", text: tip}),
         topics.length ? h("div", {class: "rd-tip-topics"}, ...topics.slice(0, 2).map(id => h("button", {class: "rd-topic-link", type: "button", onclick: () => openGrammarDialog(id)}, iconText("book", GRAMMAR_BY_ID.get(id).title, 14)))) : null)) : null,

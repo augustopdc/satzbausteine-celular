@@ -149,14 +149,12 @@ function rdOpeningNode() {
   // Só substantivos, verbos e adjetivos (palavras como “wie” e “auch” não ajudam a entender a história).
   const words = typeof chapterGlossary === "function" ? chapterGlossary(reading.order, book.notes && book.notes.w, reading.ch, 40).filter(w => ["substantivo", "verbo", "adjetivo"].includes(w.classe)).slice(0, 5) : [];
   if (!prev && !words.length) return null;
-  // Depois que a leitura do capítulo começou (já passou das primeiras frases), o bloco fica recolhido numa linha.
-  const ca = typeof chapterRange === "function" ? chapterRange(reading.ch)[0] : 0, started = reading.sel > ca + 2;
   const body = [words.length ? h("div", {class: "rd-open-words"}, ...words.map(w => h("button", {class: "rd-open-word", type: "button", title: "Ouvir", onclick: () => speak(w.lema || w.w)},
       h("b", {lang: "de", text: w.lema || w.w}), w.pt ? h("span", {text: w.pt}) : null))) : null,
     prev ? h("details", {class: "rd-open-recap"}, h("summary", null, "Lembrar o capítulo anterior"), h("p", {class: "rd-open-line", text: prev})) : null];
-  if (started) return h("details", {class: "rd-open rd-open-mini", lang: "pt-BR"},
+  // Sempre numa linha (“Antes de ler · 5 palavras novas”) que abre com as palavras (imagem de referência, 15/11/2026).
+  return h("details", {class: "rd-open rd-open-mini", lang: "pt-BR"},
     h("summary", null, "Antes de ler" + (words.length ? " · " + plural(words.length, "palavra nova", "palavras novas") : "")), ...body);
-  return h("aside", {class: "rd-open", lang: "pt-BR"}, h("p", {class: "label", text: "Antes de ler"}), ...body);
 }
 /* Fim do capítulo: o que você fez hoje e o próximo passo à vista. */
 function rdClosingNode() {
@@ -205,7 +203,7 @@ function rdAwayUpdate(dir) {
   if (!rdSelAway) { if (bar) bar.remove(); return; }
   if (!bar) {
     bar = h("button", {class: "rd-away", type: "button", onclick: () => scrollToSentence(reading.sel, "center")});
-    box.prepend(bar);
+    (box.querySelector(".rd-card-main") || box).prepend(bar);
   }
   fill(bar, icon("chevron", 14), rdAwayDir === "up" ? "A frase está mais acima: voltar a ela" : "A frase está mais abaixo: ir até ela");
 }
