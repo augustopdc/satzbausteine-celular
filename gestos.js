@@ -43,6 +43,13 @@ function trackDrag(el, {axis, accept, onStart, onMove, onEnd, onCancel}) {
     if (was.on) onCancel();
   });
 }
+/* Para onde o movimento iria se o dedo soltasse e o objeto seguisse freando (como no iOS, “Designing Fluid Interfaces”):
+   distância + velocidade × r/(1 − r), com r = 0,995 por ms, entre o “rápido” (0,99) e o “normal” (0,998) do iOS.
+   Um peteleco curto e rápido conta como ir até o fim; parar antes de soltar zera a velocidade (trackDrag). */
+const FLICK_RATE = .995;
+function projected(d, v) { return d + v * FLICK_RATE / (1 - FLICK_RATE); }
+/* Passar da borda: resistência que cresce (a do iOS), em vez de parede ou proporção fixa. */
+function rubberBand(x, dim) { return (1 - 1 / (x * .55 / dim + 1)) * dim; }
 function springBack(el) {
   el.classList.add("drag-back");
   el.style.removeProperty("transform");
@@ -59,16 +66,19 @@ function sheetDrag(dlg) {
     accept: e => navPhone() && dlg.scrollTop <= 0 && !e.target.closest("button, a, input"),
     onStart: () => dlg.classList.add("dragging"),
     onMove: d => {
-      // Para cima só cede um pouco.
-      const y = d > 0 ? d : d * .15;
+      // Para cima só cede um pouco, com resistência crescente.
+      const y = d > 0 ? d : -rubberBand(-d, dlg.offsetHeight);
       dlg.style.transform = "translateY(" + y + "px)";
       dlg.style.setProperty("--sheet-fade", String(Math.max(0, 1 - Math.max(0, y) / dlg.offsetHeight)));
     },
     onEnd: (d, v) => {
       dlg.classList.remove("dragging");
-      if (d <= Math.max(80, dlg.offsetHeight * .3) && !(v > .5 && d > 30)) { springBack(dlg); dlg.style.removeProperty("--sheet-fade"); return; }
+      if (d < 16 || projected(d, v) <= Math.max(80, dlg.offsetHeight * .3)) { springBack(dlg); dlg.style.removeProperty("--sheet-fade"); return; }
       if (motionOff()) { dlg.close(); return; }
-      const a = dlg.animate([{transform: dlg.style.transform}, {transform: "translateY(100%)"}], {duration: 200, easing: "cubic-bezier(.2, .8, .2, 1)", fill: "forwards"});
+      // Sai na velocidade em que foi jogada: a curva ease-out começa com inclinação ~4,35, então o tempo que mantém a
+      // velocidade do dedo é 4,35 × o que falta ÷ velocidade (entre 120 e 300 ms; solta parada, desce em 300 ms).
+      const left = Math.max(0, dlg.offsetHeight - Math.max(0, d)), ms = Math.min(300, Math.max(120, 4.35 * left / Math.max(v, .01)));
+      const a = dlg.animate([{transform: dlg.style.transform}, {transform: "translateY(100%)"}], {duration: ms, easing: "cubic-bezier(.23, 1, .32, 1)", fill: "forwards"});
       const done = () => { a.cancel(); reset(); if (dlg.open) dlg.close(); };
       a.finished.then(done, done);
       setTimeout(done, 300);
@@ -98,7 +108,7 @@ function initCardSwipe() {
       flash.style.setProperty("--sw-again", String(d < 0 ? k : 0));
     },
     onEnd: (d, v) => {
-      const limit = Math.min(110, flash.offsetWidth * .3), go = Math.abs(d) >= limit || (Math.abs(v) > .5 && Math.abs(d) > 40);
+      const limit = Math.min(110, flash.offsetWidth * .3), go = Math.abs(d) >= 16 && Math.abs(projected(d, v)) >= limit && Math.sign(projected(d, v)) === Math.sign(d);
       if (!go) { backCard(flash); return; }
       if (d > 0) { session.leaveDir = 1; gradeTap("good"); return; }
       if (session.pendingGrade === "again") { session.leaveDir = -1; gradeTap("again"); return; }
@@ -117,8 +127,12 @@ function backCard(flash) {
 /* Próximo cartão pronto por baixo: uma cópia do atual sai por cima enquanto o novo já está desenhado no lugar.
    Devolve false quando não há animação (o cartão entra direto). */
 let cardGhostEl = null;
-function cardGhost() {
-  const flash = $("flashCard"), dir = session.leaveDir || 0, moved = flash.style.transform;
+function cardGhost(grade) {
+  const flash = $("flashCard"), moved = flash.style.transform;
+  let dir = session.leaveDir || 0;
+  // Com o dedo, tocar em Bom/Errei faz o cartão sair para o mesmo lado do deslizar: a animação ensina o gesto
+  // (como fechar a aba do Safari pelo X, que desliza a aba).
+  if (!dir && (grade === "good" || grade === "again") && matchMedia("(pointer: coarse)").matches) dir = grade === "good" ? 1 : -1;
   session.leaveDir = 0;
   // A cópia sai antes da limpeza, para levar o selo “Bom” ou “Errei” junto.
   const g = flash.cloneNode(true);

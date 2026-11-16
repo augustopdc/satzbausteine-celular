@@ -1572,7 +1572,7 @@ function rateCard(grade) {
   } else session.steps.set(id, "produce");
   // A conta das metas leva ~150 ms: fica para depois da troca de cartão.
   if (grade !== "again" && !prev) setTimeout(checkAchievements, 300);
-  session.ghosted = session.queue.length ? cardGhost() : false;
+  session.ghosted = session.queue.length ? cardGhost(grade) : false;
   if (session.queue.length) renderSessionCard(); else finishSession();
 }
 /* Bom e Fácil seguem na hora; Errei e Difícil abrem antes os motivos (opcionais). */

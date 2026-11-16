@@ -3753,3 +3753,20 @@ body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
 }
 /* Rolar até o fim de uma folha ou janela não arrasta a página de trás. */
 dialog { overscroll-behavior: contain; }
+
+/* ---------- “Aumentar contraste” e “Reduzir transparência” do sistema (HIG: Cor e Materiais, 15/11/2026) ----------
+   Com o contraste aumentado (iPhone: Acessibilidade → Tela; Windows: temas de contraste), textos secundários e linhas
+   ficam bem mais marcados. Com a transparência reduzida, as barras que deixam o conteúdo passar por trás ficam opacas. */
+@media (prefers-contrast: more) {
+  :root { --ink-2: #2f3836; --ink-3: #424c4a; --line: #c9c4b8; --line-strong: #8f897c; }
+  :root[data-theme="dark"] { --ink-2: #cdd8d5; --ink-3: #a9b6b3; --line: #3d4d4a; --line-strong: #5a6d69; }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ink-2: #cdd8d5; --ink-3: #a9b6b3; --line: #3d4d4a; --line-strong: #5a6d69; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .focus-bar, .hub-back:not([hidden]), .scene-controls, .reader-bar, .mini-title { background: var(--bg) !important; }
+  .toast, .rd-player { background: var(--surface) !important; }
+  .sidebar { background: var(--sidebar-bg) !important; }
+  .focus-bar, .toast, .sidebar, .hub-back, .scene-controls, .reader-bar, .rd-player, .mini-title { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
