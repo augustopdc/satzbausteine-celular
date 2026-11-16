@@ -350,7 +350,7 @@ function escritaDiaryHero(spec, today) {
   const head = [h("p", {class: "label", text: "Diário de hoje"}), h("p", {class: "es-hero-q", lang: "de", text: spec.de}), h("p", {class: "muted small-text", text: spec.ptText})];
   if (today) return h("section", {class: "panel es-hero done"}, ...head,
     h("div", {class: "row"}, h("span", {class: "es-hero-ok ico-inline"}, icon("check", 16), "Diário de hoje escrito."), h("button", {class: "small", type: "button", onclick: () => escritaOpen("texto", {id: today.id})}, "Ver o texto")));
-  const input = h("textarea", {id: "esDiary", class: "es-input es-page es-hero-input", lang: "de", rows: "4", spellcheck: "false", autocomplete: "off", autocapitalize: "sentences", placeholder: "Heute …"});
+  const input = h("textarea", {id: "esDiary", class: "es-input es-page es-hero-input", lang: "de", "aria-label": "Seu diário de hoje, em alemão", rows: "4", spellcheck: "false", autocomplete: "off", autocapitalize: "sentences", placeholder: "Heute …"});
   input.setAttribute("autocorrect", "off");
   input.value = escritaDrafts()[spec.ref] || "";
   const count = h("span", {class: "muted small-text"});

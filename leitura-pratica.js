@@ -297,7 +297,7 @@ function showWordCard() {
   const book = bwBookTitle(v.b), from = book ? h("p", {class: "muted small-text"}, "De ", h("i", {lang: "de", text: book})) : null;
   const hear = v.s ? h("button", {class: "quiet small", type: "button", onclick: () => bwHearSentence(v)}, icon("volume", 16), "Ouvir a frase") : null;
   if (mode === "produzir") {
-    const at = bwGapAt(v.s, v.w, v.wk), input = h("input", {id: "bwInput", lang: "de", spellcheck: "false", autocomplete: "off", placeholder: "A palavra que falta"});
+    const at = bwGapAt(v.s, v.w, v.wk), input = h("input", {id: "bwInput", lang: "de", spellcheck: "false", autocomplete: "off", autocapitalize: "off", placeholder: "A palavra que falta"});
     const result = h("div", {class: "bp-result", hidden: true});
     const check = () => {
       if (bp.answered) { bwAdvance(); return; }

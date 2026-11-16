@@ -129,7 +129,7 @@ function gfPlay(box, demo, {hold = 650} = {}) {
       if (!old) { el.animate([{opacity: 0, transform: "translateY(-6px)"}, {opacity: 1, transform: "none"}], {duration: 420, delay: 380, easing: "ease-out", fill: "backwards"}); continue; }
       const dx = old.left - now.left, dy = old.top - now.top;
       if (Math.abs(dx) + Math.abs(dy) < 1) continue;
-      el.animate([{transform: "translate(" + dx + "px," + dy + "px)"}, {transform: "none"}], {duration: 700, easing: "cubic-bezier(.34, 1.36, .64, 1)"});
+      el.animate([{transform: "translate(" + dx + "px," + dy + "px)"}, {transform: "none"}], {duration: 700, easing: "cubic-bezier(.77, 0, .175, 1)"});
     }
   };
   fill(box, gfRow(from, false, demo.punct));

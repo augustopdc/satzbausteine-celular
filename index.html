@@ -133,7 +133,7 @@
     </div>
     <p id="modeDesc" class="mode-desc" aria-live="polite"></p>
     <p id="dictationInfo" class="level-info" hidden>O ditado usa a fila da escuta. Maiúsculas, ä, ö, ü e ß contam; o app mostra que tipo de erro de grafia você cometeu. Ctrl+Espaço repete o áudio e Ctrl+Shift+Espaço repete devagar.</p>
-    <h3>Tema</h3>
+    <h2 class="as-h3">Tema</h2>
     <div id="themeChips" class="chips"></div>
     <details class="filters-box"><summary>Filtros avançados <span id="sessionFilterCount" class="pill" hidden></span></summary><div id="sessionFilters" class="filters"></div><button id="clearSessionFilters" class="quiet small" type="button">Limpar filtros</button></details>
     <div class="setup-foot"><p id="sessionPreview" class="muted"></p><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div>
@@ -168,7 +168,7 @@
      <div id="cardPrompt" class="prompt"></div>
      <div id="clozeBox" class="cloze" hidden></div>
      <div id="listenPad" class="listen-pad" hidden><button id="bigPlay" class="play-xl" type="button" aria-label="Ouvir o áudio de novo"><svg viewBox="0 0 24 24" width="36" height="36" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg></button></div>
-     <div id="typingBox" class="typing" hidden><input id="typingInput" type="text" lang="de" spellcheck="false" autocomplete="off" aria-label="Sua resposta em alemão" placeholder="Escreva em alemão e pressione Enter"><div id="umlautKeys" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button><button type="button" data-char="Ä">Ä</button><button type="button" data-char="Ö">Ö</button><button type="button" data-char="Ü">Ü</button></div></div>
+     <div id="typingBox" class="typing" hidden><input id="typingInput" type="text" lang="de" spellcheck="false" autocomplete="off" autocorrect="off" aria-label="Sua resposta em alemão" placeholder="Escreva em alemão e pressione Enter"><div id="umlautKeys" class="umlaut-keys" role="group" aria-label="Letras alemãs"><button type="button" data-char="ä">ä</button><button type="button" data-char="ö">ö</button><button type="button" data-char="ü">ü</button><button type="button" data-char="ß">ß</button><button type="button" data-char="Ä">Ä</button><button type="button" data-char="Ö">Ö</button><button type="button" data-char="Ü">Ü</button></div></div>
      <div id="cardAnswerBox" class="answer-box" hidden>
       <div id="typingDiff" class="diff" hidden></div>
       <div class="answer-row"><p id="cardAnswer" class="answer" lang="de"></p><button id="answerPlay" class="icon-btn" type="button" title="Ouvir (R)" aria-label="Ouvir a frase"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button></div>
@@ -253,7 +253,7 @@
       <details id="convMore" class="conv-more"><summary aria-label="Mais opções"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
        <div class="conv-more-pop"><button id="convHint" class="quiet" type="button">Dica</button><button id="convHowto" class="quiet" type="button">Como digo…?</button><button id="convHuh" class="quiet" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button></div>
       </details>
-      <textarea id="convText" lang="de" rows="1" spellcheck="false" aria-label="Sua fala em alemão" placeholder="Fale ou escreva em alemão"></textarea>
+      <textarea id="convText" lang="de" rows="1" spellcheck="false" autocorrect="off" aria-label="Sua fala em alemão" placeholder="Fale ou escreva em alemão"></textarea>
       <button id="convMic" type="button" aria-label="Falar (F)" title="Falar (F)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Falar <kbd>F</kbd></button>
       <button id="convSend" class="primary" type="button" aria-label="Enviar (Enter)" title="Enviar (Enter)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
      </div>
@@ -395,7 +395,7 @@
      <div class="track"><span id="examTimerBar"></span></div>
     </div>
     <div id="examOral" hidden><div id="examRecorder"></div></div>
-    <div id="examWritten" hidden><div class="field"><label for="examWriting">Sua resposta</label><textarea id="examWriting" lang="de" spellcheck="true"></textarea></div><p id="examWords" class="wordcount"></p></div>
+    <div id="examWritten" hidden><div class="field"><label for="examWriting">Sua resposta</label><textarea id="examWriting" lang="de" spellcheck="true" autocorrect="off"></textarea></div><p id="examWords" class="wordcount"></p></div>
     <div class="row"><button id="finishExam" class="primary" type="button">Concluir e avaliar</button></div>
    </div>
    <div id="examResult" class="panel" hidden>

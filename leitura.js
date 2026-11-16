@@ -947,7 +947,7 @@ function rdSlideMark(from, to, dy = 0) {
   const box = r => ({left: (r.left - c.left) + "px", top: (r.top - c.top) + "px", width: r.width + "px", height: r.height + "px"});
   Object.assign(ghost.style, box(a));
   const anim = ghost.animate([{...box(a), opacity: 1}, {...box(b), opacity: 1, offset: .75}, {...box(b), opacity: 0}],
-    {duration: 300, easing: "cubic-bezier(.25, .1, .25, 1)"});
+    {duration: 300, easing: "cubic-bezier(.77, 0, .175, 1)"}); // mover na tela: --ease-in-out
   const done = () => ghost.remove();
   anim.onfinish = done; anim.oncancel = done;
   setTimeout(done, 600);

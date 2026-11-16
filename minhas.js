@@ -124,7 +124,7 @@ function renderMinhas() {
   const items = Object.entries(mineData().items).filter(([, m]) => !m.deleted && !minePending(m)).sort((a, b) => b[1].at - a[1].at);
   const waiting = minePendingItems();
   const ai = !!(conv.status && conv.status.installed);
-  const input = h("textarea", {id: "mineInput", lang: "de", rows: "4", spellcheck: "false", placeholder: "Cole ou escreva frases em alemão, uma por linha.\nEx.: Ich hab keine Ahnung, wo er ist."});
+  const input = h("textarea", {id: "mineInput", lang: "de", "aria-label": "Frases em alemão, uma por linha", rows: "4", spellcheck: "false", placeholder: "Cole ou escreva frases em alemão, uma por linha.\nEx.: Ich hab keine Ahnung, wo er ist."});
   const source = h("select", {id: "mineSource", "aria-label": "De onde vem a frase"}, ...Object.entries(MINE_SOURCES).map(([k, v]) => h("option", {value: k}, v)));
   source.value = settings.mineSource || "aula";
   source.addEventListener("change", () => { settings.mineSource = source.value; saveSettings(); });

@@ -198,7 +198,7 @@ function renderArtigos() {
       h("p", {class: "muted small-text", text: s.due + " para revisar · " + s.newLeft + " novas · " + s.learning + " em treino · " + s.solid + " firmes"}),
       h("p", {class: "muted small-text", text: "Escreva ou fale o artigo e o plural: “der Tisch, die Tische”."}),
       h("button", {class: "primary", type: "button", disabled: !q.length, onclick: artStart}, q.length ? iconText("play", "Começar (" + q.length + ")") : "Nada para hoje: volte amanhã")),
-    hard.length ? h("div", {class: "panel"}, h("h3", {text: "Os que mais te enganam"}),
+    hard.length ? h("div", {class: "panel"}, h("h2", {class: "as-h3", text: "Os que mais te enganam"}),
       h("p", {class: "art-hard"}, ...hard.flatMap((x, k) => [k ? " · " : "", artGenderSpan(x.art, x.noun)]))) : null,
     h("details", {class: "panel art-rules-box"}, h("summary", {text: "Atalhos pela terminação"}), h("p", {class: "muted small-text", text: "Valem para a grande maioria das palavras; as exceções aparecem no treino quando você chega nelas. Palavra composta herda o artigo da última parte: die Haltestelle (die Stelle), der Bahnhof (der Hof)."}),
       h("div", {class: "art-rules"}, ...[["die", "-ung, -heit, -keit, -schaft, -ion, -tät, -in (mulher)", "quase sempre: -e, -ie, -ei, -ik, -ur"],
@@ -215,7 +215,7 @@ function artStart() {
 }
 function artItemView(box) {
   const x = art.item, r = art.result;
-  const input = h("input", {id: "artInput", type: "text", lang: "de", autocomplete: "off", spellcheck: "false", placeholder: "der … , die …", readonly: art.answered, value: art.answered ? art.typed : null});
+  const input = h("input", {id: "artInput", type: "text", lang: "de", autocomplete: "off", autocapitalize: "off", spellcheck: "false", placeholder: "der … , die …", readonly: art.answered, value: art.answered ? art.typed : null});
   input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); art.answered ? artNext() : artSubmit(input.value); } });
   const voice = speechAvailable();
   const mic = voice && !art.answered ? h("button", {id: "artMic", type: "button", class: art.clip ? "danger-solid" : "", disabled: art.busy, onclick: artVoice},

@@ -61,7 +61,7 @@ function fichaTroca(w) {
 function fichaComplete(w, topicId) {
   const rows = w.itens.map(([frase, resposta, dica]) => {
     const [antes, depois] = frase.split("___");
-    const input = h("input", {type: "text", lang: "de", class: "fx-gap", autocomplete: "off", spellcheck: "false", size: String(Math.max(4, resposta.length + 1)), "aria-label": "Complete"});
+    const input = h("input", {type: "text", lang: "de", class: "fx-gap", autocomplete: "off", autocapitalize: "off", spellcheck: "false", size: String(Math.max(4, resposta.length + 1)), "aria-label": "Complete"});
     const res = h("span", {class: "fx-res"});
     const check = () => {
       if (input.readOnly || !input.value.trim()) return;

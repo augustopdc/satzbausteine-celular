@@ -144,6 +144,8 @@ function h(tag, props, ...children) {
       else el.setAttribute(key, value === true ? "" : value);
     }
   }
+  // Campo em alemão: o teclado do iPhone não pode “corrigir” a resposta para outra palavra (o app contaria como erro).
+  if ((tag === "input" || tag === "textarea") && el.lang === "de" && !el.hasAttribute("autocorrect")) el.setAttribute("autocorrect", "off");
   for (const child of children.flat()) if (child != null && child !== false) el.append(child instanceof Node ? child : String(child));
   return el;
 }
@@ -2947,6 +2949,7 @@ function bindEvents() {
   window.addEventListener("beforeunload", e => { if (hasUnsavedRecordings()) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushProgress(); });
   document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("pointerdown", () => { session.viaKey = false; }, true);
 }
 function onKeyDown(e) {
   const t = e.target;
@@ -2966,6 +2969,8 @@ function onKeyDown(e) {
   const key = e.key.toLowerCase();
   if (e.ctrlKey) { if (key === "z") { e.preventDefault(); undoRating(); } return; }
   const onButton = t.tagName === "BUTTON";
+  // Pelo teclado a troca de cartão é na hora (avaliação se repete centenas de vezes por dia); o toque apaga a marca.
+  session.viaKey = true;
   if (session.step === "present") {
     if ((e.code === "Space" || e.key === "Enter") && !onButton) { e.preventDefault(); continuePresentation(false); }
     else if (key === "k") { e.preventDefault(); continuePresentation(true); }

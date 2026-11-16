@@ -124,6 +124,8 @@ function cardGhost() {
   const g = flash.cloneNode(true);
   clearCardDrag(flash);
   if (cardGhostEl) { cardGhostEl.remove(); cardGhostEl = null; }
+  // Avaliou pelo teclado: o próximo cartão aparece na hora, sem a cópia saindo nem a entrada (“key” pula as duas).
+  if (session.viaKey) { session.viaKey = false; return "key"; }
   const r = flash.getBoundingClientRect();
   if (motionOff() || document.visibilityState !== "visible" || !r.width) return false;
   g.removeAttribute("id");
