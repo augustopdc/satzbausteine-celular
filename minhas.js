@@ -151,7 +151,7 @@ function renderMinhas() {
   fill($("mineList"),
     h("div", {class: "row between"}, h("h2", {text: "Meus cartões (" + items.length + ")"}),
       items.length ? h("button", {type: "button", onclick: () => { filters.session = {Thema: "Meine"}; syncFilterSelects("session"); showView("practice"); }}, "Treinar só as minhas") : null),
-    items.length ? h("p", {class: "muted small-text", text: "Entram no treino como frases novas, antes das do catálogo (dentro do limite de novas do dia), e seguem o mesmo agendamento."}) : emptyState("notebook", "Nenhuma frase sua ainda", "Guarde aqui frases da aula, das séries ou dos livros: elas viram cartões do treino, com o mesmo agendamento.", ["Escrever uma frase", () => { const t = $("mineInput"); if (t) { t.scrollIntoView({block: "center", behavior: "smooth"}); t.focus(); } }]),
+    items.length ? h("p", {class: "muted small-text", text: "Entram no treino como frases novas, antes das do catálogo (dentro do limite de novas do dia), e seguem o mesmo agendamento."}) : emptyState("notebook", "Nenhuma frase sua ainda", "Guarde aqui frases da aula, das séries ou dos livros: elas viram cartões do treino, com o mesmo agendamento.", ["Escrever uma frase", () => { const t = $("mineInput"); if (t) { t.scrollIntoView({block: "center", behavior: scrollBehavior()}); t.focus(); } }]),
     review,
     ...items.map(([id, m]) => mineRow(id, m)));
 }
@@ -168,7 +168,7 @@ function mineCheckRow(id, m) {
         h("button", {type: "button", class: "icon-btn quiet", title: "Ouvir", "aria-label": "Ouvir", onclick: () => mineSpeak(m.frase)}, icon("volume", 18)),
         h("button", {type: "button", class: "primary small", onclick: () => { setMineCheck(id, null); renderMinhas(); }}, "Está certo"),
         h("button", {type: "button", class: "small", onclick: () => { setMineCheck(id, "tutor"); renderMinhas(); }}, "Validado pelo tutor"),
-        h("button", {type: "button", class: "quiet small", onclick: () => { mine.drafts.unshift({...m, id, editing: true}); renderMinhas(); window.scrollTo({top: 0, behavior: "smooth"}); }}, "Corrigir"),
+        h("button", {type: "button", class: "quiet small", onclick: () => { mine.drafts.unshift({...m, id, editing: true}); renderMinhas(); window.scrollTo({top: 0, behavior: scrollBehavior()}); }}, "Corrigir"),
         h("button", {type: "button", class: "quiet small", onclick: () => { if (confirm("Apagar este cartão?")) { deleteMineItem(id); renderMinhas(); } }}, "Apagar"))));
 }
 function mineRow(id, m) {
@@ -185,7 +185,7 @@ function mineRow(id, m) {
       h("div", {class: "row"},
         h("button", {type: "button", class: "icon-btn quiet", title: "Ouvir", "aria-label": "Ouvir", onclick: () => mineSpeak(m.frase)}, icon("volume", 18)),
         m.check !== "tutor" ? h("button", {type: "button", class: "quiet small", title: "Marcar que o tutor conferiu esta frase", onclick: () => { setMineCheck(id, "tutor"); renderMinhas(); }}, "Tutor ✓") : null,
-        h("button", {type: "button", class: "quiet small", onclick: () => { mine.drafts.unshift({...m, id, editing: true}); renderMinhas(); window.scrollTo({top: 0, behavior: "smooth"}); }}, "Editar"),
+        h("button", {type: "button", class: "quiet small", onclick: () => { mine.drafts.unshift({...m, id, editing: true}); renderMinhas(); window.scrollTo({top: 0, behavior: scrollBehavior()}); }}, "Editar"),
         h("button", {type: "button", class: "quiet small", onclick: () => { if (confirm("Apagar este cartão e o progresso dele?")) { deleteMineItem(id); renderMinhas(); } }}, "Apagar"))));
 }
 function draftForm(d) {
@@ -202,18 +202,22 @@ function draftForm(d) {
     return h("div", {class: "field"}, h("label", {text: label}), el);
   };
   return h("article", {class: "panel soft mine-draft"},
-    d.loading ? h("p", {class: "muted", text: "Preparando “" + d.frase + "”…"}) : null,
+    d.loading ? h("p", {class: "sr-only", role: "status", text: "Preparando “" + d.frase + "”…"}) : null,
     d.error ? h("p", {class: "notice warn", text: d.error}) : null,
     d.sugestao ? h("div", {class: "notice"}, h("span", null, "A IA acha que o certo é ", h("b", {lang: "de", text: d.sugestao.frase}), ". " + d.sugestao.correcao),
       h("button", {type: "button", class: "small", onclick: () => { d.erro = {errado: d.frase, certo: d.sugestao.frase, explicacao: d.sugestao.correcao}; d.frase = d.sugestao.frase; d.sugestao = null; renderMinhas(); }}, "Usar a correção")) : null,
-    d.loading ? null : h("div", {class: "grid two"},
+    // Esperando a IA: a mesma grade, com a frase original no 1º campo e esqueletos nos outros (o cartão não pula de altura).
+    d.loading ? h("div", {class: "grid two mine-skel"},
+      h("div", {class: "field"}, h("label", {text: "Frase em alemão"}), h("p", {class: "mine-skel-frase", lang: "de", text: d.frase})),
+      ...["Tradução", "Situação (o que faz você dizer a frase)", "Molde (partes trocáveis com ___)", "Foco (palavra ou estrutura)", "Registro e nível"].map(l => h("div", {class: "field"}, h("label", {text: l}), skel("box"))))
+    : h("div", {class: "grid two"},
       field("Frase em alemão", "frase", {lang: "de"}), field("Tradução", "traducao"),
       field("Situação (o que faz você dizer a frase)", "situacao", {textarea: true}), field("Molde (partes trocáveis com ___)", "molde", {lang: "de"}),
       field("Foco (palavra ou estrutura)", "foco"),
       h("div", {class: "grid two"}, select("Registro", "reg", MINE_REGS), select("Nível", "nivel", Object.fromEntries(MINE_LEVELS.map(l => [l, l]))))),
     d.erro ? h("p", {class: "small-text"}, "Erro marcado: ", h("s", {lang: "de", text: d.erro.errado}), " → ", h("b", {lang: "de", text: d.erro.certo}),
       h("button", {type: "button", class: "quiet small", onclick: () => { d.erro = null; renderMinhas(); }}, "tirar")) : null,
-    d.loading ? null : h("div", {class: "row"},
+    d.loading ? h("div", {class: "row"}, skel("box", "skel-btn")) : h("div", {class: "row"},
       h("button", {type: "button", class: "primary small", onclick: () => saveDraft(d)}, d.editing ? "Salvar alterações" : "Salvar cartão"),
       h("button", {type: "button", class: "quiet small", onclick: () => mineSpeak(d.frase)}, icon("volume", 16), "Ouvir"),
       h("button", {type: "button", class: "quiet small", onclick: () => { mine.drafts = mine.drafts.filter(x => x !== d); renderMinhas(); }}, "Descartar")));

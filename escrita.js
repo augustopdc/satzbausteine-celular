@@ -343,7 +343,7 @@ function escritaHome(box) {
     h("section", {class: "es-diary-list"},
       h("h2", {text: "Seus textos"}),
       texts.length ? h("ol", {class: "es-timeline"}, ...texts.slice(0, 30).map(escritaTimelineItem))
-        : emptyState("pen", "Nenhum texto ainda", "Comece pelo diário de hoje: são só três frases.", ["Escrever o diário", () => { const t = $("esDiary"); if (t) { t.scrollIntoView({block: "center", behavior: "smooth"}); t.focus(); } }]),
+        : emptyState("pen", "Nenhum texto ainda", "Comece pelo diário de hoje: são só três frases.", ["Escrever o diário", () => { const t = $("esDiary"); if (t) { t.scrollIntoView({block: "center", behavior: scrollBehavior()}); t.focus(); } }]),
       !escritaCanCorrect() ? h("p", {class: "muted small-text", text: "No celular você escreve e salva; o PC corrige quando o app abrir lá e a correção volta para cá."}) : null));
 }
 function escritaDiaryHero(spec, today) {
@@ -684,10 +684,12 @@ function escritaTextView(box) {
     const busy = escrita.busy.has(t.id);
     fill(box, head, escritaTaskBox(spec), h("div", {class: "es-text", lang: "de", text: t.v1}),
       escritaCheckList(escritaChecks(t.v1, t.spec)),
-      busy ? h("p", {class: "notice", text: "O Gemma está corrigindo… (até um minuto; na primeira vez do dia ele leva uns 15 s a mais para carregar)"})
+      busy ? h("section", {class: "es-wait", role: "status"}, h("p", {class: "es-wait-t", text: "Revisando seu texto…"}),
+        h("p", {class: "muted small-text", text: "Na primeira vez do dia pode levar até um minuto."}),
+        skel("line"), skel("line"), skel("line", "short"))
         : t.err ? h("div", {class: "notice warn"}, h("p", {text: "A correção falhou: " + t.err}), escritaCanCorrect() ? h("button", {class: "small", type: "button", onclick: () => { delete t.err; delete t.errAt; escritaPump(); }}, "Tentar de novo") : null)
           : escritaCanCorrect() ? h("p", {class: "notice", text: "Na fila de correção…"})
-            : h("div", {class: "notice"}, h("p", {text: "Texto salvo. A correção é feita pelo Gemma no PC: quando o app abrir lá, ele corrige sozinho e a correção volta para cá."}),
+            : h("div", {class: "notice"}, h("p", {text: "Texto salvo. A correção é feita pela IA no PC: quando o app abrir lá, ele corrige sozinho e a correção volta para cá."}),
               typeof cloudSync === "function" ? h("button", {class: "small", type: "button", onclick: async () => { await cloudSync({force: true}); renderEscrita(); }}, "Sincronizar agora") : null),
       h("div", {class: "row"}, del));
     return;

@@ -246,14 +246,6 @@ function rdApplyFilter(q) {
   const none = document.querySelector("#readingLibrary .shelf-none");
   if (none) { none.hidden = !q || shown > 0; none.textContent = "Nenhum livro com “" + q + "” na estante."; }
 }
-/* Galho de folhas bem apagado no canto do cartão “Lendo agora” (só enfeite). */
-function rdLeaf() {
-  const tpl = document.createElement("template");
-  const leaf = (x, y, r, s = 1) => `<ellipse cx="0" cy="-17" rx="7.5" ry="17" transform="translate(${x} ${y}) rotate(${r}) scale(${s})"/>`;
-  tpl.innerHTML = `<svg class="rd-leaf" viewBox="0 0 220 180" aria-hidden="true"><path d="M206 6C170 40 130 70 70 150" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><g fill="currentColor">${
-    leaf(188, 23, -30) + leaf(180, 30, 70, .9) + leaf(160, 46, -40, 1.05) + leaf(150, 55, 62) + leaf(131, 72, -48, 1.1) + leaf(119, 84, 56, 1.05) + leaf(101, 105, -55, 1.1) + leaf(89, 120, 50) + leaf(72, 148, -10, .9)}</g></svg>`;
-  return tpl.content.firstChild;
-}
 /* Nome do capítulo, quando o livro tem um (não o “Capítulo N” que o importador põe quando falta). */
 function rdChapterName(b, ch) {
   const t = String((b.chTitles || [])[ch] || "").trim().replace(/^(kapitel|cap[ií]tulo|chapter)\s*\d+[.:]?\s*(?=\S)/i, "");
@@ -268,7 +260,6 @@ function rdContinueNode(b, open) {
   const cover = rdCoverNode(b), chName = rdChapterName(b, pos.ch), when = rdWhen(pos.at);
   const stat = (ic, big, small) => h("div", {class: "rd-stat"}, icon(ic, 22), h("span", null, h("b", {text: big}), h("small", {text: small})));
   const card = h("section", {class: "rd-continue", "aria-label": "Lendo agora: " + b.title},
-    rdLeaf(),
     h("button", {class: "shelf-book rd-continue-cover", type: "button", "data-book": b.id, "aria-label": "Continuar " + b.title, onclick: open}, cover),
     h("div", {class: "rd-continue-text"},
       h("p", {class: "rd-kicker"}, icon("bookOpen", 15), h("span", {text: "Lendo agora"})),
@@ -996,10 +987,10 @@ function scrollToSentence(i, block = "nearest") {
   if (rdPhone()) {
     reading.autoScroll = Date.now();
     const bottom = window.innerHeight - rdBottomCover() - 16;
-    if (block === "center" || r.top < 70 || r.bottom > bottom) window.scrollBy({top: r.top - Math.max(70, (bottom - r.height) * .35), behavior: "smooth"});
+    if (block === "center" || r.top < 70 || r.bottom > bottom) window.scrollBy({top: r.top - Math.max(70, (bottom - r.height) * .35), behavior: scrollBehavior()});
     return;
   }
-  if (block === "center" || r.top < 110 || r.bottom > window.innerHeight - 40) { reading.autoScroll = Date.now(); el.scrollIntoView({block: "center", behavior: "smooth"}); }
+  if (block === "center" || r.top < 110 || r.bottom > window.innerHeight - 40) { reading.autoScroll = Date.now(); el.scrollIntoView({block: "center", behavior: scrollBehavior()}); }
 }
 
 // ---------- Palavra e frase ----------

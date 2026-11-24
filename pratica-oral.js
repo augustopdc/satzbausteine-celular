@@ -149,7 +149,7 @@ function bubble(i, {hideText = false, pending = false} = {}) {
   return el;
 }
 function playSceneLine(i, slow) { const line = scene.data.lines[i]; return playClip(sceneUrl(scene.data.id, i), line[1], slow); }
-function scrollChat() { const chat = $("sceneChat"); chat.lastElementChild?.scrollIntoView({behavior: "smooth", block: "nearest"}); }
+function scrollChat() { const chat = $("sceneChat"); chat.lastElementChild?.scrollIntoView({behavior: scrollBehavior(), block: "nearest"}); }
 async function advanceScene() {
   const token = scene.token, lines = scene.data.lines;
   while (scene.idx < lines.length && token === scene.token) {
@@ -247,7 +247,7 @@ function finishScene() {
       h("button", {class: "quiet", type: "button", onclick: renderScenes}, "Outras cenas")),
     sceneCardsNode(data));
   $("sceneSummary").hidden = false;
-  $("sceneSummary").scrollIntoView({behavior: "smooth", block: "nearest"});
+  $("sceneSummary").scrollIntoView({behavior: scrollBehavior(), block: "nearest"});
 }
 /* Suas falas da cena viram cartões de Minhas frases (sem IA: a cena já tem tradução e tarefa). */
 function sceneCardsNode(data) {

@@ -399,5 +399,6 @@ function aulaEnd(t) {
     x ? h("p", null, "Agora ", h("b", {text: t.title}), " está: ", gramBadge(x.state)) : null,
     h("div", {class: "row"},
       next ? h("button", {class: "primary", type: "button", onclick: () => startAula(next.id, next.why)}, "Próxima aula: " + GRAMMAR_BY_ID.get(next.id).title) : null,
+      typeof profButton === "function" ? profButton(t.id) : null,
       h("button", {type: "button", onclick: aulaClose}, "Voltar à Gramática")));
 }

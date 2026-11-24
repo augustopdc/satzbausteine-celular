@@ -26,8 +26,11 @@ function salaOpen(topic) {
   if (!el) return;
   const name = convName(topic), p = topic && topic.persona;
   el.querySelector(".cv-initial").textContent = (name.replace(/^Dra?\.\s*/, "")[0] || "?").toUpperCase();
-  fill(el.querySelector(".cv-who"), h("b", {text: name}), p && p.city ? h("span", {class: "cv-city", text: p.city}) : topic && topic.rolePt ? h("span", {class: "cv-city", text: topic.rolePt}) : null);
-  el.querySelector(".cv-stage-act").replaceChildren();
+  fill(el.querySelector(".cv-who"), h("b", {text: name}), p && p.city ? h("span", {class: "cv-city", text: p.city}) : topic && topic.krimi && typeof krimiSuspect === "function" ? h("span", {class: "cv-city", text: krimiSuspect(topic.krimi, topic.sid).papelPt})
+    : topic && topic.rolePt && topic.rolePt !== name ? h("span", {class: "cv-city", text: topic.rolePt}) : null);
+  // Ao telefone: um botão liga e desliga a “linha” na voz dela (conversa.js, convPhoneToggle).
+  fill(el.querySelector(".cv-stage-act"), topic && topic.phone ? h("button", {class: "quiet small cv-phone", type: "button", "aria-pressed": String(convPhoneOn(topic)),
+    title: "Som de ligação na voz (toque para ligar ou desligar)", onclick: convPhoneToggle}, icon("phone", 16), h("span", {text: "Linha de telefone"})) : null);
   el.hidden = false;
   sala.me = 0; sala.her = 0; sala.t0 = performance.now();
   salaSetState(salaState()); // já na abertura (janela escondida não roda o laço)
@@ -66,6 +69,13 @@ function salaTick(now) {
   // Sala escondida (outra tela): espera em marcha lenta e volta sozinha quando a conversa reaparecer.
   if ($("convRoom").hidden || document.hidden) { sala.raf = 1; setTimeout(() => { sala.raf = requestAnimationFrame(salaTick); }, 500); return; }
   const state = salaState(), L = conv.live;
+  // “Reduzir movimento”: anéis parados, só o estado em palavras; confere 4 vezes por segundo em vez de 60.
+  if (reducedMotion()) {
+    el.style.setProperty("--her", "0"); el.style.setProperty("--me", "0");
+    if (el.dataset.state !== state) salaSetState(state);
+    sala.raf = 1; setTimeout(() => { sala.raf = requestAnimationFrame(salaTick); }, 250);
+    return;
+  }
   // Voz dela: nível real no ao vivo; nos outros modos, uma onda suave enquanto fala.
   let her = 0;
   if (state === "speaking") her = L && L.player.level ? Math.min(1, L.player.level() * 6) : .32 + .18 * Math.sin(now / 95) + .1 * Math.sin(now / 37);

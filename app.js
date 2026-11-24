@@ -3,7 +3,7 @@
    Carregados antes: fsrs.js (FSRS), catalog*.js (frases) e audio-index.js (áudios embutidos). */
 
 const APP_VERSION = "1.9.0";
-const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1+menschen969+revisao2";
+const BUNDLED_VERSION = "1.2.0+638f2ca0+med125+fach+ankunft+nw520+moldes+nw2a867+auditoria1+menschen969+revisao2+limpa1";
 const KEY_PROGRESS = "satzbausteine.progress.v1";
 const KEY_SETTINGS = "satzbausteine.settings.v1";
 const KEY_CATALOG_FALLBACK = "satzbausteine.catalog.v1";
@@ -152,6 +152,13 @@ function h(tag, props, ...children) {
 /* replaceChildren sem transformar null/false em texto. */
 /* “1 avaliação”, “2 avaliações” (número no formato brasileiro). */
 function plural(n, um, varios) { return Number(n).toLocaleString("pt-BR") + " " + (Number(n) === 1 ? um : varios); }
+/* “Reduzir movimento” do sistema também vale para o que o JavaScript anima (rolagens, laço da sala). */
+function reducedMotion() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+function scrollBehavior() { return reducedMotion() ? "auto" : "smooth"; }
+/* Esqueleto de espera (IA local): linhas ou caixas na forma do que vai chegar, sem texto técnico. */
+function skel(kind = "line", extra = "") { return h("span", {class: "skel skel-" + kind + (extra ? " " + extra : ""), "aria-hidden": "true"}); }
 /* Tela vazia com convite: ilustração simples (ícone num círculo suave), título, texto curto e um botão claro. */
 function emptyState(iconName, title, text, action) {
   return h("div", {class: "empty-state"}, h("span", {class: "empty-art"}, icon(iconName, 34)), h("b", {class: "empty-title", text: title}), h("p", {text}),
@@ -339,7 +346,8 @@ function safeWrite(key, value) {
 }
 /* Configurações que valem em todos os aparelhos (vão junto na sincronização pelo GitHub). Tema, voz e afins ficam em cada um.
    `syncAt` só muda quando uma destas muda: assim, trocar o tema no PC não “ganha” de um capítulo novo marcado no celular. */
-const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "msLesson", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal", "provaPack"];
+// convFlow (modo da Conversa) não tem valor de fábrica de propósito: indefinido fica fora da chave e não muda o syncAt de ninguém.
+const SYNCED_SETTINGS = ["newLimit", "reviewLimit", "newOrder", "retention", "medShare", "nwChapter", "msLesson", "levelGate", "mineReview", "plan", "fsrsWeights", "fsrsInfo", "readingGoal", "provaPack", "convFlow"];
 function syncedSettings(s = settings) { const out = {}; for (const k of SYNCED_SETTINGS) if (s[k] !== undefined) out[k] = s[k]; return out; }
 // Valores de fábrica (lidos antes de init carregar as configurações salvas): um aparelho novo não “ganha” do outro.
 const SYNCED_DEFAULT = JSON.stringify(syncedSettings());
@@ -1299,7 +1307,9 @@ function renderSessionCard() {
   $("cardState").textContent = state[1];
   $("cardState").hidden = !["leech", "learning"].includes(state[0]) || state[1] === "Lacuna";
   if (listening) $("cardPrompt").textContent = session.dictation ? "Ouça e escreva exatamente o que ouviu: maiúsculas, ä, ö, ü e ß contam." : "Ouça e tente entender antes de revelar.";
-  else fill($("cardPrompt"), ...situationNodes(card));
+  else fill($("cardPrompt"), ...situationNodes(card),
+    // Situação que só dá o contexto (limpa de 18/11/2026): a frente diz também o que falar, senão a resposta vira adivinhação.
+    !present && hasTag(card, "Pista", "Traducao") ? h("span", {class: "say-cue"}, h("span", {class: "say-label", text: "Diga"}), " ", card.traducao) : null);
   $("cardPrompt").classList.toggle("listen-prompt", listening);
   $("clozeBox").hidden = !cloze;
   if (cloze) fill($("clozeBox"), h("span", {class: "cloze-label", text: "Complete e diga a frase inteira:"}), h("p", {class: "cloze-text", lang: "de"}, ...moldNodes(clozeParts(card).display)));
@@ -1970,7 +1980,7 @@ function populateExams() {
     h("div", {class: "exam-rows"}, ...EXAMS.filter(e => e.ref.startsWith(prefix)).map(e => h("button", {class: "exam-row", type: "button", dataset: {exam: e.id}, onclick: () => {
       sel.value = e.id;
       loadExam();
-      $("examStage").scrollIntoView({behavior: "smooth", block: "start"});
+      $("examStage").scrollIntoView({behavior: scrollBehavior(), block: "start"});
     }}, e.title))))));
 }
 function formatTime(seconds) { const s = Math.max(0, Math.ceil(seconds)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); }
@@ -2004,7 +2014,7 @@ function loadExam() {
   $("examWritten").hidden = chosen.type !== "written";
   if (chosen.type === "oral") buildRecorder("examRecorder");
   else { $("examWriting").value = safeRead("satzbausteine.examDraft." + chosen.id, ""); countExamWords(); }
-  $("examStage").scrollIntoView({behavior: "smooth", block: "start"});
+  $("examStage").scrollIntoView({behavior: scrollBehavior(), block: "start"});
 }
 function wordCount(text) { return (text.trim().match(/\S+/g) || []).length; }
 function countExamWords() {
@@ -2051,7 +2061,7 @@ function finishExam(byTime = false) {
   progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1;
   saveProgress();
   renderHome();
-  $("examResult").scrollIntoView({behavior: "smooth", block: "start"});
+  $("examResult").scrollIntoView({behavior: scrollBehavior(), block: "start"});
 }
 
 // ---------- Lista de frases ----------

@@ -104,12 +104,14 @@ const CONV_TOPICS_NEW = [
   // ---- Situações: saúde, como paciente ----
   {id: "apotheke", cat: "saude", level: "A1", pt: "Na farmácia", role: "eine Apothekerin", rolePt: "Farmacêutica", setting: "Luiz hat Halsschmerzen und möchte etwas ohne Rezept.", sie: true, voice: "kore", abre: "Guten Tag, was kann ich für Sie tun?"},
   {id: "zahnarzt", cat: "saude", level: "A2", pt: "No dentista", role: "eine Zahnärztin", rolePt: "Dentista", setting: "Luiz hat seit drei Tagen Zahnschmerzen.", sie: true, voice: "kore", abre: "Was führt Sie zu mir?"},
+  {id: "praxis_anruf", cat: "saude", level: "A2", pt: "Ligar para o consultório", role: "die Medizinische Fachangestellte am Empfang einer Hausarztpraxis, am Telefon", rolePt: "Recepcionista do consultório", setting: "Luiz ruft in der Praxis an: Er braucht ein neues Rezept für seine Allergietabletten und möchte wissen, ob seine Blutwerte schon da sind.", sie: true, luizStarts: true, voice: "kore", abre: "Praxis Dr. Albers, guten Tag."},
   {id: "krank", cat: "saude", level: "A2", pt: "Avisar que está doente", role: "die Oberärztin von Luiz am Telefon", rolePt: "Chefe (Oberärztin)", setting: "Luiz hat Fieber und kann heute nicht zum Dienst kommen. Er ruft an.", sie: true, luizStarts: true, voice: "kore", abre: "Innere, Schneider?"},
   // ---- Situações: no hospital, com colegas ----
   {id: "erster_tag", cat: "hospital", level: "A2", pt: "Primeiro dia no hospital", role: "eine Assistenzärztin, die Luiz am ersten Tag alles zeigt", rolePt: "Colega (residente)", setting: "Erster Arbeitstag auf der Station: Sie zeigt ihm alles und erklärt den Ablauf.", sie: false, voice: "kore", abre: "Hallo, du bist der Neue, oder? Ich bin Jana."},
   {id: "dienst_tauschen", cat: "hospital", level: "A2", pt: "Trocar plantão", role: "ein Kollege, Assistenzarzt", rolePt: "Colega", setting: "Luiz möchte seinen Dienst am Samstag mit ihm tauschen.", sie: false, luizStarts: true, abre: "Hey, was gibt's?"},
   {id: "kantine", cat: "hospital", level: "A2", pt: "No refeitório", role: "eine Pflegekraft aus dem Team in der Mittagspause", rolePt: "Enfermeira do time", setting: "Smalltalk in der Kantine: Arbeit, Wochenende, Pläne.", sie: false, voice: "kore", abre: "Ist hier noch frei?"},
   {id: "uebergabe", cat: "hospital", level: "B1", pt: "Passagem de plantão", role: "eine Kollegin, die nach dem Nachtdienst übernimmt", rolePt: "Colega do próximo turno", setting: "Morgens nach dem Nachtdienst übergibt Luiz kurz zwei Patienten.", sie: false, voice: "kore", abre: "Morgen! Wie war die Nacht? Gibt es was Wichtiges?"},
+  {id: "dienst_anruf", cat: "hospital", level: "B1", pt: "Passar um caso por telefone no plantão", role: "der Oberarzt der Inneren im Hintergrunddienst, nachts zu Hause am Telefon", rolePt: "Oberarzt de sobreaviso", setting: "Nachtdienst: Ein Patient auf Station hat plötzlich Fieber und einen niedrigen Blutdruck. Luiz ruft den Oberarzt an, stellt den Fall kurz vor und fragt, was er tun soll. Ask him short practical questions (vital signs, lab values, what he has already done) and agree on a plan.", sie: true, luizStarts: true, abre: "Ja, Hoffmann? Was gibt's?"},
   {id: "urlaub_chef", cat: "hospital", level: "B1", pt: "Pedir férias ao chefe", role: "der Oberarzt", rolePt: "Chefe (Oberarzt)", setting: "Luiz möchte im Dezember zwei Wochen Urlaub, um nach Brasilien zu fliegen.", sie: true, luizStarts: true, abre: "Kommen Sie rein. Was gibt's?"},
   // ---- Situações: gente e convites ----
   {id: "einladung", cat: "social", level: "A1", pt: "Convidar para jantar", role: "eine Kollegin aus dem Deutschkurs", rolePt: "Colega do curso", setting: "Luiz lädt sie für Samstag zum Essen ein, und sie machen eine Uhrzeit aus.", sie: false, luizStarts: true, voice: "kore", abre: "Hallo Luiz! Na, wie geht's?"},
@@ -119,6 +121,7 @@ const CONV_TOPICS_NEW = [
   {id: "verein", cat: "social", level: "A2", pt: "Entrar num time de futebol", role: "der Trainer einer Hobby-Fußballmannschaft", rolePt: "Treinador", setting: "Luiz möchte in der Mannschaft mitspielen und fragt nach Training und Kosten.", sie: false, luizStarts: true, abre: "Hallo! Willst du mitspielen?"}
 ];
 
+const CONV_PHONE_IDS = new Set(["termin", "pizza", "heizung", "internet", "schluessel", "krank", "praxis_anruf", "dienst_anruf"]);
 (function convTopicsExpand() {
   for (const t of CONV_TOPICS) {
     const m = CONV_TOPIC_META[t.id];
@@ -126,6 +129,8 @@ const CONV_TOPICS_NEW = [
     t.cat = m[0]; t.abre = m[1];
     if (m[2] && !t.voice) t.voice = m[2];
   }
+  // Situações ao telefone: a voz dela pode ganhar a “linha” (conversa.js, convPhoneRoute).
+  for (const t of [...CONV_TOPICS, ...CONV_TOPICS_NEW]) if (CONV_PHONE_IDS.has(t.id)) t.phone = true;
   // Situação sem campo “de” usa o próprio cenário no prompt (convSystemPrompt olha role/setting); tema novo usa “de”.
   for (const t of CONV_TOPICS_NEW) if (!CONV_TOPICS.some(x => x.id === t.id)) CONV_TOPICS.push({...t, group: t.role ? "Situações" : "Temas"});
 })();

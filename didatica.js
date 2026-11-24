@@ -343,6 +343,7 @@ function renderGrammarTopic(id) {
     ...grammarTopicContent(t, true),
     h("div", {class: "row spaced"},
       typeof startAula === "function" ? h("button", {class: "primary", type: "button", onclick: () => startAula(id, "Você escolheu este tópico")}, iconText("play", "Fazer a aula deste tópico")) : null,
+      typeof profButton === "function" ? profButton(id) : null,
       h("button", {type: "button", onclick: () => startTopicSession(id)}, "Treinar as frases nos cartões")),
     // Exercícios extras, para quem quer mais (sem o de escolher entre duas formas).
     typeof startExercise === "function" ? h("div", {class: "gram-more"}, h("span", {class: "muted small-text", text: "Mais exercícios:"}),

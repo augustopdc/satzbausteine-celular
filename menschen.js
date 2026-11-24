@@ -297,7 +297,7 @@ function msOnTime() {
     menschen.playing = i;
     document.querySelectorAll("#msPlayer .ms-sent").forEach(el => el.classList.toggle("now", Number(el.dataset.i) === i));
     const el = document.querySelector("#msPlayer .ms-sent.now");
-    if (el && !a.paused && ["ouvir", "ler", "denovo"].includes(menschen.mode)) el.scrollIntoView({block: "nearest", behavior: "smooth"});
+    if (el && !a.paused && ["ouvir", "ler", "denovo"].includes(menschen.mode)) el.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
   }
 }
 function msSyncPlay() {

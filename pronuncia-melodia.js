@@ -78,15 +78,17 @@ function melCurve(model, me) {
     g.strokeStyle = css.getPropertyValue("--line").trim() || "#ddd";
     g.lineWidth = 1;
     g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
-    const draw = (cv, color, width) => {
+    /* A sua curva vai tracejada, além da cor: dá para distinguir sem depender dela. */
+    const draw = (cv, color, width, dash = []) => {
       if (!cv) return;
-      g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.lineCap = "round";
+      g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.lineCap = "round"; g.setLineDash(dash);
       g.beginPath();
       cv.pts.forEach((p, i) => { const X = 6 + p.t * (W - 12), Y = H / 2 - Math.max(-9, Math.min(9, p.st)) * (H / 2 - 8) / 9; if (i && cv.pts[i - 1].t < p.t - .08) g.moveTo(X, Y); else if (i) g.lineTo(X, Y); else g.moveTo(X, Y); });
       g.stroke();
     };
     draw(model, css.getPropertyValue("--accent").trim() || "#0b6e63", 3);
-    draw(me, css.getPropertyValue("--warn").trim() || "#9a5705", 2.5);
+    draw(me, css.getPropertyValue("--warn").trim() || "#9a5705", 2.5, [7, 5]);
+    g.setLineDash([]);
   });
   return c;
 }
@@ -121,7 +123,7 @@ function melChain(f, k) {
       h("button", {class: "small", type: "button", onclick: () => playClip(melUrl(p.id), p.t)}, icon("volume", 16), "Ouvir de novo"),
       k + 1 < parts.length ? h("button", {class: "primary small", type: "button", onclick: () => melChain(f, k + 1)}, "Próximo pedaço")
         : canRecord() ? h("button", {class: "primary small", type: "button", onclick: () => melTry(f)}, icon("mic", 16), "Agora grave a frase") : null));
-  box.scrollIntoView({block: "nearest", behavior: "smooth"});
+  box.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
   playClip(melUrl(p.id), p.t);
 }
 async function melTry(f) {
@@ -129,7 +131,7 @@ async function melTry(f) {
   const box = $("melPanel");
   pv.busy = true;
   box.hidden = false;
-  box.scrollIntoView({block: "nearest", behavior: "smooth"});
+  box.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
   const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t), h("p", {class: "mel-chain", lang: "de"}, h("span", {class: "on", text: f.de})));
   try {
     say("Ouça o modelo:");
@@ -181,7 +183,7 @@ async function melStressTry(a) {
   const box = $("melPanel");
   pv.busy = true;
   box.hidden = false;
-  box.scrollIntoView({block: "nearest", behavior: "smooth"});
+  box.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
   const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t, " "), melSyllables(a));
   try {
     say("Ouça o modelo:");

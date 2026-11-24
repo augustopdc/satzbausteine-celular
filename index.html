@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0e1615" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f5f4f0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -89,7 +89,7 @@
      <ol class="steps"><li><b>Leia a situação</b><span>Em português, com o registro indicado (du, Sie…).</span></li><li><b>Fale em alemão</b><span>Em voz alta, antes de revelar a resposta.</span></li><li><b>Revele e avalie</b><span>Uma alternativa natural e correta também vale.</span></li></ol></div>
     <button id="dismissWelcome" type="button">Entendi</button>
    </div>
-   <div id="restoreOffer" class="notice" hidden><span id="restoreOfferText"></span><button id="restoreYes" class="small primary" type="button">Restaurar</button><button id="restoreNo" class="small quiet" type="button">Agora não</button></div>
+   <div id="restoreOffer" class="notice accent" hidden><span id="restoreOfferText"></span><button id="restoreYes" class="small primary" type="button">Restaurar</button><button id="restoreNo" class="small quiet" type="button">Agora não</button></div>
    <div id="backupReminder" class="notice warn" hidden><span id="backupReminderText"></span><button id="reminderExport" class="small" type="button">Exportar agora</button><button id="reminderExtChoose" class="small" type="button" hidden>Escolher pasta</button></div>
    <div id="hero" class="panel hero">
     <div class="hero-main">
@@ -139,7 +139,7 @@
     <div class="setup-foot"><p id="sessionPreview" class="muted"></p><button id="startSession" class="primary lg" type="button">Iniciar sessão</button></div>
     <details class="train-opts"><summary>Opções de resposta</summary>
     <label id="typingRow" class="switch"><input id="typingMode" type="checkbox"><span><b id="typingTitle">Responder digitando</b><small id="typingHint"></small></span></label>
-    <label id="presentRow" class="switch" title="Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória."><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória.</small></span></label>
+    <label id="presentRow" class="switch" title="Cada frase nova aparece primeiro inteira, com áudio, para você ouvir e repetir. Depois vem a lacuna e, por fim, a frase inteira de memória."><input id="presentNew" type="checkbox"><span><b>Conhecer antes de testar</b><small>Frase nova: ouvir inteira, depois lacuna, depois de memória.</small></span></label>
     </details>
     <p id="levelInfo" class="level-info"></p>
     <div id="leechBox" class="notice warn spaced" hidden><span>Algumas frases estão travando: você errou cada uma delas várias vezes. Vale um treino focado.</span><button id="leechButton" class="small" type="button"></button></div>
@@ -251,7 +251,7 @@
     <div class="panel conv-input">
      <div class="conv-compose">
       <details id="convMore" class="conv-more"><summary aria-label="Mais opções"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></summary>
-       <div class="conv-more-pop"><button id="convHint" class="quiet" type="button">Dica</button><button id="convHowto" class="quiet" type="button">Como digo…?</button><button id="convHuh" class="quiet" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button></div>
+       <div class="conv-more-pop"><button id="convHint" class="quiet" type="button">Dica</button><button id="convHowto" class="quiet" type="button">Como digo…?</button><button id="convHuh" class="quiet" type="button" title="Pede para a parceira repetir mais fácil">Wie bitte?</button><button id="convFlowBtn" class="quiet" type="button" title="Estudo: correção de cada fala. Fluxo livre: sem correção na hora; a análise fica guardada no fim.">Modo: Estudo</button></div>
       </details>
       <textarea id="convText" lang="de" rows="1" spellcheck="false" autocorrect="off" aria-label="Sua fala em alemão" placeholder="Fale ou escreva em alemão"></textarea>
       <button id="convMic" type="button" aria-label="Falar (F)" title="Falar (F)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg>Falar <kbd>F</kbd></button>
@@ -389,7 +389,7 @@
     <h2 id="examTitle"></h2>
     <p id="examPrompt" class="exam-prompt" lang="de"></p>
     <div id="examSupport" class="panel soft support" lang="de" hidden></div>
-    <div id="examAiPatient" class="notice" hidden><span>Quer treinar sem o tutor? A IA faz o paciente com estes dados e só conta o que você perguntar; no fim, mostra o que faltou.</span><button id="examAiPatientBtn" class="small primary" type="button">Fazer com a IA como paciente</button></div>
+    <div id="examAiPatient" class="notice accent" hidden><span>Quer treinar sem o tutor? A IA faz o paciente com estes dados e só conta o que você perguntar; no fim, mostra o que faltou.</span><button id="examAiPatientBtn" class="small primary" type="button">Fazer com a IA como paciente</button></div>
     <div id="examTimerWrap" class="timer-box">
      <div class="timer-top"><div id="examTimer" class="timer">00:00</div><div class="row"><button id="timerStart" class="primary" type="button">Iniciar cronômetro</button><button id="timerPause" type="button" hidden>Pausar</button><button id="timerReset" type="button">Reiniciar</button></div></div>
      <div class="track"><span id="examTimerBar"></span></div>
@@ -569,7 +569,10 @@
 <script src="monologo.js"></script>
 <script src="fsp.js"></script>
 <script src="missoes.js"></script>
+<script src="conversa-professora.js"></script>
 <script src="pessoas.js"></script>
+<script src="plantao-clinico.js"></script>
+<script src="krimi.js"></script>
 <script src="tutor.js"></script>
   <script src="exercicios.js"></script>
 <script src="escrita-data.js"></script>

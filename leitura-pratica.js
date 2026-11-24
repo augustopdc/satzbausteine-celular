@@ -404,7 +404,7 @@ function renderBookPractice(kind) {
 }
 function startPractice(kind) {
   if (kind === "vocab") { renderGlossary(); return; }
-  if (kind === "conversa") { talkAboutChapter(); return; }
+  if (kind === "conversa") { renderBookTalkChoice(); return; }
   const pool = practicePool(kind, reading.order, reading.starts, reading.book.notes, reading.ch);
   const items = shuffled(pool).slice(0, 10).sort((a, b) => a.i - b.i);
   Object.assign(bp, {kind, items, i: 0, score: 0, answered: false});
@@ -579,10 +579,24 @@ function chapterText(ch, max = 3500) {
   for (const s of reading.order) if (s.ch === ch && !s.h) { if (out.length + s.text.length + 1 > max) break; out += (out ? " " : "") + s.text; }
   return out;
 }
-function talkAboutChapter() {
+/* Com quem conversar sobre o capítulo: a parceira de sempre ou um dos conhecidos (clube do livro, pessoas.js). */
+function renderBookTalkChoice() {
+  reading.view = "practice";
+  const people = typeof CONV_PESSOAS !== "undefined" ? CONV_PESSOAS : [];
+  readingShell("Conversar sobre o capítulo " + (reading.ch + 1),
+    h("p", {class: "muted", text: "Com um conhecido, vira um clube do livro: ele leu o mesmo capítulo e tem opinião própria. Nada do que vem depois no livro."}),
+    h("div", {class: "rd-menu"},
+      h("button", {class: "rd-menu-item", type: "button", onclick: () => talkAboutChapter()},
+        h("b", {class: "ico-inline"}, icon("chat", 18), "A parceira de conversa"), h("span", {class: "muted small-text", text: "Perguntas simples sobre o que você leu, no seu nível."})),
+      ...people.map(p => h("button", {class: "rd-menu-item", type: "button", onclick: () => talkAboutChapter(p.id)},
+        h("b", {class: "ico-inline"}, icon("users", 18), p.name + ", " + p.city), h("span", {class: "muted small-text", text: p.job})))));
+}
+function talkAboutChapter(personaId = null) {
   const b = reading.book, chTitle = b.chapters[reading.ch].title;
-  const topic = {id: "livro-" + String(reading.ch + 1), group: "Livro", level: convLevel(), pt: "Sobre “" + b.title + "” · " + chTitle,
-    de: "das Buch „" + b.title + "“, " + chTitle, book: {title: b.title, chapter: chTitle, text: chapterText(reading.ch)}};
+  const p = personaId && typeof CONV_PESSOA_BY_ID !== "undefined" ? CONV_PESSOA_BY_ID.get(personaId) : null;
+  const topic = {id: "livro-" + String(reading.ch + 1), group: "Livro", level: convLevel(), pt: "Sobre “" + b.title + "” · " + chTitle + (p ? " · com " + p.name : ""),
+    de: "das Buch „" + b.title + "“, " + chTitle, book: {title: b.title, chapter: chTitle, text: chapterText(reading.ch)},
+    ...(p ? {persona: p, voice: p.voice, sie: p.sie} : {})};
   saveBookPosition();
   stopReadingAudio();
   showView("conversa");

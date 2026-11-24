@@ -51,16 +51,20 @@ const LIVE_PACES = [
   ["calmo", "Calmo", "Speak noticeably SLOWER than a native speaker normally would (about 75% of normal speed), articulate every word, and make a short pause after each sentence. Never rush, even when you are excited."],
   ["devagar", "Bem devagar", "Speak VERY slowly (about 60% of normal speed), like someone dictating to a beginner: every word clearly separated, a clear pause after each sentence, at most about 8 words per sentence. Never speed up."]];
 function livePace() { const p = settings.convLivePace; return LIVE_PACES.some(x => x[0] === p) ? p : "calmo"; }
-function liveSystemPrompt(base, pace = livePace()) {
-  return base + "\n\nThis is a LIVE VOICE CALL with Luiz (German level " + convLevel() + "). Speak ONLY German, never English or Portuguese, even if he uses them. " +
+function liveSystemPrompt(base, pace = livePace(), topic = conv.topic) {
+  const lang = topic && topic.teacher && typeof profLiveLanguage === "function" ? profLiveLanguage() + " " : "Speak ONLY German, never English or Portuguese, even if he uses them. ";
+  return base + "\n\nThis is a LIVE VOICE CALL with Luiz (German level " + convLevel() + "). " + lang +
     LIVE_PACES.find(x => x[0] === pace)[2] + " Short turns (1 to 3 short sentences), simple words at his level. " +
     "React like a real person: you may be surprised, amused or curious, and you do not need to ask a question every time. " +
     "If he interrupts you, drop what you were saying and react to what he just said. Never read out notes, brackets or instructions.";
 }
 /* Áudio do Gemini (PCM 16 bits, 24 kHz) tocado em sequência; interrompido, para tudo na hora. */
-function livePlayer() {
+function livePlayer(phone = false) {
   const ctx = new AudioContext({sampleRate: 24000}), sources = new Set(), meter = ctx.createAnalyser(), mbuf = new Float32Array(512);
   meter.fftSize = 512; meter.connect(ctx.destination); // a voz passa pelo medidor (anéis da sala, conversa-sala.js)
+  // Situação ao telefone: a voz passa antes pela “linha” (conversa.js); desligada, os filtros ficam neutros.
+  const fx = phone ? convPhoneChain(ctx, convPhoneOn()) : null, entry = fx ? fx.input : meter;
+  if (fx) fx.output.connect(meter);
   let next = 0;
   return {
     push(bytes) {
@@ -70,11 +74,12 @@ function livePlayer() {
       const buf = ctx.createBuffer(1, pcm.length, 24000), ch = buf.getChannelData(0);
       for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
       const src = ctx.createBufferSource();
-      src.buffer = buf; src.connect(meter);
+      src.buffer = buf; src.connect(entry);
       const at = Math.max(ctx.currentTime + .03, next);
       src.start(at); next = at + buf.duration;
       sources.add(src); src.onended = () => sources.delete(src);
     },
+    fx,
     stop() { for (const s of sources) { try { s.stop(); } catch (e) { /* já parou */ } } sources.clear(); next = 0; },
     playing() { return sources.size > 0; },
     level() { meter.getFloatTimeDomainData(mbuf); let s = 0; for (const v of mbuf) s += v * v; return Math.sqrt(s / mbuf.length); },
@@ -194,7 +199,7 @@ function liveStatus() {
 /* Começa a ligação na sala já aberta (openConversaTopic). */
 async function liveBegin(topic, opening) {
   const L = {topic, token: conv.token, ready: false, muted: false, meText: "", herText: "", meDraft: null, herDraft: null, meAt: 0, gaps: [], interruptions: 0,
-    player: livePlayer(), mic: null, opening: topic.luizStarts ? "" : opening, startedAt: Date.now()};
+    player: livePlayer(!!topic.phone), mic: null, opening: topic.luizStarts ? "" : opening, startedAt: Date.now()};
   conv.live = L;
   window.satzDesktop.onLiveEvent(liveEvent);
   // O Gemma confere e resume: já começa a subir.

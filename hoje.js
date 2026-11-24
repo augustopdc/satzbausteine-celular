@@ -200,6 +200,14 @@ function hojeLastLine(load, next) {
     note.textContent = "Cabe nos " + load.budget + " min que você tem hoje: as revisões mais urgentes primeiro.";
 }
 /* Monta a tela Hoje (chamado pelo renderHome do app.js, que cuida do resto: calendário, previsão, avisos). */
+/* Recado de um conhecido (pessoas.js): embaixo do roteiro, sem competir com o botão principal. Só onde há conversa. */
+function hojeNoteLine() {
+  let el = $("homeNote");
+  if (!el) { el = h("div", {id: "homeNote", class: "home-note"}); $("hero").after(el); }
+  const note = typeof pessoaPendingNote === "function" && typeof convAvailable === "function" && convAvailable() ? pessoaPendingNote() : null;
+  if (note) fill(el, pessoaNoteNode(note)); else el.replaceChildren();
+  el.hidden = !note;
+}
 function renderHoje(load) {
   const items = hojeRoute(load), next = hojeNext(items), m = hojeMinutes(load, items);
   const total = load.dueProd + load.dueListen + load.fresh, now = new Date(), hour = now.getHours(), type = load.plan.type;
@@ -244,6 +252,7 @@ function renderHoje(load) {
     $("heroEta").textContent = "Continua do cartão em que você parou.";
   }
   hojeLastLine(load, next);
+  hojeNoteLine();
   $("homeListening").textContent = load.dueListen ? "Treinar escuta (" + load.dueListen + ")" : "Treinar escuta";
   $("homeListening").hidden = !load.dueListen;
   $("hero").classList.toggle("done", !next);

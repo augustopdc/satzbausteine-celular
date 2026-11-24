@@ -190,9 +190,16 @@ function f432LineWith(part) {
 function f432RenderFeedback() {
   const box = document.getElementById("f432Feedback"), fb = f432.feedback;
   if (!box || !fb) return;
-  if (fb.loading) { fill(box, h("p", {class: "panel muted", text: "Preparando o retorno das três rodadas…"})); return; }
   const w = f432.rounds.map(f432Wpm), p = f432.rounds.map(r => r.pauses);
   const trend = w[2] > w[0] ? "Você foi de " + w[0] + " para " + w[2] + " palavras por minuto" + (p[2] < p[0] ? " e de " + p[0] + " para " + p[2] + " pausas" : "") + "." : "";
+  // Esperando a IA: a moldura do retorno já aparece com a evolução (por regra); o comentário vem em esqueleto.
+  // Sem a classe .summary enquanto espera (o autoteste procura .summary só depois de pronto).
+  if (fb.loading) {
+    fill(box, h("section", {class: "panel f432-wait", role: "status", "aria-label": "Preparando o retorno"},
+      h("h3", {text: "Retorno"}), trend ? h("p", {text: trend}) : null,
+      skel("line"), skel("line", "short"), skel("box"), skel("box"), skel("box")));
+    return;
+  }
   fill(box, h("section", {class: "panel summary"},
     h("h3", {text: "Retorno"}),
     trend ? h("p", {text: trend}) : null,

@@ -64,6 +64,11 @@ function sanitizeConversa(src) {
       ...(s.game && s.game.id ? {game: {id: str(s.game.id, 40), solved: !!s.game.solved, questions: Math.max(0, Math.round(Number(s.game.questions) || 0)), tries: Math.max(0, Math.min(3, Math.round(Number(s.game.tries) || 0)))}} : {}),
       // Correção de tutor: quantos movimentos a parceira fez e quantas vezes ele se corrigiu.
       ...(s.tutor && Number(s.tutor.moves) > 0 ? {tutor: {moves: Math.round(Number(s.tutor.moves)), reparos: Math.max(0, Math.min(Number(s.tutor.moves), Math.round(Number(s.tutor.reparos) || 0)))}} : {}),
+      // Plantão na Innere (plantao-clinico.js) e Krimi (krimi.js): resultado por regra.
+      ...(s.innere && s.innere.id ? {innere: {id: str(s.innere.id, 40), solved: !!s.innere.solved, exams: Math.max(0, Math.min(5, Math.round(Number(s.innere.exams) || 0))),
+        rel: Math.max(0, Math.min(5, Math.round(Number(s.innere.rel) || 0))), ueb: Math.max(0, Math.min(3, Math.round(Number(s.innere.ueb) || 0)))}} : {}),
+      ...(s.krimi && s.krimi.id ? {krimi: {id: str(s.krimi.id, 40), solved: !!s.krimi.solved, asked: Math.max(0, Math.min(3, Math.round(Number(s.krimi.asked) || 0))),
+        tries: Math.max(0, Math.min(99, Math.round(Number(s.krimi.tries) || 0)))}} : {}),
       ...(s.mission && Number(s.mission.total) > 0 ? {mission: {done: Math.max(0, Math.min(Number(s.mission.total), Math.round(Number(s.mission.done) || 0))), total: Math.round(Number(s.mission.total))}} : {})}))
     .sort((a, b) => a.at - b.at).slice(-300);
   return out;
@@ -77,6 +82,12 @@ function convSanitizeMemory(m) {
     out.facts[id] = {p: str(f.p, 20), de: str(f.de, 200), pt: str(f.pt, 200), at: num(f.at), updatedAt: num(f.updatedAt), ...(f.deleted ? {deleted: true} : {})};
   }
   for (const [p, hk] of Object.entries(m.hooks || {})) if (/^[a-z]{1,20}$/.test(p) && hk) out.hooks[p] = {n: Math.max(0, Math.round(num(hk.n))), updatedAt: num(hk.updatedAt)};
+  // Temporadas das pessoas: capítulo atual (0..8), o último recado ouvido e quando.
+  for (const [p, a] of Object.entries(m.arcs || {})) if (/^[a-z]{1,20}$/.test(p) && a && typeof a === "object") {
+    out.arcs = out.arcs || {};
+    out.arcs[p] = {ep: Math.max(0, Math.min(8, Math.round(num(a.ep)))), heardEp: Math.max(-1, Math.min(8, Math.round(Number.isFinite(Number(a.heardEp)) ? Number(a.heardEp) : -1))),
+      heardAt: Math.max(0, num(a.heardAt)), updatedAt: Math.max(0, num(a.updatedAt))};
+  }
   return out;
 }
 function mergeConversa(local, incoming) {
@@ -87,8 +98,97 @@ function mergeConversa(local, incoming) {
   // Memória: vale o mais recente de cada fato e de cada novidade (apagar também é uma mudança).
   for (const [id, f] of Object.entries(inc.memory.facts)) if (!out.memory.facts[id] || f.updatedAt > out.memory.facts[id].updatedAt) out.memory.facts[id] = f;
   for (const [p, hk] of Object.entries(inc.memory.hooks)) if (!out.memory.hooks[p] || hk.updatedAt > out.memory.hooks[p].updatedAt) out.memory.hooks[p] = hk;
+  // Temporada: vale o mais recente; no empate, o capítulo mais adiantado (nunca volta um capítulo).
+  for (const [p, a] of Object.entries(inc.memory.arcs || {})) {
+    out.memory.arcs = out.memory.arcs || {};
+    const mine = out.memory.arcs[p];
+    if (!mine || a.updatedAt > mine.updatedAt || (a.updatedAt === mine.updatedAt && a.ep > mine.ep)) out.memory.arcs[p] = a;
+  }
   if (inc.foco && (!out.foco || inc.foco.updatedAt > out.foco.updatedAt)) out.foco = inc.foco;
   return out;
+}
+
+// ---------- Modo da conversa, humor de quem faz o papel e linha de telefone (23/11/2026) ----------
+/* Estudo (padrão): cada fala ganha o sinal de Certo/erros e o resumo abre com os erros.
+   Fluxo livre (settings.convFlow, sincronizado): sem marcas na hora e sem interrupções de professora (só a pergunta do
+   microfone, o "você quis dizer" e o recast natural); a análise das falas fica recolhida no fim. */
+function convFlowOn() { return typeof settings !== "undefined" && settings.convFlow === true; }
+function convFlowSync() {
+  for (const b of document.querySelectorAll("[data-conv-flow]")) b.setAttribute("aria-pressed", String((b.dataset.convFlow === "livre") === convFlowOn()));
+  const room = $("convRoom");
+  if (room) room.classList.toggle("flow", convFlowOn());
+  const btn = $("convFlowBtn");
+  if (btn) btn.textContent = convFlowOn() ? "Modo: Fluxo livre" : "Modo: Estudo";
+}
+function convSetFlow(on) { settings.convFlow = !!on; saveSettings(); convFlowSync(); }
+function convFlowNode() {
+  const b = (id, label) => h("button", {type: "button", "data-conv-flow": id, "aria-pressed": String((id === "livre") === convFlowOn()), onclick: () => convSetFlow(id === "livre")}, label);
+  return h("div", {class: "segmented conv-flow", role: "group", "aria-label": "Modo da conversa",
+    title: "Estudo: cada fala ganha a correção. Fluxo livre: sem correção na hora; a análise fica guardada no fim."}, b("estudo", "Estudo"), b("livre", "Fluxo livre"));
+}
+/* Humor de quem faz o papel nas situações: sorteado por regra a cada sessão (ou escolhido antes de começar). */
+const CONV_MOODS = {
+  padrao: {pt: "Cooperativo", lines: ["Your mood today: normal and cooperative.", "Help Luiz in a friendly, efficient way, like most people in your job."]},
+  apressado: {pt: "Com pressa", lines: ["Your mood today: you are in a hurry and have little time. Answer in short, direct sentences (often only one).",
+    "If Luiz talks around the point for long, politely ask him to come to the point (for example \"Was genau brauchen Sie?\")."]},
+  distraido: {pt: "Distraído", lines: ["Your mood today: a bit distracted (a busy day). Once in the conversation, forget a small, secondary detail he told you, or quickly ask him to confirm it.",
+    "Never forget the main point of his request, and never invent facts."]},
+  prolixo: {pt: "Falante", lines: ["Your mood today: talkative. Now and then add one short side comment (about the weather, your day, a colleague), at most one sentence.",
+    "If Luiz politely brings the conversation back to his request (for example \"Verstehe, aber zurück zu ...\"), react warmly and go straight back to it."]},
+  cetico: {pt: "Desconfiado", lines: ["Your mood today: a little sceptical. Before you agree to something important, ask one practical question to check it (a document, a date, a number).",
+    "Stay polite; once he answers your check, cooperate normally."]}};
+const CONV_MOOD_KEYS = Object.keys(CONV_MOODS);
+function convMoodOn(topic) { return !!topic && !!topic.role && !topic.patient && !topic.game && !topic.teacher && !topic.innere && !topic.krimi; }
+/* Puro: o mesmo tema na mesma sessão (n = conversas já feitas nele) dá sempre o mesmo humor; a escolha manual vence. */
+function convMoodPick(topicId, n, choice = "auto") {
+  if (CONV_MOODS[choice]) return choice;
+  let hsh = 7;
+  for (const ch of String(topicId) + ":" + n) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+  return CONV_MOOD_KEYS[hsh % CONV_MOOD_KEYS.length];
+}
+function convMoodSelect() {
+  const sel = h("select", {id: "convMood", "aria-label": "Humor de quem atende"}, h("option", {value: "auto", text: "Automático"}),
+    ...CONV_MOOD_KEYS.map(k => h("option", {value: k, text: CONV_MOODS[k].pt})));
+  sel.value = CONV_MOODS[settings.convMood] ? settings.convMood : "auto";
+  sel.addEventListener("change", () => { settings.convMood = sel.value; saveSettings(); });
+  return h("label", {class: "ps-tone conv-mood"}, h("span", {class: "muted small-text", text: "Humor de quem atende"}), sel);
+}
+/* Linha de telefone (Web Audio): passa-alta ~320 Hz + passa-baixa ~3300 Hz + compressor leve. Desligado, os filtros ficam
+   neutros (dá para ligar e desligar no meio da fala). Sem AudioContext (testes), a voz sai limpa. */
+function convPhoneOn(topic = conv.topic) { return !!(topic && topic.phone) && settings.convPhoneFx !== false; }
+function convPhoneSet(ch, on) {
+  if (!ch) return;
+  ch.hp.frequency.value = on ? 320 : 10;
+  ch.lp.frequency.value = on ? 3300 : 20000;
+  ch.comp.threshold.value = on ? -26 : 0;
+  ch.comp.ratio.value = on ? 3 : 1;
+}
+function convPhoneChain(ctx, on) {
+  const hp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), comp = ctx.createDynamicsCompressor();
+  hp.type = "highpass"; lp.type = "lowpass"; hp.Q.value = .7; lp.Q.value = .7;
+  hp.connect(lp); lp.connect(comp);
+  const ch = {input: hp, output: comp, hp, lp, comp};
+  convPhoneSet(ch, on);
+  return ch;
+}
+function convPhoneRoute(player, topic = conv.topic) {
+  if (!player || !topic || !topic.phone || typeof AudioContext === "undefined") return;
+  try {
+    const ctx = conv.phoneCtx || (conv.phoneCtx = new AudioContext());
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const ch = convPhoneChain(ctx, convPhoneOn(topic));
+    ctx.createMediaElementSource(player).connect(ch.input);
+    ch.output.connect(ctx.destination);
+    conv.phoneChain = ch;
+  } catch (e) { /* sem Web Audio: voz limpa */ }
+}
+function convPhoneToggle() {
+  settings.convPhoneFx = !convPhoneOn();
+  saveSettings();
+  convPhoneSet(conv.phoneChain, convPhoneOn());
+  if (conv.live && conv.live.player && conv.live.player.fx) convPhoneSet(conv.live.player.fx, convPhoneOn());
+  const b = document.querySelector("#convStage .cv-phone");
+  if (b) b.setAttribute("aria-pressed", String(convPhoneOn()));
 }
 
 // ---------- Prompts ----------
@@ -99,23 +199,29 @@ function convKnownSentences(max = 40) {
     .map(c => [c, Number((modeProgress(c.id, "production") || {}).stability) || 0])
     .sort((a, b) => b[1] - a[1]).slice(0, max).map(([c]) => c.frase);
 }
-function convName(topic = conv.topic) { return topic && topic.persona ? topic.persona.name : topic && topic.role ? topic.rolePt : CONV_NAMES[settings.convVoice] || "Jonas"; }
+function convName(topic = conv.topic) { return topic && topic.teacher ? topic.teacher.name : topic && topic.persona ? topic.persona.name : topic && topic.role ? topic.rolePt : CONV_NAMES[settings.convVoice] || "Jonas"; }
 /* Situações usam Sie, exceto as cenas informais (improviso de cena com du). */
 function convSie(topic = conv.topic) { return topic && topic.persona ? !!topic.persona.sie : !!(topic && topic.role && topic.sie !== false); }
-function convSystemPrompt({name, level, topic, known}) {
+function convSystemPrompt({name, level, topic, known, mood = null}) {
   if (topic.patient && typeof fspPatientPrompt === "function") return fspPatientPrompt(topic, level);
   if (topic.game && typeof wasPrompt === "function") return wasPrompt(topic, level);
+  if (topic.teacher && typeof profPrompt === "function") return profPrompt(topic, level);
+  if (topic.innere && typeof innerePrompt === "function") return innerePrompt(topic, level);
+  if (topic.krimi && typeof krimiPrompt === "function") return krimiPrompt(topic, level);
   // Pessoas (pessoas.js): ficha do personagem com memória no lugar da parceira genérica.
   const persona = topic.persona && typeof pessoaPromptLines === "function";
-  const lines = persona ? [...pessoaPromptLines(topic.persona), `Luiz's German level: ${level}.`]
+  const lines = persona ? [...pessoaPromptLines(topic.persona, Date.now(), {book: !!topic.book}), `Luiz's German level: ${level}.`]
     : [`You are ${name}, a friendly German conversation partner for Luiz, a Brazilian doctor who is learning German (level ${level}).`];
   if (persona) { /* o tom e o du/Sie já vêm da ficha */ }
   else if (topic.role) lines.push(`Role-play: you are ${topic.role}. Situation: ${topic.setting} Stay in your role and use "${convSie(topic) ? "Sie" : "du"}".`);
   else lines.push(`Topic: ${topic.de}. Use "du".`);
+  if (mood && CONV_MOODS[mood] && convMoodOn(topic)) lines.push(...CONV_MOODS[mood].lines);
+  if (topic.phone) lines.push("This conversation happens on the phone: you cannot see Luiz. Sound like a real phone call (a short greeting with your name or the name of the place).");
   if (topic.mission && typeof missionPromptLines === "function") lines.push(...missionPromptLines(topic));
   if (typeof focoPromptLines === "function") lines.push(...focoPromptLines());
   if (topic.lesson && typeof msFechoPromptLines === "function") lines.push(...msFechoPromptLines(topic));
-  if (topic.book) lines.push(`Luiz is reading the German book "${topic.book.title}" and has just read the chapter "${topic.book.chapter}". Talk with him about it: ask simple questions about what happens, the characters, what he thinks and feels about it and what he would do, one question at a time. If he does not remember, help with a small hint. Chapter text, for reference only (do not read it out or quote long parts):`,
+  if (topic.book && persona && typeof pessoaBookLines === "function") lines.push(...pessoaBookLines(topic.persona, topic.book));
+  else if (topic.book) lines.push(`Luiz is reading the German book "${topic.book.title}" and has just read the chapter "${topic.book.chapter}". Talk with him about it: ask simple questions about what happens, the characters, what he thinks and feels about it and what he would do, one question at a time. If he does not remember, help with a small hint. Chapter text, for reference only (do not read it out or quote long parts):`,
     topic.book.text);
   if (topic.script && topic.script.length) lines.push("This is a variation of a scene Luiz has already practised. Original script, for reference only (do NOT repeat it word for word):",
     ...topic.script.map(s => "  " + s),
@@ -133,6 +239,7 @@ function convSystemPrompt({name, level, topic, known}) {
       : "- Never explain grammar and never say \"richtig\" or \"falsch\". If Luiz makes a mistake, naturally reuse the correct form in your reply (recast). Example: Luiz: \"Ich habe nach Hause gegangen.\" You: \"Ah, du bist nach Hause gegangen! Wann?\"",
     "- If Luiz says he does not understand, say the same thing again, shorter and with easier words.",
     "- If Luiz asks \"Wie sagt man ... auf Deutsch?\", give the German word with its article, then continue.",
+    "- If Luiz does not know a word and describes it with simple words (\"das Ding für ...\", \"ich weiß das Wort nicht, aber ...\", \"wie nennt man ...\"), react like a real person: guess the word naturally in your reply (for example \"Ach, du meinst die Blutdruckmanschette!\" or \"Meinen Sie einen Korkenzieher?\") and go on with the conversation. No grammar lesson.",
     "- Luiz's messages are transcribed speech: ignore capitalization and punctuation.",
     "- No emojis, no English, no Portuguese, no lists, no markdown.");
   if (known && known.length >= 5) lines.push("Luiz already knows these sentences. Prefer their words and structures:", ...known.map(s => "- " + s));
@@ -140,7 +247,8 @@ function convSystemPrompt({name, level, topic, known}) {
 }
 /* O processo principal corta cada mensagem em 6000 caracteres: em conversas longas, fica o final (o mais recente). */
 function convTranscript(max = 5800) {
-  const lines = conv.turns.map(t => (t.who === "me" ? "Luiz: " : "Partner: ") + t.de), out = [];
+  // Na aula com a professora, as perguntas dele em português não entram no resumo dos erros de alemão.
+  const lines = conv.turns.filter(t => !(t.who === "me" && typeof profSkipCheck === "function" && profSkipCheck(t))).map(t => (t.who === "me" ? "Luiz: " : "Partner: ") + t.de), out = [];
   let chars = 0;
   for (let i = lines.length - 1; i >= 0 && chars + lines[i].length + 1 <= max; i--) { out.unshift(lines[i]); chars += lines[i].length + 1; }
   return (out.length < lines.length ? "(earlier part omitted)\n" : "") + out.join("\n");
@@ -426,7 +534,7 @@ function convCheckEarly(partial) {
 /* onEarly (correção de tutor): chamado uma vez, assim que dá para decidir o movimento, antes de a correção acabar. */
 async function convCheckTurn(turn, bubble, onEarly = null) {
   const level = convCheckLevel(), token = conv.token;
-  if (level === "off" || !convAvailable() || turn.de === CONV_HUH || turn.de === CONV_HUH_SIE) return;
+  if (level === "off" || !convAvailable() || turn.de === CONV_HUH || turn.de === CONV_HUH_SIE || (typeof profSkipCheck === "function" && profSkipCheck(turn))) return;
   const k = conv.turns.indexOf(turn), prev = conv.turns.slice(0, Math.max(0, k)).reverse().find(t => t.who === "partner");
   turn.check = {state: "checking", errors: [], style: [], fixed: ""};
   convCheckMark(turn, bubble);
@@ -454,6 +562,7 @@ async function convCheckTurn(turn, bubble, onEarly = null) {
   turn.check = convCheckResult(turn.de, j, level);
   convCheckMark(turn, bubble);
   if (typeof focoObserve === "function") focoObserve(turn);
+  if (conv.topic && conv.topic.teacher && typeof missionRender === "function") missionRender(); // placar da professora
 }
 /* ---------- Correção de tutor (06/11/2026; proposta em _dev/.cache/conversa-tutor) ----------
    A correção da fala roda ANTES da resposta e o app escolhe, por regra, UM movimento; a parceira só recebe uma nota
@@ -465,7 +574,7 @@ const CONV_TUTOR_WAIT = 3000; // espera máxima pela correção antes de a parce
    e a correção aparece no seu balão quando chegar (medido em 10/11/2026: a espera de 1–3 s pesava no ritmo). */
 const CONV_TUTOR_WAIT_VOICE = 900;
 function convTutorOn(topic = conv.topic) {
-  return !!topic && !topic.patient && !topic.game && convCheckLevel() !== "off" && convAvailable();
+  return !!topic && !topic.patient && !topic.game && !topic.innere && !topic.krimi && convCheckLevel() !== "off" && convAvailable();
 }
 function convTutorFresh() { return {counts: {}, pending: null, fixes: [], moves: 0, reparos: 0}; }
 /* As palavras que a correção põe (o que mudou), para destacar no balão dela e para saber se ele consertou. */
@@ -482,7 +591,7 @@ function convTutorKey(e) {
   return t || "w:" + convFixWords(e.errado, e.certo).map(normWord).join(" ");
 }
 /* Puro: o movimento desta fala. `st` = conv.tutor; `n` = número da fala dele nesta conversa (0 = a primeira). */
-function convTutorMove(said, check, st, n) {
+function convTutorMove(said, check, st, n, flow = convFlowOn()) {
   const c = check || {}, none = {kind: "none"};
   if (!c.state || c.state === "fail" || c.state === "checking") return none;
   const p = st.pending && st.pending.n === n - 1 ? st.pending : null;
@@ -491,6 +600,13 @@ function convTutorMove(said, check, st, n) {
     return {kind: "hear", word: c.ouvido || (convGarbled(said) ? (String(said).match(/\d[\d.:]*\s*uhr\s*\d+/i) || [""])[0] : "")};
   // 2) Frase certa que diz outra coisa: confirmar a intenção.
   if (c.sentido) return {kind: "meaning", meant: c.sentido};
+  // Fluxo livre: nada de fazer completar, dica ou "o certo é": só o recast natural dentro da resposta dela.
+  if (flow) {
+    const fe = (c.errors || []).find(x => x.tipo !== "microfone");
+    if (!fe) return none;
+    if (st.fixes.includes(n - 1) && st.fixes.includes(n - 2)) return {kind: "none", skipped: true};
+    return {kind: "recast", errado: fe.errado, certo: fe.certo, words: convFixWords(fe.errado, fe.certo), key: convTutorKey(fe)};
+  }
   // 3) Ele consertou o que ficou pendente: reconhecer.
   if (p && convSaysAll(said, p.words)) return {kind: "praise", certo: p.certo, key: p.key};
   // 4) Pediu para ele completar e não deu: dar o certo e seguir (não prender a conversa).
@@ -596,7 +712,7 @@ function convCheckMark(turn, bubble) {
 function convRevealAboveInput(el) {
   const box = document.querySelector("#convRoom .conv-input"), r = el.getBoundingClientRect();
   const limit = box && !box.hidden ? box.getBoundingClientRect().top - 16 : window.innerHeight - 16;
-  if (r.bottom > limit) window.scrollBy({top: r.bottom - limit, behavior: "smooth"});
+  if (r.bottom > limit) window.scrollBy({top: r.bottom - limit, behavior: scrollBehavior()});
 }
 function convFixNode(turn) {
   const c = turn.check, speakBtn = text => h("button", {class: "icon-btn quiet", type: "button", title: "Ouvir", "aria-label": "Ouvir", onclick: () => convSpeak(text)}, icon("volume", 16));
@@ -629,7 +745,7 @@ const CONV_GUARD_WAIT = 350, CONV_GUARD_REPAIR_WAIT = 2500;
 function convGuardOn() { return typeof ltAvailable === "function" && ltAvailable(); }
 /* Falas em que ela cita uma palavra ou deixa “…” de propósito (movimentos do tutor) não são conferidas. */
 function convGuardSkip(text, move) {
-  return !!(move && (move.kind === "elicit" || move.kind === "hint")) || /[…„“”‚‘"«»]|\.\.\./.test(text) || String(text).trim().split(/\s+/).length < 2;
+  return !!(move && (move.kind === "elicit" || move.kind === "hint")) || !!(conv.topic && conv.topic.teacher && typeof profIsPt === "function" && profIsPt(text)) || /[…„“”‚‘"«»]|\.\.\./.test(text) || String(text).trim().split(/\s+/).length < 2;
 }
 /* Puro: aplica as correções seguras. Devolve o texto, o que foi trocado e o que ficou em aberto (várias sugestões). */
 function convGuardApply(text, matches) {
@@ -691,7 +807,7 @@ async function convGuard(text, move = null, waitMs = CONV_GUARD_WAIT) {
    não é de pergunta (se ela já disse outra coisa). Só nas conversas livres e com as pessoas; atendente, paciente,
    jogo, missão, cena e livro precisam perguntar. */
 function convShapeOn(topic = conv.topic) {
-  return !!topic && !topic.patient && !topic.game && !topic.mission && !topic.role && !topic.script && !topic.book;
+  return !!topic && !topic.patient && !topic.game && !topic.mission && !topic.role && !topic.script && !topic.book && !topic.teacher;
 }
 const convWordCount = text => String(text || "").split(/\s+/).filter(w => normWord(w)).length;
 /* Frases que são pergunta de verdade (4+ palavras): “Na?”, “Echt?”, “Und du?” não contam. */
@@ -788,6 +904,7 @@ async function convSpeak(text, slow = false) {
         conv.audio.set(key, url);
       }
       const player = new Audio(url);
+      convPhoneRoute(player);
       audioPlayer = player;
       await player.play().catch(() => {});
       return player;
@@ -853,6 +970,7 @@ function convSpeaker({voice, slow = false, group, onStart} = {}) {
       if (sp.canceled) return finish();
       if (!r || r.canceled || !r.audio) continue;
       const url = URL.createObjectURL(new Blob([r.audio], {type: "audio/wav"})), player = new Audio(url);
+      convPhoneRoute(player);
       sp.playing = player; audioPlayer = player;
       if (sp.ducked) player.volume = CONV_BARGE.duckVolume;
       sp.spoken.push(it.text);
@@ -865,6 +983,8 @@ function convSpeaker({voice, slow = false, group, onStart} = {}) {
   sp.push = text => {
     const t = convClean(text);
     if (!t || sp.canceled) return;
+    // Professora: as vozes locais são alemãs; a explicação em português fica só escrita.
+    if (conv.topic && conv.topic.teacher && typeof profIsPt === "function" && profIsPt(t)) return;
     sp.items.push({text: t, audio: window.satzDesktop.ttsLocal(t, {voice, slow, group: sp.group})});
     if (kick) kick();
   };
@@ -909,6 +1029,8 @@ function convLocalSay(text, slow = false) {
   sp.end();
   return sp;
 }
+/* A explicação da professora em português é mais longa que uma fala de conversa. */
+function convTurnTokens() { return conv.topic && conv.topic.teacher ? 360 : 160; }
 function convNewId() { return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 const convStreams = new Map();
 function convBindDeltas() {
@@ -943,7 +1065,7 @@ async function partnerTurnLocal(userText, metrics, move = null, shape = null) {
     segments.forEach(say);
   });
   let r;
-  try { r = await window.satzDesktop.convStream(id, convOutgoing(move, shape), {kind: "turn", temperature: .7, maxTokens: 160}); }
+  try { r = await window.satzDesktop.convStream(id, convOutgoing(move, shape), {kind: "turn", temperature: .7, maxTokens: convTurnTokens()}); }
   catch (e) {
     convStreams.delete(id); sp.cancel();
     if (token !== conv.token) return;
@@ -1050,14 +1172,16 @@ function renderConvSetup() {
     // Temas e situações (conversa-temas.js): sugestão em destaque, categorias, busca e cartões com a frase de abertura.
     tema: typeof convBrowser === "function" ? [convBrowser("Temas"), convFreeNode()] : [h("section", {class: "scene-group"}, h("h2", {text: "Temas"}), grid(temas)),
       livre.length ? h("section", {class: "scene-group"}, h("h2", {text: "Livre"}), h("div", {class: "scene-grid"}, ...livre.map(t => convCard(t, false)))) : null],
-    situacao: [typeof convBrowser === "function" ? convBrowser("Situações") : h("section", {class: "scene-group"}, h("h2", {text: "Situações do dia a dia"}), grid(sit)),
+    situacao: [h("div", {class: "conv-mood-row"}, convMoodSelect()), typeof convBrowser === "function" ? convBrowser("Situações") : h("section", {class: "scene-group"}, h("h2", {text: "Situações do dia a dia"}), grid(sit)),
       typeof missionSetupNode === "function" ? missionSetupNode() : null],
     monologo: [f432SetupNode()],
-    medicina: [typeof fspSetupNode === "function" ? fspSetupNode() : null]};
+    medicina: [typeof innereSetupNode === "function" ? innereSetupNode() : null, typeof fspSetupNode === "function" ? fspSetupNode() : null]};
   if (typeof missionSetupNode === "function") {
     // As missões ficam em Situação; o jogo do diagnóstico vai para Medicina.
-    const [jogo, missoes] = panes.situacao[1];
-    panes.situacao[1] = missoes;
+    const [jogo, missoes] = panes.situacao[2];
+    panes.situacao[2] = missoes;
+    // Krimi (krimi.js): três suspeitos para interrogar, depois das missões.
+    if (typeof krimiSetupNode === "function") panes.situacao.push(krimiSetupNode());
     panes.medicina.unshift(jogo);
   }
   const seg = h("div", {class: "segmented conv-tabs", role: "group", "aria-label": "O que praticar"},
@@ -1067,7 +1191,7 @@ function renderConvSetup() {
   const [lvl, lvlHelp] = titled("b", "Nível " + level, "A parceira fala nesse nível e usa, de preferência, as palavras das frases que você já aprendeu; conforme você avança no treino, a conversa sobe junto. Fale (F) ou escreva. Ela responde repetindo certo o que você disse, sem interromper. Cada fala sua ganha um sinal (Certo ou o número de erros; toque para ver a correção) e, no fim, você vê o resumo dos erros em português.");
   fill($("convSetup"),
     h("div", {class: "conv-strip"},
-      h("div", {class: "conv-strip-row"}, lvl, status,
+      h("div", {class: "conv-strip-row"}, lvl, status, convFlowNode(),
         last ? h("span", {class: "muted small-text", text: plural(data.sessions.length, "conversa feita", "conversas feitas") + " · última em " + new Date(last.at).toLocaleDateString("pt-BR")}) : null),
       lvlHelp),
     typeof liveSetupNode === "function" ? liveSetupNode() : null,
@@ -1098,10 +1222,11 @@ function convBubble(turn) {
     const btn = e.currentTarget;
     if (turn.pt) { pt.textContent = turn.pt; pt.hidden = !pt.hidden; return; }
     btn.disabled = true;
+    fill(pt, skel("line", "short")); pt.hidden = false;
     try {
       const r = await window.satzDesktop.convChat([{role: "system", content: "Translate the German text into natural Brazilian Portuguese. Answer only with the translation."}, {role: "user", content: turn.de}], {kind: "translate", temperature: .2, maxTokens: 200});
       turn.pt = convClean(r.text); pt.textContent = turn.pt; pt.hidden = false;
-    } catch (err) { setStatus("Não consegui traduzir: " + cleanIpcError(err, "erro"), "error"); }
+    } catch (err) { pt.textContent = ""; pt.hidden = true; setStatus("Não consegui traduzir: " + cleanIpcError(err, "erro"), "error"); }
     btn.disabled = false;
   }}, "Tradução");
   el.append(de, pt, h("div", {class: "row bubble-actions"},
@@ -1138,7 +1263,7 @@ function convFixHeard(turn, bubble) {
   bubble.append(form);
   input.focus();
 }
-function convScroll() { const c = $("convChat"); c.lastElementChild?.scrollIntoView({behavior: "smooth", block: "nearest"}); }
+function convScroll() { const c = $("convChat"); c.lastElementChild?.scrollIntoView({behavior: scrollBehavior(), block: "nearest"}); }
 function convSetBusy(busy, text) {
   conv.busy = busy;
   for (const id of ["convSend", "convHuh", "convHowto", "convHint", "convFinish"]) $(id).disabled = busy || conv.finished;
@@ -1157,17 +1282,23 @@ function openConversaTopic(topic) {
   if (!topic) return;
   if (conv.live && typeof liveEnd === "function") liveEnd();
   const level = convLevel();
-  Object.assign(conv, {topic, turns: [], busy: false, token: conv.token + 1, startedAt: Date.now(), ttsWarned: false, finished: false, tutor: convTutorFresh(),
-    messages: [{role: "system", content: convSystemPrompt({name: convName(topic), level, topic, known: convKnownSentences()})}]});
+  const mood = convMoodOn(topic) ? convMoodPick(topic.id, convData().sessions.filter(s => s.topic === topic.id).length, settings.convMood) : null;
+  Object.assign(conv, {topic, turns: [], busy: false, token: conv.token + 1, startedAt: Date.now(), ttsWarned: false, finished: false, tutor: convTutorFresh(), mood, phoneChain: null,
+    messages: [{role: "system", content: convSystemPrompt({name: convName(topic), level, topic, known: convKnownSentences(), mood})}]});
   $("convSetup").replaceChildren();
   $("convRoom").hidden = false;
   $("convSummary").hidden = true;
   $("convHelp").hidden = true;
   $("convTitle").textContent = topic.pt;
   fill($("convMeta"), h("span", {class: "tag", text: "Nível " + level}), h("span", {class: "tag", text: convSie(topic) ? "Sie · formal" : "du · informal"}),
-    h("span", {class: "tag", text: "Com: " + convName(topic)}));
+    h("span", {class: "tag", text: "Com: " + convName(topic)}), mood ? h("span", {class: "tag", text: "Humor: " + CONV_MOODS[mood].pt.toLowerCase()}) : null,
+    topic.phone ? h("span", {class: "tag", text: "Ao telefone"}) : null);
+  convFlowSync();
   if (typeof missionReset === "function") missionReset(topic);
-  $("convSetting").textContent = topic.game ? "Você é o médico: o paciente não sabe o que tem. Pergunte, descubra os sintomas e dê o diagnóstico."
+  $("convSetting").textContent = topic.teacher ? "Treino de " + topic.teacher.title + ": " + topic.teacher.name + " explica em português e treina com você em alemão. Pergunte em português quando quiser."
+    : topic.innere ? "Plantão noturno na clínica médica: o paciente só conta o que você perguntar. Peça os exames em alemão no prontuário, dê a hipótese e passe o caso para o Oberarzt."
+    : topic.krimi ? topic.krimi.aberturaPt + " Interrogue as três pessoas (abas acima do chat) e descubra quem mente."
+    : topic.game ? "Você é o médico: o paciente não sabe o que tem. Pergunte, descubra os sintomas e dê o diagnóstico."
     : topic.lesson ? "Fecho da lição: uns 5 minutos de conversa sobre o tema. Fale da sua vida; a lista acima marca o que você usar da lição."
     : topic.mission ? "Situação: " + convName(topic).toLowerCase() + " faz o outro papel. Fique atento: no meio aparece um imprevisto."
     : topic.patient ? "Você é o médico: cumprimente, apresente-se e faça a anamnese completa (queixa atual, vegetativa, antecedentes, medicamentos, alergias, hábitos, família, social). O paciente só conta o que você perguntar. Quando acabar, toque em “Terminar e ver erros”."
@@ -1189,7 +1320,8 @@ function openConversaTopic(topic) {
   convGuardWarm();
   if (settings.convHandsFree) vadLoad();
   if (convLocal()) window.satzDesktop.ttsLocalWarm(convLocalVoice(topic)).then(() => window.satzDesktop.ttsLocalWarm(convLocalVoice(topic), true)).catch(() => {});
-  const opening = topic.lesson && typeof msFechoStart === "function" ? msFechoStart(topic) : topic.persona && typeof pessoaStart === "function" ? pessoaStart(topic.persona) : CONV_START;
+  const opening = topic.innere && typeof INNERE_START !== "undefined" ? INNERE_START : topic.krimi && typeof krimiStart === "function" ? krimiStart(topic)
+    : topic.teacher && typeof profStart === "function" ? profStart(topic) : topic.lesson && typeof msFechoStart === "function" ? msFechoStart(topic) : topic.persona && typeof pessoaStart === "function" ? pessoaStart(topic.persona, topic.noteLine, topic.book) : CONV_START;
   // Ao vivo (piloto): a ligação pelo Gemini Live cuida da voz; o resto da sala é o mesmo.
   if (typeof liveOn === "function" && liveOn()) { convSetBusy(false, ""); liveBegin(topic, opening); return; }
   if (topic.luizStarts) { convSetBusy(false, "Você começa: cumprimente e faça a sua pergunta."); $("convText").focus(); if (settings.convHandsFree) convListen(); }
@@ -1222,7 +1354,7 @@ async function partnerTurn(userText, metrics, move = null, shape = null) {
   conv.messages.push({role: "user", content: userText});
   convSetBusy(true, convName() + " está respondendo…");
   try {
-    const r = await window.satzDesktop.convChat(convOutgoing(move, shape), {kind: "turn", temperature: .7, maxTokens: 160});
+    const r = await window.satzDesktop.convChat(convOutgoing(move, shape), {kind: "turn", temperature: .7, maxTokens: convTurnTokens()});
     if (token !== conv.token) return;
     const kept = convShapeOn() ? convQuestionFilter(shape)(convClean(r.text)) : convClean(r.text);
     const text = (await convGuard(kept || convClean(r.text) || "…", move, 800)).text;
@@ -1266,7 +1398,7 @@ function convSend(textArg) {
   $("convChat").append(bubble);
   convScroll();
   if (typeof missionAfterTurn === "function") missionAfterTurn(turn);
-  const token = conv.token, tutor = convTutorOn();
+  const token = conv.token, tutor = convTutorOn() && !(typeof profSkipCheck === "function" && profSkipCheck(turn));
   (async () => {
     // Correção de tutor: confere a fala antes e a parceira reage ao erro (um movimento por vez).
     let move = null;
@@ -1571,6 +1703,8 @@ async function convFinish() {
   const mine = conv.turns.filter(t => t.who === "me");
   if (!mine.length) { convReset(); return; }
   if (conv.topic.patient && typeof fspFinish === "function") return fspFinish(mine);
+  if (conv.topic.krimi && typeof krimiBeforeFinish === "function") krimiBeforeFinish();
+  const mineAll = conv.turns.filter(t => t.who === "me");
   convSetBusy(true, "Preparando o resumo dos seus erros…");
   let j = null;
   try {
@@ -1585,16 +1719,20 @@ async function convFinish() {
   // O ponto: resultado do que estava sendo cobrado e o novo ponto (antes de guardar esta sessão, para contar só as anteriores).
   const focoLast = typeof focoSettle === "function" ? focoSettle() : null;
   const foco = typeof focoSet === "function" ? focoSet(errors, convData().sessions) || focoActive() : null;
-  const words = mine.reduce((n, t) => n + t.de.split(/\s+/).filter(Boolean).length, 0), secs = Math.round((Date.now() - conv.startedAt) / 1000);
+  const words = mineAll.reduce((n, t) => n + t.de.split(/\s+/).filter(Boolean).length, 0), secs = Math.round((Date.now() - conv.startedAt) / 1000);
   const data = convData();
-  data.sessions.push({at: Date.now(), topic: conv.topic.id, turns: mine.length, words, secs, errors, ...(typeof missionSessionExtra === "function" ? missionSessionExtra() : {}),
+  data.sessions.push({at: Date.now(), topic: conv.topic.id, turns: mineAll.length, words, secs, errors, ...(typeof missionSessionExtra === "function" ? missionSessionExtra() : {}),
     ...(conv.tutor && conv.tutor.moves ? {tutor: {moves: conv.tutor.moves, reparos: conv.tutor.reparos}} : {})});
   data.sessions = data.sessions.slice(-300);
   progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1;
   saveProgress();
-  renderConvSummary({errors, style, frases, elogio, proximo, words, turns: mine.length, secs, ok: !!j, foco, focoLast});
-  // Pessoas: a próxima conversa traz outra novidade dela, e ela pode lembrar do que você contou (se você confirmar).
-  if (conv.topic.persona && typeof pessoaAfterSession === "function") { pessoaAfterSession(conv.topic.persona); saveProgress(); pessoaSummaryFacts(conv.topic.persona, $("convSummary")); }
+  renderConvSummary({errors, style, frases, elogio, proximo, words, turns: mineAll.length, secs, ok: !!j, foco, focoLast});
+  // Pessoas: a temporada avança (com 4 falas ou mais) ou vem outra novidade, e ela pode lembrar do que você contou (se você confirmar).
+  // No clube do livro a temporada não anda (o assunto foi o capítulo).
+  if (conv.topic.persona && typeof pessoaAfterSession === "function") {
+    if (!conv.topic.book) pessoaAfterSession(conv.topic.persona, mineAll.length);
+    saveProgress(); pessoaSummaryFacts(conv.topic.persona, $("convSummary"));
+  }
 }
 function renderConvSummary({errors, style = [], frases: allFrases, elogio, proximo = null, words, turns, secs, ok, foco = null, focoLast = null}) {
   // Com o próximo passo, as “frases para praticar” só repetiriam o que já está na tela.
@@ -1609,13 +1747,14 @@ function renderConvSummary({errors, style = [], frases: allFrases, elogio, proxi
       + (conv.tutor && conv.tutor.reparos ? " · você se corrigiu " + plural(conv.tutor.reparos, "vez", "vezes") : "")}),
     typeof missionSummaryNode === "function" ? missionSummaryNode() : null,
     typeof focoResultNode === "function" ? focoResultNode(focoLast) : null,
-    elogio ? h("p", {class: "foco-good"}, h("span", {class: "ce-k", text: "Ficou bom"}), elogio) : null,
-    !ok ? h("p", {class: "notice warn", text: "O resumo não saiu no formato esperado. A conversa foi registrada mesmo assim."}) : null,
-    // Um ponto só (o que se repete pesa mais), treino de 1 minuto e cobrança na próxima conversa (conversa-foco.js).
-    foco && typeof focoCardNode === "function" ? focoCardNode(foco)
-      : ok && !errors.some(e => e.tipo !== "microfone") ? h("p", {class: "foco-none", text: "Nenhum erro importante nesta conversa."}) : null,
-    typeof focoOthersNode === "function" ? focoOthersNode(errors, foco) : null,
-    h("p", {class: "muted small-text", text: "As correções são feitas por um modelo automático: confira as dúvidas com o seu tutor."}),
+    ...convAnalysisWrap([
+      elogio ? h("p", {class: "foco-good"}, h("span", {class: "ce-k", text: "Ficou bom"}), elogio) : null,
+      !ok ? h("p", {class: "notice warn", text: "O resumo não saiu no formato esperado. A conversa foi registrada mesmo assim."}) : null,
+      // Um ponto só (o que se repete pesa mais), treino de 1 minuto e cobrança na próxima conversa (conversa-foco.js).
+      foco && typeof focoCardNode === "function" ? focoCardNode(foco)
+        : ok && !errors.some(e => e.tipo !== "microfone") ? h("p", {class: "foco-none", text: "Nenhum erro importante nesta conversa."}) : null,
+      typeof focoOthersNode === "function" ? focoOthersNode(errors, foco) : null,
+      h("p", {class: "muted small-text", text: "As correções são feitas por um modelo automático: confira as dúvidas com o seu tutor."})]),
     h("div", {class: "row"},
       h("button", {class: "primary", type: "button", onclick: () => openConversaTopic(conv.topic)}, "Conversar de novo"),
       h("button", {type: "button", onclick: convReset}, "Outro tema"),
@@ -1624,7 +1763,13 @@ function renderConvSummary({errors, style = [], frases: allFrases, elogio, proxi
         catch (e) { setStatus("Não consegui copiar.", "error"); }
       }}, "Copiar para o tutor")));
   $("convSummary").hidden = false;
-  $("convSummary").scrollIntoView({behavior: "smooth", block: "start"});
+  $("convSummary").scrollIntoView({behavior: scrollBehavior(), block: "start"});
+}
+/* Fluxo livre: a análise das falas fica num bloco fechado; no Estudo, aparece direto. */
+function convAnalysisWrap(nodes) {
+  const list = nodes.filter(Boolean);
+  if (!convFlowOn()) return list;
+  return [h("details", {class: "conv-analysis"}, h("summary", {text: "Ver análise detalhada das falas"}), ...list)];
 }
 /* A fala do usuário em que aparece o trecho errado (para o cartão ter a frase inteira). */
 function convLineWith(part) {
@@ -1711,6 +1856,7 @@ function bindConversa() {
     if (e.target.checked && conv.topic && !conv.busy && !conv.finished) { conv.handsFreePaused = false; convListen(); }
   });
   $("convCheck").addEventListener("change", e => { settings.convCheck = e.target.value; saveSettings(); });
+  $("convFlowBtn").addEventListener("click", () => { convSetFlow(!convFlowOn()); $("convMore").open = false; });
   $("convVoice").addEventListener("change", e => { settings.convVoice = e.target.value; saveSettings(); if (convLocal()) window.satzDesktop.ttsLocalWarm(convLocalVoice(null)).catch(() => {}); });
   $("convBargeIn").addEventListener("change", e => { settings.convBargeIn = e.target.checked; saveSettings(); });
   $("convKeepRec").addEventListener("change", e => { settings.convKeepRec = e.target.checked; saveSettings(); });

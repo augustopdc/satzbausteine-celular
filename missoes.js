@@ -165,7 +165,7 @@ const MISSOES = [
       ["cartao", "Perguntar pelo cartão", /karte|girocard|kreditkarte/],
       ["app", "Perguntar pelo app ou online", /\bapp\b|online|handy/],
       ["registro", "Resolver a Meldebescheinigung", /meldebescheinigung|anmeldung|hochladen|spater|nachreichen/]]},
-  {id: "m-krankenkasse", level: "A2", pt: "Krankenkasse por telefone", rolePt: "Atendente", voice: "puck",
+  {id: "m-krankenkasse", level: "A2", pt: "Krankenkasse por telefone", rolePt: "Atendente", voice: "puck", phone: true,
     role: "ein Mitarbeiter einer gesetzlichen Krankenkasse am Telefon", setting: "Luiz ruft an. Er fängt bald als Arzt in einem Krankenhaus an und braucht eine Krankenversicherung.",
     missao: "Entrar no plano de saúde público antes de começar a trabalhar.",
     twist: "When everything is almost clear, tell him that for the health card (Gesundheitskarte) you still need a passport photo, which he can upload in the app.",
@@ -192,7 +192,7 @@ const MISSOES = [
       ["documento", "Explicar a Berufserlaubnis", /berufserlaubnis|approbation/],
       ["prazo", "Perguntar quanto tempo demora", /wie lange|dauert|wochen|wann/],
       ["trazer", "Perguntar o que trazer depois", /mitbringen|bringen|unterlagen|dokument|schicken/]]},
-  {id: "m-approbation", level: "A2", pt: "Ligar sobre a Approbation", rolePt: "Atendente", voice: "zephyr",
+  {id: "m-approbation", level: "A2", pt: "Ligar sobre a Approbation", rolePt: "Atendente", voice: "zephyr", phone: true,
     role: "eine Sachbearbeiterin im Landesprüfungsamt (Approbationsbehörde) am Telefon", setting: "Luiz hat vor drei Monaten seinen Antrag auf Approbation gestellt und ruft an.",
     missao: "Saber como está o seu pedido de Approbation e da FSP.",
     twist: "When you look at his file, tell him that one document is missing: the certified translation (beglaubigte Übersetzung) of his diploma. Explain he can send it by post.",
@@ -224,10 +224,11 @@ function missionPromptLines(topic) {
 
 // ---------- Estado na sala da Conversa ----------
 const mis = {topic: null, tries: [], solved: null, manual: new Set(), reveal: false};
-function missionReset(topic) { Object.assign(mis, {topic: topic && (topic.game || topic.mission || topic.lesson) ? topic : null, tries: [], solved: null, manual: new Set(), reveal: false}); missionRender(); }
+function missionReset(topic) { Object.assign(mis, {topic: topic && (topic.game || topic.mission || topic.lesson || topic.teacher || topic.innere || topic.krimi) ? topic : null, tries: [], solved: null, manual: new Set(), reveal: false, recorded: false, innere: null, krimi: null}); missionRender(); }
 /* Depois de cada fala sua: no jogo, um diagnóstico certo dito na conversa já vale; nas missões, a lista se marca sozinha. */
 function missionAfterTurn(turn) {
   if (!mis.topic) return;
+  if (mis.topic.innere && typeof innereAfterTurn === "function") innereAfterTurn(turn);
   if (mis.topic.game && !mis.solved && !mis.reveal) {
     const g = wasGuess(turn.de);
     if (g && g.id === mis.topic.game.id) wasSolve();
@@ -250,7 +251,10 @@ function missionRender() {
   if (!box) return;
   if (!mis.topic) { box.hidden = true; box.replaceChildren(); return; }
   box.hidden = false;
+  if (mis.topic.teacher) return profPanel(box);
   if (mis.topic.lesson) return msFechoPanel(box);
+  if (mis.topic.innere) return innerePanel(box);
+  if (mis.topic.krimi) return krimiPanel(box);
   if (mis.topic.game) {
     const c = mis.topic.game, found = fspFound(c, conv.turns).size;
     const input = h("input", {type: "text", lang: "de", placeholder: "Seu diagnóstico em alemão: Sie haben …", "aria-label": "Seu diagnóstico em alemão"});
@@ -285,14 +289,20 @@ function missionRender() {
 /* O que vai junto da sessão salva (jogo: caso e resultado; missão: metas cumpridas). */
 function missionSessionExtra() {
   if (!mis.topic) return {};
+  if (mis.topic.teacher) return profSessionExtra();
   if (mis.topic.lesson) return msFechoSessionExtra();
+  if (mis.topic.innere) return innereSessionExtra();
+  if (mis.topic.krimi) return krimiSessionExtra();
   if (mis.topic.game) return {game: {id: mis.topic.game.id, solved: !!mis.solved, questions: wasQuestions(), tries: mis.tries.length}};
   const m = mis.topic.mission, auto = missionGoals(m, conv.turns);
   return {mission: {done: m.metas.filter(([id]) => auto.has(id) || mis.manual.has(id)).length, total: m.metas.length}};
 }
 function missionSummaryNode() {
   if (!mis.topic) return null;
+  if (mis.topic.teacher) return profSummaryNode();
   if (mis.topic.lesson) return msFechoSummaryNode();
+  if (mis.topic.innere) return innereSummaryNode();
+  if (mis.topic.krimi) return krimiSummaryNode();
   if (mis.topic.game) {
     const c = mis.topic.game;
     return h("p", {class: "mis-result" + (mis.solved ? " ok" : "")}, mis.solved ? "Diagnóstico certo com " + mis.solved.questions + " perguntas: " : "Diagnóstico: ", h("b", {lang: "de", text: c.de}), " (" + c.pt + ").");

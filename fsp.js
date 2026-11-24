@@ -166,6 +166,10 @@ function fspEvalPrompt(caso, level) {
 async function fspFinish(mine) {
   const caso = conv.topic.patient;
   convSetBusy(true, "Avaliando a anamnese…");
+  // Fatos e atitudes são por regra: o placar aparece já, e só a parte do alemão espera a IA (em esqueleto).
+  const ev0 = fspEvaluation(caso, conv.turns);
+  const words0 = mine.reduce((n, t) => n + t.de.split(/\s+/).filter(Boolean).length, 0), secs0 = Math.round((Date.now() - conv.startedAt) / 1000);
+  renderFspSummary(caso, ev0, null, {words: words0, turns: mine.length, secs: secs0, ok: true, pending: true});
   let j = null;
   try {
     const r = await window.satzDesktop.convChat([{role: "system", content: fspEvalPrompt(caso, convLevel())},
@@ -182,9 +186,10 @@ async function fspFinish(mine) {
   data.sessions = data.sessions.slice(-300);
   progress.days[dateKey()] = Number(progress.days[dateKey()] || 0) + 1;
   saveProgress();
-  renderFspSummary(caso, ev, fb, {words, turns: mine.length, secs, ok: !!j});
+  renderFspSummary(caso, ev, fb, {words, turns: mine.length, secs, ok: !!j, scroll: false});
 }
-function renderFspSummary(caso, ev, fb, {words, turns, secs, ok}) {
+function renderFspSummary(caso, ev, fb, {words, turns, secs, ok, pending = false, scroll = true}) {
+  if (pending) fb = {elogio: "", errors: [], style: []};
   const pct = Math.round(ev.found / Math.max(1, ev.total) * 100);
   const best = convData().sessions.filter(s => s.topic === "fsp-" + caso.id && s.fsp).reduce((m, s) => Math.max(m, s.fsp.found / Math.max(1, s.fsp.total)), 0);
   fill($("convSummary"),
@@ -204,13 +209,15 @@ function renderFspSummary(caso, ev, fb, {words, turns, secs, ok}) {
           convCardButton({frase: q}, "conv-card-style"))))) : null))),
     h("h4", {text: "Atitudes"}),
     h("ul", {class: "fsp-att"}, ...ev.attitudes.map(a => h("li", {class: a.done ? "ok" : "miss", text: (a.done ? "✓ " : "✗ ") + a.label}))),
-    ...convErrorsBlock(fb.errors, fb.style, convLineWith, fb.errors.some(e => e.tipo !== "microfone") ? "Erros de alemão mais importantes" : "Nenhum erro de alemão importante encontrado"),
+    ...(pending ? [h("section", {class: "fsp-wait", role: "status", "aria-label": "Avaliando o seu alemão"}, h("h4", {text: "Erros de alemão mais importantes"}), skel("line"), skel("line"), skel("line", "short"))]
+      : convErrorsBlock(fb.errors, fb.style, convLineWith, fb.errors.some(e => e.tipo !== "microfone") ? "Erros de alemão mais importantes" : "Nenhum erro de alemão importante encontrado")),
     h("p", {class: "muted small-text", text: "A avaliação é automática e o caso foi escrito pelo Claude: confira as dúvidas com o tutor. Na prova real, o paciente costuma falar mais rápido e com mais detalhes."}),
-    h("div", {class: "row"},
+    pending ? null : h("div", {class: "row"},
       h("button", {class: "primary", type: "button", onclick: () => openConversaTopic(fspTopic(caso))}, "Atender de novo"),
       h("button", {type: "button", onclick: convReset}, "Outro caso")));
+  const wasShown = !$("convSummary").hidden;
   $("convSummary").hidden = false;
-  $("convSummary").scrollIntoView({behavior: "smooth", block: "start"});
+  if (scroll || !wasShown) $("convSummary").scrollIntoView({behavior: scrollBehavior(), block: "start"});
 }
 /* Grupo de casos na tela da Conversa. */
 function fspSetupNode() {
