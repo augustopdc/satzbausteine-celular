@@ -2944,8 +2944,7 @@ body:not(.focus):not(.reading-focus) :is(main, .footer) { max-width: 1200px; }
 #view-home .home-heat.collapsed .heat-info { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: .2rem 1.2rem; padding: 0; border: 0; min-height: 0; }
 #view-home .home-heat.collapsed .heat-big b { font-size: 1.5rem; }
 #view-home .home-heat.collapsed .heat-facts { margin: 0; }
-/* A sequência já aparece no painel da Hoje: no menu ela some só nesta tela. */
-body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
+/* Na Hoje, o rodapé do menu troca a sequência pelo ritmo do dia (bloco “Barra lateral de assinatura”, no fim). */
 
 /* Menu: seta nos lugares que abrem telas; Configurações sempre no rodapé. */
 .nav-hub > span:not(.nav-badge) { flex: 1; text-align: left; }
@@ -4248,3 +4247,119 @@ button.trail-step[aria-pressed="true"] .trail-seg { box-shadow: 0 0 0 2px color-
 }
 .ring-tip-g { transform-origin: 66px 66px; transform-box: view-box; transition: transform .65s var(--ease-out); }
 @media (prefers-reduced-motion: reduce) { .ring-tip-g { transition: none; } }
+
+/* ---------- Barra lateral de assinatura (25/11/2026; pedido em _dev/.cache/PEDIDO-BARRA-LATERAL.md) ----------
+   Só o menu lateral. PC largo (> 920 px): menu, marca e o botão de menu da barra de título na mesma prumada (centro a 34 px
+   da borda), marca “Satz.” em letra de livro com o nível ao lado, contadores tonais, árvore com fio guia, pílula deslizante,
+   rodapé com sequência ou ritmo do dia e o atalho “Continuar lendo”. Trilho de ícones (601–920 px) e abas do celular
+   (≤ 600 px) continuam como eram, com a prumada também no trilho. Apagar o bloco desfaz o visual (o JS não depende dele). */
+.brand img { width: 32px; height: 32px; border-radius: 8px; box-shadow: 0 1px 2px rgba(18, 26, 25, .1), 0 0 0 .5px rgba(18, 26, 25, .06); }
+.brand-text strong { font-family: var(--font-de); font-weight: 700; font-size: 1.22rem; line-height: 1.1; letter-spacing: -.02em; }
+.brand-dot { font-style: normal; color: #d98a1e; }
+:root[data-theme="dark"] .brand-dot { color: #f2b55a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .brand-dot { color: #f2b55a; } }
+.brand-lv { margin-left: auto; align-self: center; flex: none; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--group-line);
+  background: var(--surface-2); color: var(--ink-2); font-size: 11px; font-weight: 650; line-height: 1.3; font-variant-numeric: tabular-nums; cursor: default; }
+@media (max-width: 920px) { .brand-dot, .brand-lv { display: none; } }
+
+@media (min-width: 921px) {
+  :root { --sidebar: 244px; }
+  /* Prumada: botão de menu (36 px, começa em 16) = marca (32 px, começa em 12 + 6) = ícones dos lugares (20 px, começam em 12 + 12). */
+  .sidebar { padding-left: 12px; padding-right: 12px; }
+  html.wco .titlebar { padding-left: 16px; }
+  .brand { gap: 10px; padding: 4px 4px 12px 6px; }
+  .nav button { padding-left: 12px; }
+
+  /* Contadores tonais; com Treinar aberto, o número passa para Cartões (um só na tela). */
+  .nav-badge { background: var(--accent-soft); color: var(--accent-strong); border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 650; font-variant-numeric: tabular-nums; }
+  #navDueHub { transition: opacity var(--t-micro) var(--ease), transform var(--t-micro) var(--ease); }
+  .nav-hub.on:not(.collapsed)[data-hub="treinar"] #navDueHub { opacity: 0; transform: scale(.82); pointer-events: none; }
+
+  /* Árvore: fio guia no eixo do ícone do lugar (22 px dentro do .nav) e subitens recuados à direita dele. */
+  .nav-sub > div { position: relative; }
+  .nav-sub > div::before { content: ""; position: absolute; left: 21.25px; top: 0; bottom: 8px; width: 1.5px; border-radius: 1px; background: var(--line-strong); opacity: .7; pointer-events: none; }
+  .nav-sub button { margin-left: 30px; width: calc(100% - 30px); padding: .38rem .7rem; min-height: 35px; font-size: .91rem; border-radius: 10px; }
+  .nav-sub button svg { width: 16px; height: 16px; opacity: .55; transition: opacity var(--t-micro), color var(--t-micro); }
+  .nav-sub button[aria-current="page"] svg { opacity: 1; color: var(--accent); }
+  .nav-sub button[aria-current="page"]::before { content: ""; position: absolute; left: -9px; top: 50%; width: 2px; height: 14px; margin-top: -7px; border-radius: 2px; background: var(--accent); }
+}
+@media (min-width: 921px) and (hover: hover) { .nav-sub button:hover svg { opacity: 1; color: var(--accent); } }
+/* Clicar no lugar aberto recolhe as telas dele (navegacao.js, nav.collapsed): a seta volta a apontar para o lado. */
+.nav-hub.on.collapsed:not([data-hub="hoje"])::after { transform: rotate(-45deg); opacity: .45; }
+@media (prefers-reduced-motion: reduce) { .nav-hub::after { transition: none; } }
+@media (min-width: 921px) and (pointer: coarse) { .nav-sub button { min-height: 46px; } }
+@media (min-width: 921px) and (prefers-reduced-motion: no-preference) {
+  .nav-sub.open > div > button { animation: nav-sub-in .2s var(--ease-out) backwards; }
+  .nav-sub.open > div > button:nth-child(2) { animation-delay: 15ms; }
+  .nav-sub.open > div > button:nth-child(3) { animation-delay: 30ms; }
+  .nav-sub.open > div > button:nth-child(4) { animation-delay: 45ms; }
+  .nav-sub.open > div > button:nth-child(5) { animation-delay: 60ms; }
+  .nav-sub.open > div > button:nth-child(6) { animation-delay: 75ms; }
+  .nav-sub.open > div > button:nth-child(n+7) { animation-delay: 90ms; }
+}
+@keyframes nav-sub-in { from { opacity: 0; transform: translateY(-3px); } }
+/* Trilho de ícones: a prumada também vale (centro do trilho = centro do botão de menu). */
+@media (min-width: 601px) and (max-width: 920px) {
+  html.wco .titlebar { padding-left: 18px; }
+  .brand img { width: 30px; height: 30px; }
+  /* O anel da meta do dia vai para o canto do botão (como no toque), para o ícone da Hoje ficar no centro do trilho. */
+  .nav .nav-ring { position: absolute; top: 4px; right: 4px; width: 14px; height: 14px; margin: 0; }
+}
+@media (min-width: 601px) and (max-width: 920px) and (pointer: coarse) { html.wco .titlebar { padding-left: 24px; } }
+
+/* Pílula deslizante do menu (navegacao.js, syncNavPill): o fundo do item atual é um ::before do .nav que desliza. */
+@media (min-width: 601px) {
+  .sidebar .nav { position: relative; }
+  .nav.has-nav-pill::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; box-sizing: border-box;
+    width: var(--nav-w, 0); height: var(--nav-h, 0); transform: translate(var(--nav-x, 0), var(--nav-y, 0)); opacity: var(--nav-o, 0);
+    border-radius: var(--nav-r, var(--radius)); background: var(--surface); border: 1px solid rgba(18, 26, 25, .06); box-shadow: 0 1px 2px rgba(18, 26, 25, .05); }
+  .nav.has-nav-pill[data-pill-ready]::before { transition: transform 220ms var(--ease), width 220ms var(--ease), height 220ms var(--ease), border-radius 220ms var(--ease), opacity 150ms; }
+  .nav.has-nav-pill button { z-index: 1; }
+  .nav.has-nav-pill button[aria-current="page"] { background: transparent; box-shadow: none; }
+  :root[data-theme="dark"] .nav.has-nav-pill::before { background: var(--surface-3); border-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 1px 2px rgba(0, 0, 0, .35); }
+  /* Configurações (engrenagem do rodapé) acesa como o item atual. */
+  #navSettings.on { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgba(18, 26, 25, .05), inset 0 0 0 1px rgba(18, 26, 25, .06); }
+  :root[data-theme="dark"] #navSettings.on { background: var(--surface-3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 1px 2px rgba(0, 0, 0, .35); }
+  /* Configurações mora só na engrenagem: a linha repetida dentro de Eu some no PC (no celular continua na lista de Eu). */
+  .nav-sub[data-sub="eu"] button[data-view="settings"] { display: none; }
+}
+@media (min-width: 601px) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .nav.has-nav-pill::before { background: var(--surface-3); border-color: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 1px 2px rgba(0, 0, 0, .35); }
+  :root:not([data-theme="light"]) #navSettings.on { background: var(--surface-3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 1px 2px rgba(0, 0, 0, .35); }
+}
+@media (max-width: 600px) { .nav.has-nav-pill::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .nav.has-nav-pill[data-pill-ready]::before, #navDueHub { transition: none; } }
+@media (prefers-contrast: more) { .nav.has-nav-pill::before, #navSettings.on { border: 1px solid var(--line-strong); } .nav-sub > div::before { opacity: 1; } }
+
+/* Rodapé: sequência (fora da Hoje) ou ritmo do dia (na Hoje), no mesmo botão, trocando suavemente. */
+.sb-status { display: grid; justify-items: start; align-items: center; min-height: 36px; padding: .3rem .55rem; border: 0; border-radius: 10px; background: transparent;
+  color: var(--warn); font-weight: 650; font-size: .9rem; }
+@media (hover: hover) { .sb-status:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); border-color: transparent; } }
+.sb-face { grid-area: 1 / 1; display: flex; align-items: center; gap: .4rem; white-space: nowrap; font-variant-numeric: tabular-nums;
+  transition: opacity var(--t-micro) var(--ease), transform var(--t-micro) var(--ease); }
+.sb-status[data-mode="streak"] .sb-day, .sb-status[data-mode="day"] .sb-streak { opacity: 0; transform: translateY(3px); pointer-events: none; }
+.sb-day { color: var(--ink-2); font-weight: 600; --dot: var(--accent); }
+.sb-day[data-type="folga"] { --dot: var(--good); }
+.sb-day[data-type="plantao"] { --dot: var(--warn); }
+.sb-day[data-type="pos"] { --dot: var(--purple); }
+.sb-day svg { display: none; color: var(--dot); }
+.sb-dot { width: 8px; height: 8px; margin: 0 .1rem 0 .15rem; border-radius: 50%; flex: none; background: var(--dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 18%, transparent); }
+@media (max-width: 920px) {
+  .sb-status { justify-items: center; padding: .4rem; min-width: 40px; }
+  .sb-day svg { display: block; }
+  .sb-dot { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .sb-face { transition: none; } }
+
+/* “Continuar lendo”: cápsula silenciosa acima do rodapé, só no PC largo e com um livro em andamento. */
+.nav-now { margin: .25rem 0 .55rem; }
+.nav-now-btn { display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; justify-items: stretch; gap: .15rem; width: 100%; min-height: 0; padding: .5rem .65rem .55rem; border-radius: 10px; text-align: left;
+  background: color-mix(in srgb, var(--surface) 65%, transparent); border: 1px solid var(--group-line); color: var(--ink); font-weight: 500; }
+@media (hover: hover) { .nav-now-btn:hover { background: var(--surface); border-color: var(--line-strong); } }
+.nav-now-top { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; font-size: 11px; font-weight: 600; color: var(--ink-3); }
+.nav-now-pct { font-variant-numeric: tabular-nums; }
+.nav-now-title { font-family: var(--font-de); font-weight: 600; font-size: .95rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nav-now-bar { display: block; height: 2px; margin-top: .3rem; border-radius: 2px; background: var(--line); overflow: hidden; }
+.nav-now-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+@media (max-width: 920px) { .nav-now { display: none !important; } }
+@media (prefers-reduced-transparency: reduce) { .nav-now-btn { background: var(--surface); } }

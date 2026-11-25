@@ -101,6 +101,15 @@ function rdBookPct(b, pos) {
   if (total && pos.sel >= 0) return Math.max(0, Math.min(100, Math.round((pos.sel + 1) / total * 100)));
   return Math.round(pos.ch / b.chapters * 100);
 }
+/* O mínimo de cada livro (título, capítulos, frases) fica guardado com as posições, para o atalho “Continuar lendo”
+   da barra lateral (navegacao.js, sidebarNowPick) aparecer ao abrir o app sem ler os livros do disco. */
+function rdRememberMeta(books) {
+  const meta = {};
+  for (const b of books || []) if (b && b.id && b.chapters) meta[b.id] = {t: String(b.title || "").slice(0, 120), c: b.chapters, n: (b.notes && b.notes.total) || 0};
+  const s = readingState();
+  if (JSON.stringify(s.meta || {}) !== JSON.stringify(meta)) saveReadingState({meta});
+  if (typeof updateSidebarNow === "function") updateSidebarNow();
+}
 /* Não iniciado, lendo ou lido (até o fim). */
 function rdBookState(b, pos) { return !pos ? "new" : rdBookPct(b, pos) >= 98 ? "done" : "reading"; }
 function rdWhen(at) {
@@ -370,6 +379,7 @@ async function renderLibrary() {
   }
   try { reading.books = await window.satzDesktop.listBooks(); }
   catch (e) { reportError("livros", e.message, e.stack); reading.books = []; }
+  rdRememberMeta(reading.books);
   const recent = reading.books.map(b => [b, bookPosition(b.id)]).filter(([, p]) => p).sort((x, y) => (y[1].at || 0) - (x[1].at || 0))[0];
   rdAssignCovers(reading.books);
   fill(box, rdLibraryLayout(

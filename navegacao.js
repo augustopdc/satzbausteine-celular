@@ -32,7 +32,7 @@ const HUB_ROWS = {
 // Telas que dependem do PC (Whisper, IA local): fora do app do PC não aparecem.
 const NAV_WEB_HIDDEN = ["conversa", "minhas", "pron", "menschen"];
 const NAV_KEY = "satzbausteine.navLast";
-const nav = {hub: "hoje", last: {}};
+const nav = {hub: "hoje", last: {}, collapsed: ""};
 
 function navPhone() { return window.matchMedia("(max-width: 600px)").matches; }
 function hubById(id) { return HUBS.find(x => x.id === id) || HUBS[0]; }
@@ -68,6 +68,13 @@ function navHub(id) {
     navGo(last && views.includes(last) ? last : "hub", "fade");
     return;
   }
+  // PC: clicar no lugar que já está aberto recolhe (ou abre de novo) as telas dele, sem trocar de tela.
+  if (views.length > 1 && hubOf(currentView) === id && currentView !== "settings") {
+    nav.collapsed = nav.collapsed === id ? "" : id;
+    navSyncGroups(hubOf(currentView), currentView);
+    navPillTrack();
+    return;
+  }
   navGo(last && views.includes(last) ? last : views[0], "fade");
 }
 
@@ -79,8 +86,14 @@ function updateNav(view) {
     if (nav.last[hub] !== view) { nav.last[hub] = view; try { localStorage.setItem(NAV_KEY, JSON.stringify(nav.last)); } catch (e) { /* sem armazenamento */ } }
   }
   all(".nav button[data-view]").forEach(b => { if (b.dataset.view === view) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current"); });
-  all(".nav-hub").forEach(b => b.classList.toggle("on", b.dataset.hub === hub));
-  all(".nav-sub").forEach(g => g.classList.toggle("open", g.dataset.sub === hub));
+  // Trocar de lugar desfaz o “recolhido” (voltar ao lugar abre as telas dele de novo).
+  if (nav.collapsed && nav.collapsed !== hub) nav.collapsed = "";
+  navSyncGroups(hub, view);
+  const gear = $("navSettings");
+  if (gear) { gear.classList.toggle("on", view === "settings"); if (view === "settings") gear.setAttribute("aria-current", "page"); else gear.removeAttribute("aria-current"); }
+  navPillTrack();
+  updateSidebarStatus(view);
+  updateSidebarNow(view);
   titleWatch(view);
   // Luz atmosférica por lugar (style.css, bloco “Visual de assinatura”, etapa 5).
   const root = document.documentElement;
@@ -93,10 +106,145 @@ function updateNav(view) {
   $("miniTitle").classList.toggle("after-long", showBack && hubById(hub).label.length > 8);
 }
 
+/* Lugar aceso e grupo aberto no menu. No PC, Configurações mora só na engrenagem do rodapé: o lugar Eu não acende nem abre
+   (no celular continua dentro de Eu). Lugar recolhido pelo clique (nav.collapsed) continua aceso, com o grupo fechado. */
+function navSyncGroups(hub, view) {
+  const gearOnly = view === "settings" && !navPhone();
+  all(".nav-hub").forEach(b => {
+    const on = !gearOnly && b.dataset.hub === hub, many = hubViews(b.dataset.hub).length > 1;
+    b.classList.toggle("on", on);
+    b.classList.toggle("collapsed", on && nav.collapsed === b.dataset.hub);
+    if (many) b.setAttribute("aria-expanded", String(on && nav.collapsed !== b.dataset.hub)); else b.removeAttribute("aria-expanded");
+  });
+  all(".nav-sub").forEach(g => g.classList.toggle("open", !gearOnly && g.dataset.sub === hub && nav.collapsed !== hub));
+}
 /* Modo especial aberto na Conversa (Krimi ou Plantão na Innere): o topo da folha ganha a luz da cena. */
 function navConvMode(view = typeof currentView !== "undefined" ? currentView : "") {
   const t = view === "conversa" && typeof conv !== "undefined" && conv.topic && !conv.finished ? conv.topic : null;
   document.documentElement.dataset.convMode = t && t.krimi ? "krimi" : t && t.innere ? "innere" : "";
+}
+// ---------- Barra lateral de assinatura (25/11/2026; pedido em _dev/.cache/PEDIDO-BARRA-LATERAL.md) ----------
+/* Pílula deslizante: no PC e no trilho de ícones, o fundo do item atual é uma superfície só (::before do .nav) que desliza
+   e muda de largura até o novo item (de um lugar a um subitem recuado, por exemplo). Enquanto um grupo abre ou fecha, os
+   itens abaixo dele andam: navPillTrack mede de novo a cada quadro até a gaveta assentar (com temporizador de reserva,
+   porque a janela escondida não roda requestAnimationFrame). Item invisível (Configurações no PC, grupo fechado): some. */
+const navPill = {shown: false, until: 0, timer: 0};
+function navPillEl() { return document.querySelector(".sidebar .nav"); }
+function syncNavPill() {
+  const el = navPillEl();
+  if (!el) return;
+  if (navPhone()) { el.classList.remove("has-nav-pill"); delete el.dataset.pillReady; navPill.shown = false; return; }
+  el.classList.add("has-nav-pill");
+  let act = el.querySelector('button[aria-current="page"]');
+  const closed = act && act.closest(".nav-sub:not(.open)");
+  if (closed && closed.previousElementSibling && closed.previousElementSibling.classList.contains("collapsed")) act = closed.previousElementSibling;
+  if (!act || !act.offsetWidth || act.closest(".nav-sub:not(.open)")) {
+    el.style.setProperty("--nav-o", "0");
+    navPill.shown = false;
+    return;
+  }
+  const ra = act.getBoundingClientRect(), rn = el.getBoundingClientRect();
+  const box = {x: Math.round(ra.left - rn.left), y: Math.round(ra.top - rn.top), w: Math.round(ra.width), h: Math.round(ra.height)};
+  // Reaparecendo (ou no 1º desenho): vai direto ao lugar, sem deslizar do canto; a transição volta no quadro seguinte.
+  if (!navPill.shown) delete el.dataset.pillReady;
+  for (const k of ["x", "y", "w", "h"]) el.style.setProperty("--nav-" + k, box[k] + "px");
+  el.style.setProperty("--nav-r", getComputedStyle(act).borderTopLeftRadius);
+  el.style.setProperty("--nav-o", "1");
+  if (!navPill.shown) {
+    navPill.shown = true;
+    const frame = typeof pillFrame === "function" ? pillFrame : f => setTimeout(f, 50);
+    if (!reducedMotion()) frame(() => frame(() => { if (navPill.shown) el.dataset.pillReady = "1"; }));
+  }
+}
+function navPillTrack(ms = 420) {
+  syncNavPill();
+  navPill.until = Date.now() + ms;
+  if (navPill.timer) return;
+  const step = () => {
+    navPill.timer = 0;
+    syncNavPill();
+    if (Date.now() < navPill.until) navPill.timer = setTimeout(step, 16);
+  };
+  navPill.timer = setTimeout(step, 16);
+}
+/* Puro (testado): o que o botão da esquerda do rodapé mostra. Fora da Hoje, a sequência (clicar leva à Hoje); na Hoje,
+   onde a sequência já aparece grande, o ritmo do dia (clicar abre o seletor do dia). */
+const SIDEBAR_DAY_ICON = {normal: "sun", folga: "sun", plantao: "moon", pos: "moon"};
+function sidebarStatusState(view, streakDays, type) {
+  if (view === "home") {
+    const t = SIDEBAR_DAY_ICON[type] ? type : "normal";
+    const label = (typeof SHIFT_LABELS !== "undefined" && SHIFT_LABELS[t]) || {normal: "Dia comum", plantao: "Plantão", pos: "Pós-plantão", folga: "Folga"}[t];
+    return {mode: "day", type: t, icon: SIDEBAR_DAY_ICON[t], text: label, title: "Hoje: " + label + ". Clique para trocar o tipo de dia e o tempo."};
+  }
+  const n = Math.max(0, Math.floor(Number(streakDays) || 0));
+  const text = n + (n === 1 ? " dia" : " dias");
+  return {mode: "streak", text, title: text + " seguidos de estudo. Clique para ir à Hoje."};
+}
+function updateSidebarStatus(view = typeof currentView !== "undefined" ? currentView : "home") {
+  const btn = $("sidebarStatus");
+  if (!btn) return;
+  let type = "normal", days = 0;
+  try { type = dayPlan().type; } catch (e) { /* progresso ainda não carregou */ }
+  try { days = streak(); } catch (e) { /* idem */ }
+  const st = sidebarStatusState(view, days, type);
+  btn.dataset.mode = st.mode;
+  btn.title = st.title;
+  btn.setAttribute("aria-label", st.mode === "day" ? "Tipo de dia: " + st.text + ". Trocar" : st.text + " seguidos. Ir para a Hoje");
+  const day = $("sidebarDay");
+  if (st.mode === "day" && day && day.dataset.type !== st.type) {
+    day.dataset.type = st.type;
+    fill(day, icon(st.icon, 18), h("i", {class: "sb-dot", "aria-hidden": "true"}), h("span", {class: "streak-text", text: st.text}));
+  }
+}
+/* Puro (testado): o livro em andamento para o atalho “Continuar lendo”: o lido mais recentemente entre os que estão
+   entre 1% e 99% (mesma conta da estante: a frase em que parou sobre o total; sem a contagem, o começo do capítulo).
+   meta = {id: {t: título, c: capítulos, n: frases}} (guardado pela estante); pos = {id: {ch, sel, at}}. */
+function sidebarNowPick(meta, pos) {
+  let best = null;
+  for (const [id, m] of Object.entries(meta || {})) {
+    const p = pos && pos[id];
+    if (!m || !p || !m.c) continue;
+    const pct = m.n && p.sel >= 0 ? Math.round((p.sel + 1) / m.n * 100) : Math.round((p.ch || 0) / m.c * 100);
+    if (pct < 1 || pct > 99) continue;
+    if (!best || (p.at || 0) > best.at) best = {id, title: m.t || "", pct, at: p.at || 0};
+  }
+  return best;
+}
+function updateSidebarNow(view = typeof currentView !== "undefined" ? currentView : "") {
+  const box = $("sidebarNow");
+  if (!box) return;
+  const st = typeof readingState === "function" ? readingState() : {};
+  // Quem já lia antes desta versão ainda não tem o resumo guardado: uma busca só, sem pressa, e daí em diante vem da estante.
+  if (!st.meta && st.pos && Object.keys(st.pos).length && !updateSidebarNow.asked && window.satzDesktop && window.satzDesktop.listBooks && typeof rdRememberMeta === "function") {
+    updateSidebarNow.asked = true;
+    setTimeout(() => window.satzDesktop.listBooks().then(books => { if (!readingState().meta) rdRememberMeta(books); }).catch(() => {}), 3000);
+  }
+  const pick = view === "reading" ? null : sidebarNowPick(st.meta, st.pos);
+  if (!pick) { box.hidden = true; return; }
+  box.hidden = false;
+  const key = pick.id + "|" + pick.pct + "|" + pick.title;
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  const bar = h("i");
+  setWidth(bar, pick.pct);
+  fill(box, h("button", {class: "nav-now-btn", type: "button", title: "Continuar " + pick.title + " de onde parou", onclick: () => sidebarOpenBook(pick.id)},
+    h("span", {class: "nav-now-top"}, h("span", {class: "nav-now-label", text: "Continuar lendo"}), h("span", {class: "nav-now-pct", text: pick.pct + "%"})),
+    h("span", {class: "nav-now-title", lang: "de", text: pick.title}),
+    h("span", {class: "nav-now-bar", "aria-hidden": "true"}, bar)));
+}
+/* Abre o livro na frase em que parou: carrega antes, depois mostra a tela (sem passar pela estante). */
+async function sidebarOpenBook(id) {
+  if (typeof openBook !== "function") return;
+  if (!reading.book || reading.book.id !== id) await openBook(id);
+  if (!reading.book || reading.book.id !== id) return;
+  navGo("reading", "fade");
+  if (reading.sel >= 0 && typeof scrollToSentence === "function") requestAnimationFrame(() => scrollToSentence(reading.sel, "center"));
+}
+/* Botão de tema: um giro curto do ícone novo (180 ms), nada com “reduzir movimento”. */
+function themeSpin() {
+  const svg = document.querySelector("#themeToggle svg");
+  if (!svg || reducedMotion() || typeof svg.animate !== "function") return;
+  svg.animate([{transform: "rotate(-35deg) scale(.88)"}, {transform: "none"}], {duration: 180, easing: "cubic-bezier(.23, 1, .32, 1)"});
 }
 function renderHub() {
   const hub = hubById(nav.hub);
@@ -173,4 +321,19 @@ function initNav() {
   all(".nav-hub").forEach(b => b.addEventListener("click", () => navHub(b.dataset.hub)));
   all(".nav-sub button[data-view]").forEach(b => b.addEventListener("click", () => navGo(b.dataset.view)));
   $("hubBackBtn").addEventListener("click", () => navGo("hub", "pop"));
+  // Rodapé: a sequência leva à Hoje; na Hoje, o ritmo do dia abre o seletor do dia (#dayBtn).
+  $("sidebarStatus").addEventListener("click", e => {
+    const b = $("dayBtn");
+    if ($("sidebarStatus").dataset.mode === "day" && b) {
+      e.stopPropagation(); // senão o clique chega ao documento e fecha o seletor que acabou de abrir
+      b.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
+      b.click();
+      return;
+    }
+    navGo("home", "fade");
+  });
+  const navEl = navPillEl();
+  if (navEl && typeof ResizeObserver === "function") new ResizeObserver(() => syncNavPill()).observe(navEl);
+  // Celular ↔ PC (girar o tablet, redimensionar): Configurações muda de lugar e a pílula liga ou desliga.
+  window.matchMedia("(max-width: 600px)").addEventListener("change", () => { if (typeof currentView !== "undefined") updateNav(currentView); });
 }

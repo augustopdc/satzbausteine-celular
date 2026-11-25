@@ -911,6 +911,10 @@ function updateNavBadges(pending, st) {
   const hubBadge = $("navDueHub");
   if (hubBadge) { hubBadge.textContent = badge.textContent; hubBadge.hidden = !pending; }
   $("streakMini").textContent = st + (st === 1 ? " dia" : " dias");
+  // Barra lateral: ritmo do dia no rodapé (na Hoje), livro em andamento e o selo do nível ao lado da marca.
+  if (typeof updateSidebarStatus === "function") { updateSidebarStatus(); updateSidebarNow(); }
+  const lv = $("brandLevel"), level = typeof currentLevel === "function" ? currentLevel() : "";
+  if (lv && level) { if (lv.textContent !== level) lv.textContent = level; lv.title = "Seu nível atual: " + level; lv.hidden = false; }
 }
 const HOME_LEVELS = [["A1", "Iniciante"], ["A2", "Básico"], ["B1", "Intermediário"], ["B2", "Avançado"], ["med", "Alemão médico"]];
 function levelRow(code, name, done, total) {
@@ -2846,6 +2850,7 @@ function cycleTheme() {
   saveSettings();
   applyTheme();
   if (currentView === "settings") $("themeSelect").value = settings.theme;
+  if (typeof themeSpin === "function") themeSpin();
 }
 async function saveDesktopPrefs() {
   if (!window.satzDesktop) return;
