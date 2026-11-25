@@ -711,6 +711,7 @@ function showView(view) {
   all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; e.classList.remove("vt"); });
   updateNav(view);
   if (typeof convOpenMark === "function") convOpenMark();
+  if (typeof msOpenMark === "function") msOpenMark();
   if (view === "home") renderHome();
   if (view === "hub") renderHub();
   if (view === "practice") renderPracticeSetup();

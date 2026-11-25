@@ -214,7 +214,7 @@ function initGestures() {
    só entra no quadro seguinte). Grupo refeito do zero (o Krimi redesenha o painel a cada fala) começa da posição anterior
    do mesmo tipo de grupo, e assim também desliza. Atualiza em cliques, trocas pelo código (MutationObserver) e tamanho
    (ResizeObserver: em linha no PC, em coluna no celular). */
-const PILL_SEL = "#practiceSetup .segmented, .segmented.conv-tabs, .segmented.kr-tabs, .segmented.conv-flow";
+const PILL_SEL = "#practiceSetup .segmented, .segmented.conv-tabs, .segmented.kr-tabs, .segmented.conv-flow, .segmented.ms-seg, .segmented.fx-seg";
 const pillLast = new Map();
 // Janela escondida ou sem pintura (autoteste, app na bandeja) não roda requestAnimationFrame: um temporizador de reserva
 // garante o próximo passo (o que chegar primeiro roda; o outro não faz nada).
@@ -226,7 +226,7 @@ function pillFrame(fn) {
   return 1;
 }
 let pillRO = null;
-function pillKind(g) { return ["kr-tabs", "conv-tabs", "conv-flow"].find(k => g.classList.contains(k)) || "practice"; }
+function pillKind(g) { return ["kr-tabs", "conv-tabs", "conv-flow", "ms-seg", "fx-seg"].find(k => g.classList.contains(k)) || "practice"; }
 function syncSlidingPill(group) {
   if (!group || !group.isConnected) return;
   const act = [...group.children].find(b => b.getAttribute("aria-pressed") === "true" || b.classList.contains("active"));
@@ -238,7 +238,8 @@ function syncSlidingPill(group) {
   const box = {x: Math.round(ra.left - rg.left - group.clientLeft + group.scrollLeft), y: Math.round(ra.top - rg.top - group.clientTop + group.scrollTop), w: act.offsetWidth, h: act.offsetHeight}, kind = pillKind(group);
   const set = b => { for (const k of ["x", "y", "w", "h"]) group.style.setProperty("--pill-" + k, b[k] + "px"); };
   if (fresh) {
-    const prev = pillLast.get(kind);
+    // As trocas das fichas ficam várias na mesma página: cada uma começa no próprio lugar (não vem da outra).
+    const prev = kind === "fx-seg" ? null : pillLast.get(kind);
     // Mesmo tipo de grupo redesenhado: parte do lugar antigo (se o tamanho bate) e desliza até o novo.
     if (prev && Math.abs(prev.w - box.w) < 40 && Math.abs(prev.h - box.h) < 20 && !motionOff()) {
       set(prev);

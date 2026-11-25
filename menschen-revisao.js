@@ -136,8 +136,9 @@ function msPhMix() {
   };
   const situ = String(c.situacao || "").replace(/^\[(du|Sie|ihr|neutro|escrito)\]\s*/, "");
   const msg = r && {ok: "Certo!", quase: "Quase: compare com a frase modelo.", no: r.typed ? "Compare com a frase modelo." : "Esta é a frase:"}[r.grade];
-  return h("div", {class: "aula-step ms-mix"},
-    h("p", {class: "ms-kicker", text: "Frase " + (M.k + 1) + " de " + M.items.length + " · de " + plural(M.groups.length, "passo diferente", "passos diferentes")}),
+  return h("div", {class: "aula-step ms-mix ms-card-stage" + msStageIn("m" + M.k + it.id)},
+    msCounter("Frase", M.k + 1, M.items.length),
+    h("p", {class: "muted small-text ms-mix-from", text: "De " + plural(M.groups.length, "passo diferente", "passos diferentes") + ", sem dizer a regra"}),
     h("p", {class: "label", text: "Como se diz em alemão?"}),
     h("p", {class: "aula-pt", text: c.traducao}),
     situ ? h("p", {class: "muted small-text", text: situ}) : null,

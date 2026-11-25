@@ -119,10 +119,16 @@ function msWordDe(w) {
   const m = w[1] !== "só plural" && w[0].match(/^(der|die|das)\s+(.+)$/), cls = m ? genderClass(m[1], m[2]) : "";
   return h("span", {class: "ms-de" + (cls && settings.genderColors ? " gender " + cls : ""), lang: "de", text: w[0]});
 }
+/* Folha de vocabulário: uma linha por palavra; o ponto verde marca as que você já acertou no treino de palavras. */
 function msWordList(list) {
-  return h("div", {class: "ms-wlist"}, ...list.map(w => h("div", {class: "ms-wrow"},
-    typeof fichaHear === "function" ? fichaHear(w[0].replace(/\s*\([^)]*\)/g, "")) : h("span"),
-    h("div", null, msWordDe(w), w[1] ? h("span", {class: "ms-extra", lang: "de", text: " " + w[1]}) : null, h("p", {class: "ms-pt", text: w[2]})))));
+  const st = msState().words;
+  return h("div", {class: "ms-wlist"}, ...list.map(w => {
+    const got = !!(st[w[0]] && st[w[0]].b >= 1);
+    return h("div", {class: "ms-wrow" + (got ? " got" : "")},
+      typeof fichaHear === "function" ? fichaHear(w[0].replace(/\s*\([^)]*\)/g, "")) : h("span"),
+      h("div", null, msWordDe(w), w[1] ? h("span", {class: "ms-extra", lang: "de", text: " " + w[1]}) : null, h("p", {class: "ms-pt", text: w[2]})),
+      got ? h("span", {class: "ms-dot", title: "Você já acertou esta palavra"}) : h("span"));
+  }));
 }
 
 // ---------- A aula: abrir, navegar, fechar ----------
@@ -157,6 +163,7 @@ function msClosePasso(quiet = false) {
   menschen.passo = null;
   menschen.track = null;
   menschen.data = null;
+  msOpenMark();
   if (!quiet) { renderMenschen(); window.scrollTo({top: 0}); }
 }
 function msRenderPasso() { renderMenschen(); }
@@ -167,6 +174,7 @@ function msGoPhase(j) {
   P.i = Math.max(0, Math.min(P.phases.length - 1, j));
   P.res = null;
   P.busy = false;
+  msStageLast = "";
   if (P.phases[P.i] === "fim" && !P.review && !P.mix) { msState().passos[msPassoKey(P.n, P.id)] = Date.now(); saveProgress(); }
   msRenderPasso();
   window.scrollTo({top: 0});
@@ -174,19 +182,21 @@ function msGoPhase(j) {
   if (el) el.focus();
 }
 function msNext() { if (menschen.passo) msGoPhase(menschen.passo.i + 1); }
-function msNextButton(label) {
+function msNextButton(label, primary = true) {
   const P = menschen.passo, next = P.phases[P.i + 1];
-  return h("button", {class: "primary", type: "button", onclick: msNext}, label || (next === "fim" ? "Terminar o passo" : "Próximo: " + MS_PHASES[next]));
+  return h("button", {class: "ms-next" + (primary ? " primary" : ""), type: "button", onclick: msNext}, label || (next === "fim" ? "Terminar o passo" : "Próximo: " + MS_PHASES[next]));
 }
 function msPassoView(box) {
   const P = menschen.passo, l = msLessonData(P.n);
   const p = P.review || P.mix ? null : l.passos.find(x => x.id === P.id), cur = P.phases[P.i];
   const k = p ? l.passos.indexOf(p) : -1;
-  const nav = !p ? null : h("ol", {class: "aula-nav ms-nav"}, ...P.phases.filter(x => x !== "fim").map((x, j) =>
-    h("li", {class: (j < P.i ? "done" : "") + (j === P.i ? " here" : "")}, h("button", {type: "button", onclick: () => msGoPhase(j)}, MS_PHASES[x]))));
+  // Trilho de etapas: círculo (check nas feitas, número nas outras) + nome, ligados por um fio.
+  const nav = !p ? null : h("ol", {class: "aula-nav ms-nav", "aria-label": "Etapas do passo"}, ...P.phases.filter(x => x !== "fim").map((x, j) =>
+    h("li", {class: (j < P.i ? "done" : "") + (j === P.i ? " here" : "")}, h("button", {type: "button", "aria-current": j === P.i ? "step" : null, onclick: () => msGoPhase(j)},
+      h("span", {class: "ms-nav-n", "aria-hidden": "true"}, j < P.i ? icon("check", 12) : String(j + 1)), h("span", {class: "ms-nav-label", text: MS_PHASES[x]})))));
   const head = h("div", {class: "ms-passo-head"},
-    h("button", {class: "quiet small", type: "button", onclick: () => msClosePasso()}, iconText("back", "Lektion " + l.n)),
-    h("p", {class: "ms-kicker", text: p ? "Passo " + (k + 1) + " de " + l.passos.length + " · " + p.pag : "Revisão"}),
+    msHeadTop(l, p ? p.pag : "", () => msClosePasso()),
+    h("p", {class: "ms-kicker", text: p ? "Passo " + (k + 1) + " de " + l.passos.length : "Revisão"}),
     h("h2", {class: "ms-passo-title", text: p ? p.titulo : P.mix ? "Revisão misturada" : "Palavras para revisar"}), nav);
   const body = cur === "fim" ? msPassoEnd(l, p) : cur === "mix" ? msPhMix()
     : {sobre: msPhSobre, palavras: msPhPalavras, ouvir: msPhOuvir, regra: msPhRegra, produzir: msPhProduzir, usar: msPhUsar}[cur](l, p);
@@ -197,9 +207,10 @@ function msPassoView(box) {
 // ---------- Etapas ----------
 function msPhSobre(l, p) {
   return h("div", {class: "aula-step ms-sobre"},
-    h("p", {class: "aula-lede", text: p.sobre}),
-    p.quem ? h("p", {class: "muted small-text", text: "Quem fala no áudio: " + p.quem}) : null,
-    h("p", {class: "ms-bookref"}, icon("book", 16), h("span", {text: "No livro: " + p.pag})),
+    h("div", {class: "ms-intro-card"},
+      h("p", {class: "aula-lede", text: p.sobre}),
+      p.quem ? h("p", {class: "ms-intro-quem"}, h("span", {class: "label", text: "Quem fala no áudio"}), h("span", {text: p.quem})) : null,
+      h("p", {class: "ms-bookref"}, icon("book", 16), h("span", {text: "No livro: " + p.pag}))),
     p.palavras ? [h("p", {class: "label", text: "As palavras deste passo"}), msWordList(p.palavras)] : null,
     h("div", {class: "row"}, msNextButton(p.palavras ? "Treinar estas palavras" : null)));
 }
@@ -208,13 +219,14 @@ function msInputRow(onCheck, opts = {}) {
   const P = menschen.passo, done = !!(opts.res || P.res);
   const input = h(opts.big ? "textarea" : "input", {id: "msInput", lang: "de", type: opts.big ? null : "text", rows: opts.big ? "7" : null, class: "ms-input" + (opts.big ? " big" : ""),
     spellcheck: "false", autocomplete: "off", placeholder: opts.placeholder || "", readonly: done});
+  const keys = !done && typeof umlautRow === "function" ? umlautRow(input) : null;
   input.addEventListener("keydown", e => {
     if (e.key !== "Enter" || e.shiftKey || (opts.big && !e.ctrlKey && !done)) return;
     e.preventDefault();
     if (done) (opts.onNext || msNext)(); else onCheck();
   });
   const voice = typeof speechAvailable === "function" && speechAvailable() && !done;
-  return [input, h("div", {class: "row"},
+  return [input, keys, h("div", {class: "row"},
     done ? null : h("button", {class: "primary", type: "button", disabled: P.busy, onclick: () => onCheck()}, P.busy ? "Conferindo…" : "Conferir", h("kbd", null, opts.big ? "Ctrl+Enter" : "Enter")),
     voice ? h("button", {type: "button", class: P.clip ? "danger-solid" : "", onclick: () => msVoice(opts.big ? 90000 : 15000)}, icon(P.clip ? "stop" : "mic", 18), P.clip ? "Parar" : "Falar") : null,
     done || opts.noGiveUp ? null : h("button", {class: "quiet small", type: "button", onclick: () => onCheck(true)}, "Não sei"))];
@@ -270,8 +282,8 @@ function msPhPalavras(l, p) {
   };
   const next = () => { D.pos++; D.res = null; msRenderPasso(); const el = $("msInput"); if (el) el.focus(); };
   const hint = msWordHint(w);
-  return h("div", {class: "aula-step ms-drill"},
-    h("p", {class: "ms-kicker", text: "Palavra " + Math.min(D.pos + 1, D.queue.length) + " de " + D.queue.length}),
+  return h("div", {class: "aula-step ms-drill ms-card-stage" + msStageIn("w" + D.pos + w[0])},
+    msCounter("Palavra", Math.min(D.pos + 1, D.queue.length), D.queue.length),
     h("p", {class: "label", text: "Como se diz em alemão?"}),
     h("p", {class: "aula-pt", text: w[2]}),
     hint ? h("p", {class: "muted small-text", text: "Escreva " + hint + "."}) : null,
@@ -311,7 +323,7 @@ function msPhOuvir(l, p) {
       h("button", {class: "chip", type: "button", "aria-pressed": String(f.id === P.faixa), onclick: () => { msStop(); P.faixa = f.id; msRenderPasso(); }},
         h("span", {class: "ms-track-book", text: f.id.startsWith("kb") ? "KB" : "AB"}), " " + f.label))) : null,
     h("div", {id: "msPlayer"}),
-    h("div", {class: "row ms-foot"}, msNextButton()));
+    h("div", {class: "row ms-foot"}, msNextButton(null, !!menschen.heard)));
 }
 function msMountOuvir(l, p) {
   const P = menschen.passo, f = p.faixas.find(x => x[0] === P.faixa) || p.faixas[0];
@@ -373,10 +385,104 @@ function msRuleAula(r, foot) {
     legend.length ? h("p", {class: "mr-legenda", "aria-label": "Legenda das cores"}, ...legend.map(([k, label]) => h("mark", {class: "mr mr-" + k, text: label}))) : null,
     list, more, end];
 }
+/* ---------- Dúvida sobre a regra, sem sair do passo ---------- */
+/* A regra do passo em texto limpo (sem as marcas {v|…} e [ ]), para o prompt da professora: resumo, ideias e bolso, ou o
+   formato antigo (foco). Até ~1800 caracteres. */
+function msRuleContextText(p) {
+  const r = p && p.regra;
+  if (!r) return "";
+  const clean = x => fichaStrip(x).replace(/\s+/g, " ").trim();
+  const out = [];
+  if (r.aula) {
+    if (r.aula.resumo) out.push(clean(r.aula.resumo));
+    for (const idea of r.aula.ideias || []) {
+      out.push("- " + clean(idea.titulo));
+      for (const b of idea.blocos || []) {
+        if (b.tipo === "fala" || b.tipo === "macete") out.push(clean(b.texto));
+        else if (b.tipo === "lado") out.push(b.itens.map(([pt, de]) => clean(pt) + " = " + clean(de)).join("; "));
+        else if (b.tipo === "erro") out.push("Erro comum: " + clean(b.errado) + " -> " + clean(b.certo) + ". " + clean(b.porque));
+        else if (b.tipo === "tabela" && b.rows) out.push(b.rows.map(row => row.map(clean).join(" | ")).join("; "));
+      }
+    }
+    if (r.aula.bolso) out.push("Para levar no bolso: " + r.aula.bolso.map(clean).join(" / "));
+  } else if (r.foco) out.push(clean(r.foco));
+  const text = out.filter(Boolean).join("\n");
+  return text.length > 1800 ? text.slice(0, 1797).replace(/\s+\S*$/, "") + "…" : text;
+}
+/* Mensagens para o Gemma: a professora Anke responde em português, curto, só com a regra desta lição. history = [{q, a}]. */
+function msRuleAskMessages(l, p, question, history = []) {
+  const system = ["Você é a Anke, professora de alemão do Luiz (brasileiro, nível A2). Ele está na Lektion " + l.n + " do livro Menschen" + (p && p.titulo ? ", no passo \"" + p.titulo + "\"" : "") + " e tem uma dúvida sobre a regra abaixo.",
+    "Responda em português do Brasil, em no máximo 3 frases curtas, e depois dê 1 exemplo curto em alemão, no nível A2.",
+    "Baseie-se só na regra desta lição. Não invente exceções raras. Sem listas longas, sem títulos, sem markdown e sem emojis.",
+    "Se a dúvida não for sobre esta regra, responda em uma frase e volte à regra.",
+    "Se a resposta não estiver na regra abaixo, diga em uma frase que isso fica para outra lição ou para a professora do curso, em vez de explicar de memória. O exemplo tem de seguir exatamente o que você explicou.",
+    "A regra desta lição:", msRuleContextText(p)].join("\n");
+  const msgs = [{role: "system", content: system}];
+  for (const x of history.slice(-2)) if (x.q && x.a) msgs.push({role: "user", content: x.q}, {role: "assistant", content: x.a});
+  msgs.push({role: "user", content: String(question || "").trim()});
+  return msgs;
+}
+/* Resposta limpa: sem marcas de markdown nem cabeçalhos. */
+function msRuleAskClean(text) {
+  return String(text || "").replace(/\*\*|__|`/g, "").replace(/^\s*#+\s*/gm, "").replace(/^\s*[-*]\s+/gm, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+const MS_RULE_QA_MAX = 3;
+function msRuleAskNode(l, p) {
+  const P = menschen.passo;
+  P.ruleQa = P.ruleQa || [];
+  const list = h("div", {class: "ms-rule-qa"});
+  const input = h("input", {type: "text", class: "ms-rule-q", placeholder: "Ex.: por que aqui é magerer e ali mageren?", autocomplete: "off", "aria-label": "Sua dúvida sobre a regra"});
+  const btn = h("button", {class: "small", type: "button", onclick: () => ask()}, "Perguntar");
+  const draw = () => fill(list, ...P.ruleQa.map(x => h("div", {class: "ms-rule-qa-item"},
+    h("p", {class: "ms-rule-qa-q"}, h("b", {text: "Você: "}), x.q),
+    x.a == null ? h("div", {class: "ms-rule-qa-a"}, skel("line"), skel("line", "short"))
+      : h("div", {class: "ms-rule-qa-a" + (x.err ? " err" : "")}, h("span", {class: "label", text: "Anke"}), ...x.a.split(/\n+/).map(par => h("p", {text: par}))))));
+  const ask = async () => {
+    const q = input.value.trim();
+    if (!q || btn.disabled) return;
+    const history = P.ruleQa.filter(x => x.a && !x.err);
+    const item = {q, a: null};
+    P.ruleQa.push(item);
+    while (P.ruleQa.length > MS_RULE_QA_MAX) P.ruleQa.shift();
+    input.value = "";
+    btn.disabled = true;
+    draw();
+    try {
+      const r = await window.satzDesktop.convChat(msRuleAskMessages(l, p, q, history), {kind: "turn", temperature: .2, maxTokens: 240});
+      item.a = msRuleAskClean(r && r.text) || "Não consegui responder agora. Tente de novo.";
+      if (!(r && r.text)) item.err = true;
+    } catch (e) { item.a = "Não consegui responder agora (" + e.message + ")."; item.err = true; }
+    if (menschen.passo !== P) return;
+    btn.disabled = false;
+    draw();
+  };
+  input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); ask(); } });
+  draw();
+  const box = h("details", {class: "ms-rule-ask"},
+    h("summary", null, icon("chat", 16), h("span", {class: "ms-rule-ask-t"}, h("b", {text: "Tirar uma dúvida sobre esta regra"}), h("span", {class: "muted small-text", text: "Responde aqui mesmo, sem sair do passo"}))),
+    h("div", {class: "ms-rule-ask-body"}, list, h("div", {class: "row ms-rule-ask-row"}, input, btn)));
+  if (P.ruleQa.length) box.open = true;
+  box.addEventListener("toggle", () => { if (box.open) input.focus(); });
+  return box;
+}
+/* “Lembrar a regra” dentro do cartão de Produzir e de Sua vez: o bolso da regra (ou o foco), fechado por padrão. */
+function msBolsoPeek(p) {
+  const r = p && p.regra;
+  const lines = r && r.aula && r.aula.bolso && r.aula.bolso.length ? r.aula.bolso : r && r.foco ? [r.foco] : null;
+  if (!lines) return null;
+  const P = menschen.passo;
+  const box = h("details", {class: "ms-bolso-peek"},
+    h("summary", null, icon("book", 14), h("span", {text: "Lembrar a regra"})),
+    h("ol", {class: lines.length === 1 ? "single" : ""}, ...lines.map(x => h("li", null, ...fichaMark(x)))));
+  if (P && P.bolsoOpen) box.open = true;
+  box.addEventListener("toggle", () => { if (menschen.passo) menschen.passo.bolsoOpen = box.open; });
+  return box;
+}
 function msPhRegra(l, p) {
   const r = p.regra, t = typeof GRAMMAR_BY_ID !== "undefined" ? GRAMMAR_BY_ID.get(r.topic) : null;
   const full = t && typeof fichaOf === "function" && fichaOf(r.topic) ? fichaNodes(t, false) : null;
   const foot = [
+    typeof convAvailable === "function" && convAvailable() ? msRuleAskNode(l, p) : null,
     full ? h("details", {class: "fx-calma ms-ficha-full"}, h("summary", null, h("b", {text: "A ficha completa"}), h("span", {class: "muted small-text", text: t.title})), ...full) : null,
     h("div", {class: "row ms-foot"}, msNextButton(),
       t ? h("button", {class: "quiet small", type: "button", onclick: () => { msClosePasso(true); showView("grammar"); startAula(r.topic, "Menschen · Lektion " + l.n); }}, "Aula de gramática: " + t.title) : null)];
@@ -400,7 +506,7 @@ function msPhProduzir(l, p) {
   const pr = P.prod;
   if (pr.k >= pr.ids.length) return msProdEnd(l, p);
   const c = byId.get(pr.ids[pr.k]), r = P.res;
-  const next = () => { pr.k++; P.res = null; msRenderPasso(); const el = $("msInput"); if (el) el.focus(); };
+  const next = () => { pr.k++; P.res = null; P.bolsoOpen = false; msRenderPasso(); const el = $("msInput"); if (el) el.focus(); };
   const check = async giveUp => {
     if (P.busy || P.res) return;
     const typed = giveUp === true ? "" : ($("msInput").value || "").trim();
@@ -419,8 +525,8 @@ function msPhProduzir(l, p) {
   };
   const situ = String(c.situacao || "").replace(/^\[(du|Sie|ihr|neutro|escrito)\]\s*/, "");
   const msg = r && {ok: "Certo!", quase: "Quase: compare com a frase modelo.", no: r.typed ? "Compare com a frase modelo." : "Esta é a frase:"}[r.grade];
-  return h("div", {class: "aula-step"},
-    h("p", {class: "ms-kicker", text: "Frase " + (pr.k + 1) + " de " + pr.ids.length}),
+  return h("div", {class: "aula-step ms-card-stage" + msStageIn("p" + pr.k + c.id)},
+    h("div", {class: "ms-stage-top"}, msCounter("Frase", pr.k + 1, pr.ids.length), msBolsoPeek(p)),
     h("p", {class: "label", text: "Como se diz em alemão?"}),
     h("p", {class: "aula-pt", text: c.traducao}),
     situ ? h("p", {class: "muted small-text", text: situ}) : null,
@@ -467,8 +573,8 @@ function msPhUsar(l, p) {
     msRenderPasso(); msKeep(typed);
   };
   const allOk = r && r.typed && r.checks.every(c => c.ok) && !r.lt.length;
-  return h("div", {class: "aula-step ms-usar"},
-    h("p", {class: "label", text: u.grande ? "Para fechar a lição" : "Agora você"}),
+  return h("div", {class: "aula-step ms-usar ms-card-stage" + msStageIn("u" + P.n + P.id)},
+    h("div", {class: "ms-stage-top"}, h("p", {class: "label", text: u.grande ? "Para fechar a lição" : "Agora você"}), msBolsoPeek(p)),
     h("p", {class: "aula-pt", text: u.pt}),
     u.ex ? h("p", {class: "muted small-text"}, "Para começar: ", h("span", {lang: "de", text: u.ex})) : null,
     u.checks && u.checks.length && !r ? h("ul", {class: "ms-checks pending"}, ...u.checks.map(([label]) => h("li", null, h("span", {class: "ms-ck"}), h("span", {text: label})))) : null,
@@ -527,7 +633,7 @@ function msAulaHome(l, blocks) {
       h("p", {class: "muted", text: fechoTodo ? "Falta só usar tudo isso falando: uma conversa de 5 minutos sobre o tema da lição, e o app marca o que você usar."
         : "Revise as palavras, refaça um passo quando quiser e marque a próxima lição quando a aula do curso chegar lá."}),
       fechoTodo ? h("button", {class: "primary", type: "button", onclick: () => msFechoOpen(l)}, iconText("chat", "Fechar a lição falando")) : null],
-    h("div", {class: "ms-bar"}, h("span", {style: "width:" + Math.round(doneN / l.passos.length * 100) + "%"})));
+    msBarNode(doneN / l.passos.length * 100));
   const list = h("ol", {class: "ms-passos", "aria-label": "Passos da lição"}, ...l.passos.map((p, k) => {
     const done = msPassoDone(l.n, p.id);
     return h("li", null, h("button", {class: "ms-passo" + (done ? " done" : "") + (p === next ? " next" : ""), type: "button", onclick: () => msOpenPasso(l.n, p.id)},
@@ -539,5 +645,12 @@ function msAulaHome(l, blocks) {
     h("button", {type: "button", onclick: msOpenReview}, iconText("repeat", "Revisar agora"))) : null;
   const all = h("details", {class: "ms-all"}, h("summary", null, h("b", {text: "Tudo da Lektion " + l.n}),
     h("span", {class: "muted small-text", text: "metas, frases, gramática, áudios, palavras e conversa, sem ordem"})), h("div", {class: "ms-grid"}, ...blocks));
-  return [h("div", {class: "ms-home"}, hero, h("div", {class: "panel ms-passos-box"}, h("h3", {text: "Os passos"}), list), typeof msMixPanel === "function" ? msMixPanel() : null, review), all];
+  const mixPanel = typeof msMixPanel === "function" ? msMixPanel() : null;
+  const revGrid = mixPanel || review ? h("div", {class: "ms-rev-grid"}, mixPanel, review) : null;
+  return [h("div", {class: "ms-home"}, hero, h("div", {class: "panel ms-passos-box"}, h("h3", {text: "Os passos"}), list), revGrid), all];
+}
+function msBarNode(pct) {
+  const fillBar = h("span");
+  setWidth(fillBar, pct);
+  return h("div", {class: "ms-bar"}, fillBar);
 }

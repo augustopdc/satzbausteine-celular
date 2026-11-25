@@ -4363,3 +4363,257 @@ button.trail-step[aria-pressed="true"] .trail-seg { box-shadow: 0 0 0 2px color-
 .nav-now-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
 @media (max-width: 920px) { .nav-now { display: none !important; } }
 @media (prefers-reduced-transparency: reduce) { .nav-now-btn { background: var(--surface); } }
+
+/* ============ Menschen editorial (25/11/2026, pedido em _dev/.cache/PEDIDO-MENSCHEN.md). Tudo preso a #view-menschen,
+   menos o .mr-v (a marca do verbo, também usada nas fichas da Gramática). ============ */
+:root { --ms-elev: var(--surface); }
+:root[data-theme="dark"] { --ms-elev: var(--surface-3); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ms-elev: var(--surface-3); } }
+
+/* Etapa 1.1: dentro de um passo ou faixa, o cabeçalho da tela some (o passo tem o seu, com “‹ Lektion N”). */
+body.ms-open #view-menschen > .page-head { display: none; }
+@media (max-width: 600px) { body.ms-open .mini-title, body.ms-open .hub-back { display: none !important; } }
+#view-menschen .ms-passo-head { justify-items: stretch; gap: .35rem; margin-bottom: .4rem; }
+#view-menschen .ms-head-top { display: flex; align-items: center; justify-content: space-between; gap: .4rem 1rem; flex-wrap: wrap; min-width: 0; }
+#view-menschen .ms-back { gap: .3rem; padding: .2rem .6rem .2rem .25rem; color: var(--accent-strong); min-width: 0; max-width: 100%; font-weight: 500; }
+#view-menschen .ms-back-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#view-menschen .ms-back-txt b { font-weight: 650; }
+#view-menschen .ms-back-tema { color: var(--ink-3); font-weight: 450; }
+#view-menschen .ms-pag { font-size: .8rem; line-height: 1.3; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--group-line); border-radius: 99px; padding: .25rem .75rem; max-width: 100%; }
+#view-menschen .ms-passo-head > .ms-kicker { margin-top: .5rem; }
+#view-menschen .ms-passo-title { justify-self: start; font-size: 1.7rem; line-height: 1.22; letter-spacing: -.02em; max-width: 34ch; }
+
+/* Etapa 1.2: trilho de etapas (círculo + nome, ligados por um fio), sem bloco verde chapado. */
+#view-menschen .ms-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 0; margin: .7rem 0 1.2rem; padding: 0; }
+#view-menschen .ms-nav li { display: flex; align-items: center; padding: 0; background: none; border-radius: 0; color: var(--ink-3); font-size: .88rem; font-weight: 550; }
+#view-menschen .ms-nav li + li::before { content: ""; width: 16px; height: 1.5px; border-radius: 1px; background: var(--line-strong); margin: 0 .2rem; }
+#view-menschen .ms-nav li.done + li::before { background: color-mix(in srgb, var(--accent) 55%, var(--line-strong)); }
+#view-menschen .ms-nav li button { display: inline-flex; align-items: center; gap: .45rem; min-height: 34px; padding: .2rem .75rem .2rem .3rem; border: 1px solid transparent; border-radius: 99px; background: none; color: inherit; font: inherit; }
+#view-menschen .ms-nav-n { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  border: 1.5px solid var(--line-strong); color: var(--ink-3); background: var(--surface); }
+#view-menschen .ms-nav li.done { color: var(--accent-strong); }
+#view-menschen .ms-nav li.done .ms-nav-n { background: var(--accent-soft); border-color: transparent; color: var(--accent-strong); }
+#view-menschen .ms-nav li.here { color: var(--ink); font-weight: 650; }
+#view-menschen .ms-nav li.here button { background: var(--ms-elev); border-color: var(--group-line); box-shadow: var(--shadow-sm); }
+#view-menschen .ms-nav li.here .ms-nav-n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+@media (hover: hover) {
+  #view-menschen .ms-nav li button:hover { text-decoration: none; background: var(--surface-2); }
+  #view-menschen .ms-nav li.here button:hover { background: var(--ms-elev); }
+}
+@media (max-width: 600px) {
+  #view-menschen .ms-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -.2rem; padding-inline: .2rem; }
+  #view-menschen .ms-nav::-webkit-scrollbar { display: none; }
+  #view-menschen .ms-nav li { flex: none; }
+  #view-menschen .ms-back-tema { display: none; }
+  #view-menschen .ms-passo-title { font-size: 1.3rem; }
+}
+
+/* Etapa 1.3: seletor 1 · Ouvir | 2 · Ler | … com a pílula deslizante (gestos.js, PILL_SEL). */
+#view-menschen .segmented.ms-seg { display: inline-flex; flex-wrap: wrap; grid-template-columns: none; gap: 2px; padding: 3px; border: 0; border-radius: var(--radius); background: var(--surface-2); margin-bottom: .2rem; max-width: 100%; }
+#view-menschen .segmented.ms-seg button { flex-direction: row; align-items: center; gap: .3rem; min-height: 34px; padding: .25rem .9rem; border: 0; border-radius: var(--r-sm); background: transparent; box-shadow: none;
+  font-size: .9rem; font-weight: 600; color: var(--ink-2); text-align: center; }
+#view-menschen .segmented.ms-seg button[aria-pressed="true"] { background: var(--ms-elev); color: var(--ink); box-shadow: var(--shadow-sm); }
+.has-pill.segmented.ms-seg { position: relative; }
+.has-pill.segmented.ms-seg::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; width: var(--pill-w, 0); height: var(--pill-h, 0);
+  transform: translate(var(--pill-x, 0), var(--pill-y, 0)); border-radius: var(--r-sm); background: var(--ms-elev); box-shadow: var(--shadow-sm); }
+:root[data-theme="dark"] .has-pill.segmented.ms-seg::before { box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.has-pill[data-pill-ready].segmented.ms-seg::before { transition: transform 220ms var(--ease), width 220ms var(--ease), height 220ms var(--ease); }
+#view-menschen .has-pill.segmented.ms-seg > button { position: relative; z-index: 1; }
+#view-menschen .has-pill.segmented.ms-seg > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .has-pill[data-pill-ready].segmented.ms-seg::before { transition: none; } }
+@media (prefers-contrast: more) { .has-pill.segmented.ms-seg::before { border: 1px solid var(--line-strong); } }
+/* Item de grade não pode crescer com o seletor que rola de lado (senão a página inteira rola de lado no celular). */
+#view-menschen .aula-step > *, #view-menschen #msPlayer > * { min-width: 0; }
+@media (max-width: 600px) {
+  #view-menschen .segmented.ms-seg { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  #view-menschen .segmented.ms-seg::-webkit-scrollbar { display: none; }
+  #view-menschen .segmented.ms-seg button { flex: none; padding-inline: .6rem; font-size: .86rem; white-space: nowrap; }
+}
+
+/* Etapa 2.1: lições como sumário de capítulos (cápsula por livro). */
+#view-menschen .ms-strip { gap: .5rem .75rem; }
+#view-menschen .ms-strip-book { gap: 2px; padding: 3px 6px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--group-line); align-items: center; }
+#view-menschen .ms-strip-label { margin: 0; padding: 0 .45rem; font-size: .78rem; letter-spacing: .03em; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+#view-menschen .ms-step { min-width: 32px; min-height: 32px; padding: 0 .2rem; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: .9rem; box-shadow: none; }
+#view-menschen .ms-step.done { color: var(--accent-strong); }
+#view-menschen .ms-step.done::before { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
+#view-menschen .ms-step.current { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 45%, transparent); color: var(--accent-strong); }
+#view-menschen .ms-step[aria-selected="true"] { background: var(--ms-elev); color: var(--ink); font-weight: 700; box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--group-line); }
+#view-menschen .ms-step.current[aria-selected="true"] { box-shadow: var(--shadow-sm), inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent); color: var(--accent-strong); }
+@media (hover: hover) { #view-menschen .ms-step:not([aria-selected="true"]):hover { background: color-mix(in srgb, var(--ink) 6%, transparent); } }
+@media (pointer: coarse) {
+  #view-menschen .ms-step { min-width: 32px; min-height: 32px; }
+  #view-menschen .ms-step::after { content: ""; position: absolute; inset: -6px -1px; }
+}
+#view-menschen .ms-head { background-image: var(--paper-grain); background-size: 120px 120px; padding: 1.4rem 1.6rem; gap: .45rem; }
+#view-menschen .ms-head .ms-kicker { letter-spacing: .01em; }
+#view-menschen .ms-title { font-size: 2rem; letter-spacing: -.01em; line-height: 1.15; }
+@media (max-width: 600px) { #view-menschen .ms-title { font-size: 1.45rem; } #view-menschen .ms-head { padding: 1.1rem 1.1rem; } }
+
+/* Etapa 2.2: “Os passos” com o fio guia passando pelo centro dos círculos. */
+#view-menschen .ms-passos { gap: .25rem; }
+#view-menschen .ms-passos > li { position: relative; }
+#view-menschen .ms-passos > li::before { content: ""; position: absolute; left: calc(.5rem + 15px - .75px); width: 1.5px; top: 0; bottom: -.25rem; background: var(--line-strong); }
+#view-menschen .ms-passos > li:first-child::before { top: 50%; }
+#view-menschen .ms-passos > li:last-child::before { bottom: 50%; }
+#view-menschen .ms-passos > li:only-child::before { display: none; }
+#view-menschen .ms-passo, #view-menschen .ms-fecho-item { position: relative; }
+#view-menschen .ms-passo-n { position: relative; }
+#view-menschen .ms-passo.next { border-color: transparent; background: color-mix(in srgb, var(--accent-soft) 55%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+#view-menschen .ms-passo.next .ms-passo-n { background: var(--surface); }
+#view-menschen .ms-fecho-item { border-top: 0; margin-top: 0; border-radius: var(--radius); }
+
+/* Etapa 2.3: as duas revisões lado a lado. */
+#view-menschen .ms-rev-grid { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+#view-menschen .ms-rev-grid > .ms-review { grid-column: auto; display: grid; align-content: space-between; justify-items: start; gap: .8rem; }
+
+/* Etapa 3.1: o exercício como cartão físico, com barrinha de progresso e teclas ä ö ü ß. */
+#view-menschen .ms-card-stage { background-color: var(--surface); background-image: var(--paper-grain); background-size: 120px 120px; border: 1px solid var(--group-line);
+  border-radius: var(--r-lg); padding: 1.5rem 1.75rem; box-shadow: var(--shadow); max-width: 740px; animation: none; }
+#view-menschen .ms-card-stage.ms-stage-in { animation: ms-stage-in 160ms var(--ease-out); }
+@keyframes ms-stage-in { from { opacity: 0; transform: translateY(4px); } }
+:root[data-theme="dark"] #view-menschen .ms-card-stage { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #view-menschen .ms-card-stage { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); } }
+#view-menschen .ms-card-stage .aula-result { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+#view-menschen .ms-counter { display: flex; align-items: center; gap: .75rem; }
+#view-menschen .ms-counter .ms-kicker { flex: none; font-variant-numeric: tabular-nums; }
+#view-menschen .ms-mini-bar { flex: 1; max-width: 180px; height: 4px; border-radius: 99px; background: color-mix(in srgb, var(--ink) 11%, transparent); overflow: hidden; }
+#view-menschen .ms-mini-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--t-card) var(--ease-out); }
+#view-menschen .umlaut-row { margin-top: -.2rem; gap: .25rem; }
+#view-menschen .umlaut-row button { min-height: 32px; min-width: 34px; padding: .1rem .55rem; font-family: var(--font-de); font-size: 1rem; background: var(--surface-2); border-color: var(--group-line); }
+#view-menschen .umlaut-row[hidden] { display: none; }
+#view-menschen .ms-mix-from { margin: -.3rem 0 0; }
+@media (max-width: 600px) { #view-menschen .ms-card-stage { padding: 1.1rem 1.05rem; } }
+@media (prefers-reduced-motion: reduce) { #view-menschen .ms-card-stage.ms-stage-in { animation: none; } #view-menschen .ms-mini-bar span { transition: none; } }
+
+/* Etapa 3.2: ditado com “Ouvir a frase” tonal e Conferir como a ação principal. */
+#view-menschen .ms-dk-listen { align-items: center; }
+#view-menschen .ms-hear { gap: .4rem; background: var(--accent-soft); border-color: transparent; color: var(--accent-strong); font-weight: 600; }
+@media (hover: hover) { #view-menschen .ms-hear:hover { background: color-mix(in srgb, var(--accent-soft) 80%, var(--accent) 20%); } }
+#view-menschen .ms-dictation .row[hidden] { display: none; }
+
+/* Etapa 4: folha de roteiro (Hörspiel). */
+#view-menschen .ms-script { background-color: var(--surface); background-image: var(--paper-grain); background-size: 120px 120px; border: 1px solid var(--group-line);
+  border-radius: var(--r-lg); padding: 0 1.25rem 1rem; box-shadow: var(--shadow-sm); max-width: 820px; }
+#view-menschen .ms-script-bar { position: sticky; top: var(--tb, 0px); z-index: 2; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 -1.25rem .5rem; padding: .75rem 1.25rem .65rem;
+  background: color-mix(in srgb, var(--surface) 84%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--group-line); border-radius: var(--r-lg) var(--r-lg) 0 0; }
+#view-menschen .ms-script-bar .ms-time { flex: 1 1 100%; height: 3px; order: 9; }
+#view-menschen .ms-script-bar.ms-listen-ctrl .ms-time { flex: 1 1 160px; height: 6px; order: 0; }
+#view-menschen .ms-sents { margin-top: 0; }
+#view-menschen .ms-sent.cue { border-bottom: 1px solid var(--group-line); border-radius: 0; padding-top: .9rem; margin-bottom: .2rem; }
+#view-menschen .ms-sent.cue .ms-text { font-family: var(--font); font-size: .76rem; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); cursor: default; }
+#view-menschen .ms-sent.is-title .ms-title-line { font-family: var(--font-de); font-style: italic; font-size: 1.22rem; font-weight: 500; color: var(--ink); }
+#view-menschen .ms-sent.is-title { padding-block: .5rem .6rem; }
+#view-menschen .ms-who { font-size: .72rem; letter-spacing: .04em; font-weight: 700; }
+#view-menschen .ms-who-0 { color: var(--accent-strong); }
+#view-menschen .ms-who-1 { color: var(--g-der); }
+#view-menschen .ms-who-2 { color: var(--warn); }
+#view-menschen .ms-who-3 { color: var(--g-die); }
+@media (hover: hover) {
+  #view-menschen .ms-acts { opacity: 0; transition: opacity var(--t-micro) var(--ease-out); }
+  #view-menschen .ms-sent:hover .ms-acts, #view-menschen .ms-sent:focus-within .ms-acts, #view-menschen .ms-sent.now .ms-acts, #view-menschen .ms-acts:has([aria-pressed="true"]) { opacity: 1; }
+}
+@media (hover: none) { #view-menschen .ms-acts { color: var(--ink-3); opacity: .75; } }
+/* 1 · Ouvir: cada fala vira uma barra do tamanho dela; a que está tocando acende. */
+#view-menschen .ms-ghost .ms-line { gap: .3rem; padding-block: .25rem; }
+#view-menschen .ms-ghost-bar { display: block; height: 10px; border-radius: 99px; background: var(--surface-3); transition: background var(--t-micro) var(--ease-out); }
+#view-menschen .ms-ghost .ms-sent.is-title .ms-ghost-bar { height: 12px; }
+#view-menschen .ms-ghost .ms-sent.now { background: transparent; }
+#view-menschen .ms-ghost .ms-sent.now .ms-ghost-bar { background: color-mix(in srgb, var(--accent) 55%, var(--surface-3)); }
+/* 3 · Ouvir de novo: véu suave, clicável. */
+#view-menschen .ms-sents.hidden-text .ms-text:not(.shown) { filter: blur(5px); opacity: .8; }
+@media (prefers-reduced-transparency: reduce) { #view-menschen .ms-script-bar { background: var(--surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) { #view-menschen :is(.ms-script, .ms-card-stage, .ms-head, .mr-ideia) { background-image: none; } }
+@media (prefers-reduced-motion: reduce) { #view-menschen .ms-acts, #view-menschen .ms-ghost-bar { transition: none; } }
+@media (max-width: 600px) { #view-menschen .ms-script { padding: 0 .8rem .8rem; } #view-menschen .ms-script-bar { margin-inline: -.8rem; padding-inline: .8rem; } }
+
+/* Etapa 5.1: “Do que trata” em cartão e a folha de vocabulário. */
+#view-menschen .ms-intro-card { display: grid; gap: .6rem; background: var(--surface); border: 1px solid var(--group-line); border-radius: var(--r-lg); padding: 1.25rem 1.5rem; }
+#view-menschen .ms-intro-card .aula-lede { margin: 0; }
+#view-menschen .ms-intro-quem { margin: 0; display: flex; flex-wrap: wrap; gap: .15rem .6rem; align-items: baseline; color: var(--ink-2); font-size: .94rem; }
+#view-menschen .ms-intro-quem .label { margin: 0; }
+#view-menschen .ms-wlist { background: var(--surface); border: 1px solid var(--group-line); border-radius: var(--r-lg); padding: .5rem 1.1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0 1.6rem; }
+#view-menschen .ms-wrow { grid-template-columns: auto 1fr 8px; gap: .5rem; align-items: center; padding: .5rem 0; border-bottom: 1px solid var(--group-line); }
+#view-menschen .ms-wrow .ms-dot { grid-area: auto; }
+#view-menschen .ms-sobre > .row .primary { min-height: 44px; padding-inline: 1.3rem; }
+@media (max-width: 600px) { #view-menschen .ms-intro-card { padding: 1rem 1.05rem; } #view-menschen .ms-wlist { padding: .3rem .8rem; } }
+
+/* Etapa 5.2: cada ideia da regra numa ficha; marca do verbo macia; “Agora você” tonal. */
+#view-menschen .mr-ideias { gap: 1.1rem; }
+#view-menschen .mr-ideia { background-color: var(--surface); background-image: var(--paper-grain); background-size: 120px 120px; border: 1px solid var(--group-line);
+  border-radius: var(--r-lg); padding: 1.35rem 1.5rem; box-shadow: var(--shadow-sm); }
+#view-menschen .mr-ideia + .mr-ideia { border-top: 1px solid var(--group-line); padding-top: 1.35rem; }
+@media (max-width: 600px) { #view-menschen .mr-ideia { padding: 1.05rem 1rem; } }
+.mr-v { background: color-mix(in srgb, var(--vb-1) 11%, transparent); box-shadow: inset 0 -1.5px 0 var(--vb-1); padding: .04em .32em; border-radius: 5px; }
+.mr-legenda .mr-v { background: none; box-shadow: inset 0 -1px 0 var(--vb-1); padding: 0; }
+#view-menschen .mr-aula .fx-complete { background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); border-radius: var(--r-md); }
+#view-menschen .mr-aula .fx-complete .fx-gapline input.fx-gap { background: color-mix(in srgb, var(--surface) 88%, transparent); border-bottom: 2px solid var(--line-strong); }
+#view-menschen .mr-aula .fx-complete .fx-gapline input.fx-gap:focus { border-bottom-color: var(--accent); background: var(--surface); }
+#view-menschen .mr-aula .fx-complete .fx-gapline input.fx-gap.ok { border-bottom-color: var(--good); }
+#view-menschen .mr-aula .fx-complete .fx-gapline input.fx-gap.no { border-bottom-color: var(--danger); }
+
+/* ============ Teoria ativa nas fichas e no Menschen (25/11/2026, pedido em _dev/.cache/PEDIDO-MENSCHEN-TEORIA.md). ============ */
+/* Etapa 1: lacuna com 2ª chance (âmbar, sacudida curta) e o botão ✓ para quem não tem Enter à mão. */
+.fx-gap.try { border-bottom-color: var(--warn); color: var(--ink); animation: fx-shake 140ms var(--ease-out); }
+@keyframes fx-shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.fx-try { color: var(--warn); font-size: .9rem; font-weight: 550; }
+.fx-see { min-height: 28px; padding: .05rem .55rem; margin-left: .35rem; font-size: .84rem; }
+.fx-go { width: 28px; height: 28px; min-height: 28px; vertical-align: middle; margin-left: -.1rem; color: var(--accent-strong); }
+.fx-go[hidden] { display: none; }
+@media (pointer: coarse) { .fx-go, .fx-see { position: relative; } .fx-go::after, .fx-see::after { content: ""; position: absolute; inset: -8px; } }
+@media (prefers-reduced-motion: reduce) { .fx-gap.try { animation: none; } }
+
+/* Etapa 2: “Toque para comparar” com a pílula deslizante (gestos.js) e as palavras que voam (fichaTrocaAnimate). */
+.segmented.fx-seg { display: inline-flex; flex-wrap: wrap; grid-template-columns: none; justify-self: start; gap: 2px; padding: 3px; border: 0; border-radius: var(--radius); background: var(--surface-2); max-width: 100%; }
+.segmented.fx-seg button { flex-direction: row; align-items: center; min-height: 34px; padding: .25rem .9rem; border: 0; border-radius: var(--r-sm); background: transparent; box-shadow: none;
+  font-size: .9rem; font-weight: 600; color: var(--ink-2); text-align: center; }
+.segmented.fx-seg button[aria-pressed="true"] { background: var(--ms-elev); color: var(--ink); box-shadow: var(--shadow-sm); }
+.has-pill.segmented.fx-seg { position: relative; }
+.has-pill.segmented.fx-seg::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; width: var(--pill-w, 0); height: var(--pill-h, 0);
+  transform: translate(var(--pill-x, 0), var(--pill-y, 0)); border-radius: var(--r-sm); background: var(--ms-elev); box-shadow: var(--shadow-sm); }
+:root[data-theme="dark"] .has-pill.segmented.fx-seg::before { box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+.has-pill[data-pill-ready].segmented.fx-seg::before { transition: transform 220ms var(--ease), width 220ms var(--ease), height 220ms var(--ease); }
+.has-pill.segmented.fx-seg > button { position: relative; z-index: 1; }
+.has-pill.segmented.fx-seg > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+.fx-troca-box { background: var(--surface); border: 1px solid var(--group-line); }
+.fx-tw { display: inline-block; }
+@media (prefers-reduced-motion: reduce) { .has-pill[data-pill-ready].segmented.fx-seg::before { transition: none; } }
+@media (prefers-contrast: more) { .has-pill.segmented.fx-seg::before { border: 1px solid var(--line-strong); } }
+@media (max-width: 600px) { .segmented.fx-seg button { padding-inline: .65rem; font-size: .86rem; } }
+
+/* Etapa 3: dúvida sobre a regra, recolhida, dentro de A regra. */
+#view-menschen .ms-rule-ask { border: 1px solid var(--group-line); border-radius: var(--r-lg); background: var(--surface); max-width: 760px; }
+#view-menschen .ms-rule-ask > summary { display: flex; gap: .6rem; align-items: center; padding: .8rem 1.1rem; cursor: pointer; list-style: none; min-height: 44px; }
+#view-menschen .ms-rule-ask > summary::-webkit-details-marker { display: none; }
+#view-menschen .ms-rule-ask > summary svg { flex: none; color: var(--accent-strong); }
+#view-menschen .ms-rule-ask-t { display: grid; gap: .05rem; }
+#view-menschen .ms-rule-ask-t b { font-weight: 650; }
+#view-menschen .ms-rule-ask-body { display: grid; gap: .7rem; padding: 0 1.1rem 1rem; }
+#view-menschen .ms-rule-ask-row { flex-wrap: nowrap; }
+#view-menschen .ms-rule-q { flex: 1; min-width: 0; font-size: 1rem; }
+#view-menschen .ms-rule-qa { display: grid; gap: .7rem; }
+#view-menschen .ms-rule-qa:empty { display: none; }
+#view-menschen .ms-rule-qa-q { margin: 0; color: var(--ink-2); font-size: .94rem; }
+#view-menschen .ms-rule-qa-a { display: grid; gap: .35rem; padding: .75rem .95rem; border-radius: var(--r-md); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+#view-menschen .ms-rule-qa-a.err { background: var(--warn-soft); }
+#view-menschen .ms-rule-qa-a p { margin: 0; line-height: 1.55; }
+#view-menschen .ms-rule-qa-a .label { margin: 0; }
+@media (max-width: 600px) { #view-menschen .ms-rule-ask > summary { padding: .7rem .85rem; } #view-menschen .ms-rule-ask-body { padding: 0 .85rem .85rem; } }
+
+/* Etapa 4: “Lembrar a regra” no canto do cartão de Produzir e Sua vez, fechado por padrão. */
+#view-menschen .ms-stage-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem 1rem; }
+#view-menschen .ms-stage-top > .label { margin: 0; }
+#view-menschen .ms-bolso-peek { margin-left: auto; }
+#view-menschen .ms-bolso-peek > summary { display: inline-flex; gap: .35rem; align-items: center; min-height: 32px; padding: .2rem .7rem; border-radius: 99px; cursor: pointer; list-style: none;
+  font-size: .84rem; font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--group-line); }
+#view-menschen .ms-bolso-peek > summary::-webkit-details-marker { display: none; }
+#view-menschen .ms-stage-top > .ms-counter { flex: 1 1 220px; }
+#view-menschen .ms-bolso-peek[open] { flex-basis: 100%; text-align: right; }
+#view-menschen .ms-bolso-peek[open] > summary { color: var(--accent-strong); }
+#view-menschen .ms-bolso-peek ol { text-align: left; margin: .5rem 0 0; padding: .7rem 1rem .7rem 2.1rem; border-radius: var(--r-md); background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface));
+  display: grid; gap: .3rem; line-height: 1.5; font-size: .95rem; animation: ms-stage-in 160ms var(--ease-out); }
+#view-menschen .ms-bolso-peek ol.single { list-style: none; padding-left: 1rem; }
+@media (hover: hover) { #view-menschen .ms-bolso-peek > summary:hover { background: var(--surface-3); } }
+@media (pointer: coarse) { #view-menschen .ms-bolso-peek > summary { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { #view-menschen .ms-bolso-peek ol { animation: none; } }

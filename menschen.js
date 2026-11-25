@@ -36,8 +36,14 @@ async function msLoadInfo() {
   if (currentView === "menschen" && !menschen.track && !menschen.passo) renderMenschen();
 }
 
+/* Dentro de um passo ou de uma faixa, o cabeçalho da tela (Menschen A2 / Menschen) some: o passo já tem o seu, com
+   “‹ Lektion N”. Chamado pelo renderMenschen, pelo msClosePasso e pelo showView. */
+function msOpenMark() {
+  document.body.classList.toggle("ms-open", typeof currentView !== "undefined" && currentView === "menschen" && !!(menschen.passo || menschen.track));
+}
 function renderMenschen() {
   const box = $("menschenRoot");
+  msOpenMark();
   if (!box) return;
   if (!menschen.view) menschen.view = msCurrent();
   msLoadInfo();
@@ -78,7 +84,9 @@ function msCardsBlock(l) {
   if (!list.length) return null;
   const seen = list.filter(c => cardProgress(c.id) && cardProgress(c.id).introducedAt).length;
   const solid = list.filter(levelMastered).length;
-  const bar = h("div", {class: "ms-bar"}, h("span", {style: "width:" + Math.round(seen / list.length * 100) + "%"}));
+  const fillBar = h("span");
+  setWidth(fillBar, seen / list.length * 100);
+  const bar = h("div", {class: "ms-bar"}, fillBar);
   return h("div", {class: "panel ms-block"}, h("h3", {text: "Frases da lição"}),
     h("p", {class: "ms-count"}, h("b", {text: seen}), " de " + plural(list.length, "frase", "frases") + " já vistas"),
     bar,
@@ -202,6 +210,9 @@ function msPrepare(d) {
     const n = list[Math.min(k, list.length - 1)] || {};
     return {...s, raw: s.t, t: n.t || s.t, q: n.q || "", pt: n.pt || "", cue: n.cue != null ? !!n.cue : msIsCue(s.t), skip: !!n.skip};
   }).filter(s => !s.skip); // skip = o Whisper inventou (ruído, música, “legenda”): some de todas as etapas
+  // Tom de cada pessoa na ordem em que ela aparece na faixa (o hash do nome pode dar o mesmo tom a duas pessoas da cena).
+  d.tones = {};
+  for (const s of d.sents) { const who = msSpeakerLabel(s.q); if (who && !(who.name in d.tones)) d.tones[who.name] = Object.keys(d.tones).length % 4; }
   d.gloss = d.glossary || {};
   d.annotated = notes.length > 0;
   return d;
@@ -311,18 +322,80 @@ function msTrackSource(t, d) {
 /* A faixa aberta sozinha (de “Tudo da lição”): cabeçalho + o tocador. */
 function msTrackView(box) {
   const t = menschen.track, l = msLessonData(menschen.view);
-  fill(box, h("div", {class: "ms-player-head"},
-    h("button", {class: "quiet small", type: "button", onclick: msCloseTrack}, iconText("back", "Lektion " + l.n)),
-    h("h2", {class: "ms-track-title", text: t.label}),
-    h("p", {class: "muted small-text", text: msTrackSource(t, menschen.data)})), h("div", {id: "msPlayer"}));
+  fill(box, h("div", {class: "ms-player-head ms-passo-head"},
+    msHeadTop(l, msTrackSource(t, menschen.data), msCloseTrack),
+    h("h2", {class: "ms-track-title ms-passo-title", text: t.label})), h("div", {id: "msPlayer"}));
   msRenderPlayer();
+}
+/* Linha de cima do passo e da faixa: “‹ Lektion N · tema” à esquerda e a página do livro numa pílula à direita. */
+function msHeadTop(l, pag, onBack) {
+  return h("div", {class: "ms-head-top"},
+    h("button", {class: "quiet small ms-back", type: "button", onclick: onBack}, icon("back", 16),
+      h("span", {class: "ms-back-txt"}, h("b", {text: "Lektion " + l.n}), h("span", {class: "ms-back-tema", text: " · " + l.tema}))),
+    pag ? h("span", {class: "ms-pag", text: pag}) : null);
+}
+/* Contador “Frase X de Y” com a barrinha de progresso ao lado. */
+function msCounter(label, pos, total) {
+  const fillBar = h("span");
+  setWidth(fillBar, total ? pos / total * 100 : 0);
+  return h("div", {class: "ms-counter"}, h("p", {class: "ms-kicker", text: label + " " + pos + " de " + total}),
+    h("div", {class: "ms-mini-bar", "aria-hidden": "true"}, fillBar));
+}
+/* Quem fala: "" sem anotação; null na linha que é o título da faixa lido no áudio (chave técnica "titulo"/"título" das notas);
+   senão {name, tone} com um tom fixo por nome (0–3), para distinguir as pessoas do diálogo. */
+function msSpeakerLabel(q) {
+  const name = String(q || "").trim();
+  if (!name) return "";
+  if (name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase() === "titulo") return null;
+  let hsh = 0;
+  for (const ch of name.toLocaleLowerCase("de")) hsh = (hsh * 31 + ch.codePointAt(0)) >>> 0;
+  return {name, tone: hsh % 4};
+}
+function msWhoNode(q) {
+  const who = msSpeakerLabel(q);
+  if (!who) return null;
+  const tones = menschen.data && menschen.data.tones, tone = tones && who.name in tones ? tones[who.name] : who.tone;
+  return h("span", {class: "ms-who ms-who-" + tone, text: who.name});
+}
+function msIsTitle(s) { return msSpeakerLabel(s.q) === null; }
+/* A fala vira uma barra do tamanho dela (1 · Ouvir: dá para ver quem fala e quando, sem ler). */
+function msGhostBar(t) {
+  const bar = h("span", {class: "ms-ghost-bar"});
+  setWidth(bar, Math.min(100, Math.max(18, Math.round(String(t || "").length * 1.1))));
+  return bar;
+}
+/* Whisper às vezes ouve a frase duas vezes (eco do alto-falante no começo da gravação ou repetição dele): a frase
+   repetida inteira (A + A) ou um pedaço dela colado no fim fica uma vez só. "Igual!" só com ≥ 85% e no máximo uma
+   palavra sobrando. → {heard, pct, extra, ok} */
+function msCleanRepeat(expected, heard) {
+  let text = String(heard || "").trim();
+  if (typeof convDedupeHeard === "function") text = convDedupeHeard(text);
+  let words = text.split(/\s+/).filter(w => normWord(w));
+  const E = String(expected || "").split(/\s+/).filter(w => normWord(w)).map(normWord);
+  const same = (a, b) => a.length === b.length && a.every((x, k) => x === b[k]);
+  // A + A (+ A), com ou sem pontuação entre as partes.
+  for (let n = 2; n <= 3; n++) {
+    if (words.length >= n * 2 && words.length % n === 0) {
+      const size = words.length / n, W = words.map(normWord), first = W.slice(0, size);
+      if (Array.from({length: n}, (_, k) => W.slice(k * size, (k + 1) * size)).every(part => same(part, first))) { words = words.slice(0, size); break; }
+    }
+  }
+  // A + pedaço de A no fim: o começo bate com a frase e o resto é um trecho seguido dela.
+  if (E.length >= 3 && words.length > E.length) {
+    const W = words.map(normWord), rest = W.slice(E.length);
+    if (same(W.slice(0, E.length), E) && rest.length >= 2 && (" " + E.join(" ") + " ").includes(" " + rest.join(" ") + " ")) words = words.slice(0, E.length);
+  }
+  const cleaned = words.join(" ");
+  const d = wordDiff(String(expected || ""), cleaned);
+  const pct = d.total ? (d.correct - d.near * .5) / d.total : 0, extra = d.ops.filter(o => o[0] === "del").length;
+  return {heard: cleaned, pct, extra, ok: !!cleaned && pct >= .85 && extra <= 1};
 }
 function msSetMode(k) { msStop(); Object.assign(menschen, {mode: k, dk: 0, pop: null, rres: null}); msRenderPlayer(); }
 function msRenderPlayer() {
   const box = $("msPlayer"), t = menschen.track;
   if (!box || !t) return;
   const d = menschen.data, modes = MS_MODES[t.uso === "cena" ? "cena" : "outra"];
-  const seg = h("div", {class: "seg ms-seg", role: "group", "aria-label": "Etapa"}, ...modes.map(([k, label]) =>
+  const seg = h("div", {class: "segmented seg ms-seg", role: "group", "aria-label": "Etapa"}, ...modes.map(([k, label]) =>
     h("button", {type: "button", "aria-pressed": String(menschen.mode === k), onclick: () => msSetMode(k)}, label)));
   if (!d) return fill(box, seg, h("p", {class: "muted", text: "Carregando o texto…"}));
   if (d.error || !d.sents.length) return fill(box, seg, h("p", {class: "muted", text: "Esta faixa ainda não tem texto."}));
@@ -330,6 +403,9 @@ function msRenderPlayer() {
   const body = {ouvir: msListenView, ler: msReadView, denovo: msReadView, repetir: msRepeatView, ditado: msDictation}[menschen.mode](d);
   fill(box, seg, help, body);
   msSyncPlay();
+  // No passo da aula, o “Próximo” do rodapé só fica verde depois de ouvir a cena inteira.
+  const foot = document.querySelector("#menschenRoot .ms-ouvir > .ms-foot .ms-next");
+  if (foot) foot.classList.toggle("primary", !!menschen.heard || t.uso !== "cena");
 }
 function msFirst(d) { return Math.max(0, d.sents.findIndex(s => !s.cue)); }
 /* 1 · Ouvir: a situação, o botão grande e as falas borradas (dá para ver quem fala e quando, sem ler). */
@@ -338,36 +414,45 @@ function msListenView(d) {
   return h("div", {class: "ms-listen"},
     ctx && ctx.sobre ? h("div", {class: "ms-situ"}, h("b", {class: "label", text: "A situação"}), h("p", {text: ctx.sobre}),
       ctx.quem ? h("p", {class: "muted small-text", text: "Quem fala: " + ctx.quem}) : null) : null,
-    h("div", {class: "ms-listen-ctrl"},
-      h("button", {id: "msPlay", class: "primary", type: "button", onclick: () => msToggle(first)}, ...iconText("play", "Ouvir a cena")),
-      h("div", {class: "ms-time", "aria-hidden": "true"}, h("span", {id: "msTimeBar"}))),
     menschen.heard ? h("div", {class: "ms-after"}, h("p", {text: "Terminou. Deu para pegar quem fala e o que acontece? Agora leia com a tradução."}),
       h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => msSetMode("ler")}, "2 · Ler com a tradução"),
         h("button", {class: "small", type: "button", onclick: () => { menschen.heard = false; msRenderPlayer(); msPlayFrom(first); }}, iconText("repeat", "Ouvir de novo")))) : null,
-    h("ol", {class: "ms-sents hidden-text ms-ghost", "aria-hidden": "true"}, ...d.sents.map((s, i) => s.cue ? null : h("li", {class: "ms-sent" + (i === menschen.playing ? " now" : ""), dataset: {i}},
-      h("span"), h("div", {class: "ms-line"}, s.q ? h("span", {class: "ms-who", text: s.q}) : null, h("span", {class: "ms-text", lang: "de", text: s.t})), h("span")))));
+    h("div", {class: "ms-script"},
+      h("div", {class: "ms-script-bar ms-listen-ctrl"},
+        h("button", {id: "msPlay", class: "primary", type: "button", onclick: () => msToggle(first)}, ...iconText("play", "Ouvir a cena")),
+        h("div", {class: "ms-time", "aria-hidden": "true"}, h("span", {id: "msTimeBar"}))),
+      h("ol", {class: "ms-sents hidden-text ms-ghost", "aria-hidden": "true"}, ...d.sents.map((s, i) => s.cue ? null
+        : h("li", {class: "ms-sent" + (msIsTitle(s) ? " is-title" : "") + (i === menschen.playing ? " now" : ""), dataset: {i}},
+          h("span"), h("div", {class: "ms-line"}, msWhoNode(s.q), msGhostBar(s.t)), h("span"))))));
 }
 /* 2 · Ler e 3 · Ouvir de novo (texto borrado, toque para ver). */
 function msReadView(d) {
   const hidden = menschen.mode === "denovo", first = msFirst(d);
-  const controls = h("div", {class: "ms-controls"},
+  const controls = h("div", {class: "ms-controls ms-script-bar"},
     h("button", {id: "msPlay", class: "primary", type: "button", onclick: () => msToggle(first)}, ...iconText("play", "Tocar")),
     h("button", {class: "small", type: "button", onclick: () => msPlayFrom(Math.max(first, menschen.playing - 1))}, iconText("skipBack", "Frase anterior")),
     h("button", {class: "small", type: "button", onclick: () => msPlayFrom(Math.max(first, menschen.playing), true)}, iconText("repeat", "Repetir a frase")),
     !hidden && d.annotated ? h("label", {class: "ms-check small-text"}, h("input", {type: "checkbox", checked: !!menschen.allPt,
-      onchange: e => { menschen.allPt = e.target.checked; msRenderPlayer(); }}), " Todas as traduções") : null);
+      onchange: e => { menschen.allPt = e.target.checked; msRenderPlayer(); }}), " Todas as traduções") : null,
+    h("div", {class: "ms-time", "aria-hidden": "true"}, h("span", {id: "msTimeBar"})));
   const after = hidden && menschen.heard ? h("div", {class: "ms-after"}, h("p", {text: "Pronto. Agora repita a cena frase por frase, no mesmo ritmo."}),
     h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => msSetMode("repetir")}, "4 · Repetir"))) : null;
-  return h("div", null, controls, h("ol", {class: "ms-sents" + (hidden ? " hidden-text" : "")}, ...d.sents.map((s, i) => msSentRow(d, s, i, hidden))), after);
+  return h("div", null, h("div", {class: "ms-script"}, controls, h("ol", {class: "ms-sents" + (hidden ? " hidden-text" : "")}, ...d.sents.map((s, i) => msSentRow(d, s, i, hidden)))), after);
 }
 function msSentRow(d, s, i, hidden) {
   if (s.cue) return hidden ? null : h("li", {class: "ms-sent cue", dataset: {i}}, h("span"), h("span", {class: "ms-text", text: s.t}), h("span"));
+  // A linha "titulo" é o título da faixa lido no áudio: vira o cabeçalho do roteiro, sem nome de personagem.
+  if (msIsTitle(s)) return h("li", {class: "ms-sent is-title" + (i === menschen.playing ? " now" : ""), dataset: {i}},
+    h("button", {class: "icon-btn quiet", type: "button", "aria-label": "Ouvir o título", title: "Ouvir o título", onclick: () => msPlayFrom(i, true)}, icon("volume", 16)),
+    h("div", {class: "ms-line"}, h("span", {class: "ms-text ms-title-line", lang: "de", tabindex: hidden ? "0" : null,
+      onclick: hidden ? e => e.currentTarget.classList.toggle("shown") : null, text: s.t}),
+      !hidden && s.pt && (menschen.allPt || menschen.showPt.has(i)) ? h("p", {class: "ms-pt-line", text: s.pt}) : null), h("span"));
   const showPt = !hidden && !!s.pt && (menschen.allPt || menschen.showPt.has(i));
   const text = hidden ? h("span", {class: "ms-text", lang: "de", tabindex: "0", title: "Clique para mostrar", onclick: e => e.currentTarget.classList.toggle("shown"), text: s.t})
     : h("span", {class: "ms-text", lang: "de"}, ...msWords(s.t, i));
   return h("li", {class: "ms-sent" + (i === menschen.playing ? " now" : ""), dataset: {i}},
     h("button", {class: "icon-btn quiet", type: "button", "aria-label": "Ouvir esta frase", title: "Ouvir esta frase", onclick: () => msPlayFrom(i, true)}, icon("volume", 16)),
-    h("div", {class: "ms-line"}, s.q ? h("span", {class: "ms-who", text: s.q}) : null, text,
+    h("div", {class: "ms-line"}, msWhoNode(s.q), text,
       showPt ? h("p", {class: "ms-pt-line", text: s.pt}) : null,
       !hidden && menschen.pop && menschen.pop.i === i ? msWordPop(d, menschen.pop.w) : null),
     h("div", {class: "ms-acts"},
@@ -401,9 +486,9 @@ function msRepeatView(d) {
   const order = msRepeatOrder(d);
   if (!order.length) return h("p", {class: "muted", text: "Esta faixa não tem frases para repetir."});
   const pos = Math.min(menschen.rk, order.length - 1), i = order[pos], s = d.sents[i], r = menschen.rres, phase = menschen.rphase || "";
-  return h("div", {class: "panel ms-repeat"},
-    h("p", {class: "ms-kicker", text: "Frase " + (pos + 1) + " de " + order.length}),
-    s.q ? h("span", {class: "ms-who", text: s.q}) : null,
+  return h("div", {class: "panel ms-repeat ms-card-stage" + msStageIn("rep" + menschen.track.id + i)},
+    msCounter("Frase", pos + 1, order.length),
+    msWhoNode(s.q),
     h("p", {class: "ms-rep-de", lang: "de", text: s.t}),
     s.pt ? h("p", {class: "muted small-text", text: s.pt}) : null,
     phase === "vez" ? h("div", {class: "gb-turn"}, h("p", {class: "gb-turn-title"}, icon("mic", 18), "Sua vez: repita agora"),
@@ -413,7 +498,8 @@ function msRepeatView(d) {
     phase === "falar" ? h("p", {class: "gb-turn-title"}, icon("speech", 18), "Agora repita em voz alta.") : null,
     r ? h("div", {class: "ms-rep-res " + (r.ok ? "ok" : "no")},
       h("p", {class: "aula-status", text: !r.heard ? "Não ouvi nada." : r.ok ? "Igual!" : "Quase: compare (verde = igual ao que você disse)."}),
-      r.heard ? diffLine(s.t, r.heard).line : null) : null,
+      r.heard ? diffLine(s.t, r.heard).line : null,
+      r.echo ? h("p", {class: "muted small-text", text: "O app ouviu a frase duas vezes (eco do alto-falante): contei uma vez só."}) : null) : null,
     h("div", {class: "row"},
       phase === "" ? h("button", {class: r ? "small" : "primary", type: "button", onclick: () => msRepeatGo(i)}, iconText(r ? "repeat" : "play", r ? "De novo" : "Ouvir e repetir")) : null,
       phase === "" || phase === "falar" ? h("button", {class: r || phase === "falar" ? "primary" : "small", type: "button", onclick: () => msRepeatNext(order)},
@@ -437,6 +523,9 @@ async function msRepeatGo(i) {
     if (tk !== menschen.rtk) return;
     const voice = typeof speechAvailable === "function" && speechAvailable();
     const win = Math.max(2500, (s.e - s.s) * 1.8 / (menschen.slow ? .75 : 1) + 1200);
+    // Espera a cauda do alto-falante sumir antes de abrir o microfone (senão o eco entra na gravação).
+    if (voice) await new Promise(res => setTimeout(res, 120));
+    if (tk !== menschen.rtk) return;
     const clip = voice ? await startClip(win + 1500) : null;
     if (tk !== menschen.rtk) { if (clip) clip.stop(); return; }
     if (!clip) { menschen.rphase = "falar"; msRenderPlayer(); return; }
@@ -455,8 +544,8 @@ async function msRepeatGo(i) {
     let text = "";
     try { text = await transcribeBlob(blob, false); } catch (e) { text = ""; }
     if (tk !== menschen.rtk) return;
-    const dd = text ? diffLine(s.t, text) : null;
-    menschen.rres = {heard: text, ok: !!dd && dd.pct >= .85};
+    const c = msCleanRepeat(s.t, text), said = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    menschen.rres = {heard: c.heard, ok: c.ok, echo: !!c.heard && c.heard.split(/\s+/).length < said};
     menschen.rphase = "";
     if (menschen.rres.ok && typeof uiSound === "function") uiSound("ok");
     msRenderPlayer();
@@ -467,6 +556,13 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter" && menschen.data && (menschen.rphase === "" || menschen.rphase === "falar")) { e.preventDefault(); msRepeatNext(msRepeatOrder(menschen.data)); }
 });
 /* Avisos gravados no começo das faixas (“Lektion 1.”, “Aufgabe 3b.”): sem anotação, são reconhecidos por aqui. */
+/* Entrada curta do cartão só quando o item muda (não a cada redesenho da mesma frase). */
+let msStageLast = "";
+function msStageIn(key) {
+  const fresh = key !== msStageLast;
+  msStageLast = key;
+  return fresh && !(typeof reducedMotion === "function" && reducedMotion()) ? " ms-stage-in" : "";
+}
 function msIsCue(t) { return /^(Lektion|Aufgabe|Modul|Übung|Teil|Track)\b[\s\d.,a-z]*[.!]?$/i.test(t.trim()); }
 /* Ditado: uma frase por vez; ouvir (quantas vezes quiser), escrever e conferir com a mesma correção do ditado do Treino. */
 function msDictation(d) {
@@ -475,11 +571,15 @@ function msDictation(d) {
   const pos = Math.min(menschen.dk, order.length - 1), i = order[pos], s = d.sents[i];
   const input = h("textarea", {id: "msDkInput", lang: "de", rows: "2", spellcheck: "false", autocomplete: "off", placeholder: "Escreva o que ouviu"});
   const result = h("div", {id: "msDkResult"});
+  const keys = typeof umlautRow === "function" ? umlautRow(input) : null;
+  const checkRow = h("div", {class: "row"});
   const next = () => { menschen.dk = (pos + 1) % order.length; msRenderPlayer(); setTimeout(() => { msPlayFrom(order[menschen.dk], true); const el = $("msDkInput"); if (el) el.focus(); }, 50); };
   const check = () => {
     const typed = input.value.trim();
     if (!typed) { input.focus(); return; }
     input.readOnly = true;
+    if (keys) keys.hidden = true;
+    checkRow.hidden = true;
     renderDiktatDiff(result, s.t, typed);
     result.append(h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: next}, pos + 1 < order.length ? "Próxima frase" : "Recomeçar"),
       h("button", {class: "quiet small", type: "button", onclick: () => msPlayFrom(i, true)}, iconText("volume", "Ouvir de novo")),
@@ -488,9 +588,10 @@ function msDictation(d) {
   input.addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.readOnly) next(); else check(); }
   });
-  return h("div", {class: "panel ms-dictation"},
-    h("p", {class: "ms-kicker", text: "Frase " + (pos + 1) + " de " + order.length}),
-    h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: () => msPlayFrom(i, true)}, iconText("volume", "Ouvir")),
-      h("button", {class: "small", type: "button", onclick: next}, "Pular")),
-    input, h("button", {type: "button", onclick: check}, "Conferir", h("kbd", null, "Enter")), result);
+  checkRow.append(h("button", {class: "primary", type: "button", onclick: check}, "Conferir", h("kbd", null, "Enter")));
+  return h("div", {class: "panel ms-dictation ms-card-stage" + msStageIn("dk" + menschen.track.id + i)},
+    msCounter("Frase", pos + 1, order.length),
+    h("div", {class: "row ms-dk-listen"}, h("button", {class: "ms-hear", type: "button", onclick: () => msPlayFrom(i, true)}, ...iconText("volume", "Ouvir a frase")),
+      h("button", {class: "quiet small", type: "button", onclick: next}, "Pular")),
+    input, keys, checkRow, result);
 }
