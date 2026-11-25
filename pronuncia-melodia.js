@@ -70,27 +70,73 @@ const mel = {voice: 0};
 const melUrl = (id, voice = "otto") => "audio-pronuncia/" + id + "-" + voice + ".mp3";
 function melNextVoice() { const v = MEL_VOICES[mel.voice % MEL_VOICES.length]; mel.voice++; return v[0]; }
 async function melDecodeUrl(url) { return pvDecode(await (await fetch(url)).arrayBuffer()); }
-function melCurve(model, me) {
+/* Curva editorial (24/11/2026, visual de assinatura, rodada 2): canvas em Retina (até 2×), grade de −6, 0 e +6 semitons,
+   faixa-alvo no terço final (sobe na pergunta de sim ou não; repousa embaixo na afirmação e no pedido; na pergunta com W
+   as duas valem, então não há faixa), curvas suavizadas por pontos médios, área leve sob o modelo, a sua tracejada em
+   --warn com o ponto final marcado. Uma agulha (.mel-needle) acompanha o áudio que toca (pvPlay com {needle}). */
+const MEL_ST = 9; // ±9 semitons ocupam a altura
+/* Puro (testado): geometria da curva num quadro W × H (pontos, faixa-alvo e linhas da grade). */
+function melGeom(model, me, tipo, W = 640, H = 150, pad = 8) {
+  const X = t => pad + t * (W - 2 * pad), Y = st => H / 2 - Math.max(-MEL_ST, Math.min(MEL_ST, st)) * (H / 2 - pad) / MEL_ST;
+  // Buracos (pausa > 8% da fala) partem a curva em trechos, para não ligar duas palavras com uma reta.
+  const runs = cv => {
+    if (!cv || !cv.pts || !cv.pts.length) return [];
+    const out = [[]];
+    cv.pts.forEach((p, i) => { if (i && cv.pts[i - 1].t < p.t - .08) out.push([]); out[out.length - 1].push({x: X(p.t), y: Y(p.st)}); });
+    return out.filter(r => r.length);
+  };
+  const dir = tipo === "jn" ? "up" : tipo === "w" || !tipo ? null : "down";
+  const target = dir ? {x0: X(.72), x1: X(1), y0: dir === "up" ? pad : H / 2, y1: dir === "up" ? H / 2 : H - pad, dir} : null;
+  return {model: runs(model), me: runs(me), target, grid: [-6, 0, 6].map(st => ({st, y: Y(st)})), W, H};
+}
+/* Puro (testado): caminho suave por pontos médios (M, Q…, L) de uma lista de pontos. */
+function melSmooth(pts) {
+  if (!pts.length) return [];
+  if (pts.length < 3) return [["M", pts[0].x, pts[0].y], ...pts.slice(1).map(p => ["L", p.x, p.y])];
+  const out = [["M", pts[0].x, pts[0].y]];
+  for (let i = 1; i < pts.length - 1; i++) out.push(["Q", pts[i].x, pts[i].y, (pts[i].x + pts[i + 1].x) / 2, (pts[i].y + pts[i + 1].y) / 2]);
+  const z = pts[pts.length - 1];
+  out.push(["L", z.x, z.y]);
+  return out;
+}
+function melTrace(g, path) { g.beginPath(); for (const s of path) { if (s[0] === "M") g.moveTo(s[1], s[2]); else if (s[0] === "L") g.lineTo(s[1], s[2]); else g.quadraticCurveTo(s[1], s[2], s[3], s[4]); } }
+function melCurve(model, me, tipo) {
   const c = h("canvas", {class: "mel-curve", width: 640, height: 150, "aria-hidden": "true"});
-  requestAnimationFrame(() => {
-    const g = c.getContext("2d"), css = getComputedStyle(document.documentElement), W = c.width, H = c.height;
+  const wrap = h("div", {class: "mel-curve-wrap"}, c, h("span", {class: "mel-needle", "aria-hidden": "true"}));
+  const draw = () => {
+    const css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+    const dpr = Math.min(2, window.devicePixelRatio || 1), W = c.clientWidth || 640, H = c.clientHeight || 150;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    const g = c.getContext("2d");
+    if (!g) return;
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
-    g.strokeStyle = css.getPropertyValue("--line").trim() || "#ddd";
+    const geo = melGeom(model, me, tipo, W, H), accent = v("--accent") || "#0b6e63", warn = v("--warn") || "#9a5705";
+    if (geo.target) {
+      g.fillStyle = accent; g.globalAlpha = .08;
+      g.fillRect(geo.target.x0, geo.target.y0, geo.target.x1 - geo.target.x0, geo.target.y1 - geo.target.y0);
+      g.globalAlpha = 1;
+    }
     g.lineWidth = 1;
-    g.beginPath(); g.moveTo(0, H / 2); g.lineTo(W, H / 2); g.stroke();
-    /* A sua curva vai tracejada, além da cor: dá para distinguir sem depender dela. */
-    const draw = (cv, color, width, dash = []) => {
-      if (!cv) return;
-      g.strokeStyle = color; g.lineWidth = width; g.lineJoin = "round"; g.lineCap = "round"; g.setLineDash(dash);
-      g.beginPath();
-      cv.pts.forEach((p, i) => { const X = 6 + p.t * (W - 12), Y = H / 2 - Math.max(-9, Math.min(9, p.st)) * (H / 2 - 8) / 9; if (i && cv.pts[i - 1].t < p.t - .08) g.moveTo(X, Y); else if (i) g.lineTo(X, Y); else g.moveTo(X, Y); });
-      g.stroke();
-    };
-    draw(model, css.getPropertyValue("--accent").trim() || "#0b6e63", 3);
-    draw(me, css.getPropertyValue("--warn").trim() || "#9a5705", 2.5, [7, 5]);
+    for (const l of geo.grid) { g.strokeStyle = v("--line") || "#ddd"; g.setLineDash(l.st ? [2, 4] : []); g.beginPath(); g.moveTo(0, l.y); g.lineTo(W, l.y); g.stroke(); }
     g.setLineDash([]);
-  });
-  return c;
+    // Área leve sob o modelo (até a linha do zero), depois a linha.
+    for (const run of geo.model) {
+      if (run.length < 2) continue;
+      const path = melSmooth(run);
+      melTrace(g, path); g.lineTo(run[run.length - 1].x, H / 2); g.lineTo(run[0].x, H / 2); g.closePath();
+      g.fillStyle = accent; g.globalAlpha = .1; g.fill(); g.globalAlpha = 1;
+      melTrace(g, path); g.strokeStyle = accent; g.lineWidth = 3; g.lineJoin = "round"; g.lineCap = "round"; g.stroke();
+    }
+    /* A sua curva vai tracejada, além da cor: dá para distinguir sem depender dela. */
+    g.setLineDash([7, 5]);
+    for (const run of geo.me) { melTrace(g, melSmooth(run)); g.strokeStyle = warn; g.lineWidth = 2.5; g.stroke(); }
+    g.setLineDash([]);
+    const last = geo.me.length ? geo.me[geo.me.length - 1].slice(-1)[0] : null;
+    if (last) { g.beginPath(); g.arc(last.x, last.y, 4.5, 0, Math.PI * 2); g.fillStyle = warn; g.fill(); g.lineWidth = 2; g.strokeStyle = v("--surface") || "#fff"; g.stroke(); }
+  };
+  requestAnimationFrame(draw);
+  return wrap;
 }
 /* Tela das frases: agrupadas pelo tipo de melodia, com ouvir, passo a passo e gravar. */
 function melRenderFrases() {
@@ -132,29 +178,31 @@ async function melTry(f) {
   pv.busy = true;
   box.hidden = false;
   box.scrollIntoView({block: "nearest", behavior: scrollBehavior()});
-  const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t), h("p", {class: "mel-chain", lang: "de"}, h("span", {class: "on", text: f.de})));
+  const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t, cls.includes("on") ? pvMeterNode() : null), h("p", {class: "mel-chain", lang: "de"}, h("span", {class: "on", text: f.de})));
   try {
     say("Ouça o modelo:");
     await pvPlay(melUrl(f.id));
     say("Agora você:", "rec");
-    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); });
+    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); }, pvMeterLevel);
     if (!blob) { fill(box, h("p", {class: "muted", text: "Não ouvi nada. Fale mais perto do microfone e tente de novo."})); return; }
     say("Medindo…");
     const [model, me] = await Promise.all([melDecodeUrl(melUrl(f.id)).then(melContour), blob.arrayBuffer().then(pvDecode).then(melContour)]);
     const checks = melCompare(f.tipo, model, me), myUrl = URL.createObjectURL(blob);
+    let curve = null;
+    const needle = () => curve && curve.querySelector(".mel-needle");
     fill(box,
       h("p", {class: "pv-step"}, "Melodia: ", h("b", {lang: "de", text: f.de})),
-      me ? melCurve(model, me) : h("p", {class: "muted", text: "Não deu para medir a melodia (gravação curta ou com ruído)."}),
+      me ? (curve = melCurve(model, me, f.tipo)) : h("p", {class: "muted", text: "Não deu para medir a melodia (gravação curta ou com ruído)."}),
       h("p", {class: "mel-legend small-text"}, h("span", {class: "mel-key model"}), "Modelo ", h("span", {class: "mel-key me"}), "Você"),
       checks.length ? h("ul", {class: "pv-checks"}, ...checks.map(c => h("li", {class: c.ok === true ? "ok" : c.ok === false ? "no" : "meh"}, h("span", {class: "pv-dot", "aria-hidden": "true"}), c.label))) : null,
       h("div", {class: "row"},
-        h("button", {class: "small", type: "button", onclick: () => pvPlay(melUrl(f.id))}, icon("volume", 16), "Modelo"),
-        h("button", {class: "small", type: "button", onclick: () => pvPlay(myUrl)}, icon("volume", 16), "Você"),
-        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(melUrl(f.id)); await pvPlay(myUrl); }}, "Os dois"),
+        h("button", {class: "small", type: "button", onclick: () => pvPlay(melUrl(f.id), {needle: needle()})}, icon("volume", 16), "Modelo"),
+        h("button", {class: "small", type: "button", onclick: () => pvPlay(myUrl, {needle: needle()})}, icon("volume", 16), "Você"),
+        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(melUrl(f.id), {needle: needle()}); await pvPlay(myUrl, {needle: needle()}); }}, "Os dois"),
         h("button", {class: "primary small", type: "button", onclick: () => melTry(f)}, icon("mic", 16), "Gravar de novo")),
       h("p", {class: "muted small-text", text: "A curva é a altura da sua voz, medida em relação ao seu próprio tom; o que importa é o desenho, não a altura."}));
-    await pvPlay(melUrl(f.id));
-    await pvPlay(myUrl);
+    await pvPlay(melUrl(f.id), {needle: needle()});
+    await pvPlay(myUrl, {needle: needle()});
   } finally { pv.busy = false; }
 }
 /* Acento: sílabas em blocos (a forte maior), ouvir e gravar. */
@@ -189,7 +237,7 @@ async function melStressTry(a) {
     say("Ouça o modelo:");
     await pvPlay(melUrl(a.id));
     say("Agora você, com força em “" + a.sil[a.t] + "”:", "rec");
-    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); });
+    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); }, pvMeterLevel);
     if (!blob) { fill(box, h("p", {class: "muted", text: "Não ouvi nada. Fale mais perto do microfone e tente de novo."})); return; }
     const myUrl = URL.createObjectURL(blob);
     fill(box,

@@ -82,6 +82,10 @@ function updateNav(view) {
   all(".nav-hub").forEach(b => b.classList.toggle("on", b.dataset.hub === hub));
   all(".nav-sub").forEach(g => g.classList.toggle("open", g.dataset.sub === hub));
   titleWatch(view);
+  // Luz atmosférica por lugar (style.css, bloco “Visual de assinatura”, etapa 5).
+  const root = document.documentElement;
+  root.dataset.hub = hub; root.dataset.view = view;
+  navConvMode(view);
   const back = $("hubBack"), showBack = view !== "hub" && hubViews(hub).length > 1;
   if (!back) return;
   back.hidden = !showBack;
@@ -89,6 +93,11 @@ function updateNav(view) {
   $("miniTitle").classList.toggle("after-long", showBack && hubById(hub).label.length > 8);
 }
 
+/* Modo especial aberto na Conversa (Krimi ou Plantão na Innere): o topo da folha ganha a luz da cena. */
+function navConvMode(view = typeof currentView !== "undefined" ? currentView : "") {
+  const t = view === "conversa" && typeof conv !== "undefined" && conv.topic && !conv.finished ? conv.topic : null;
+  document.documentElement.dataset.convMode = t && t.krimi ? "krimi" : t && t.innere ? "innere" : "";
+}
 function renderHub() {
   const hub = hubById(nav.hub);
   $("hubTitle").textContent = hub.label;

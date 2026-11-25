@@ -72,13 +72,13 @@ function renderSceneGroups(box) {
     .map(([t, list, ex]) => [t, list.filter(sceneMatches), ex]).filter(([, list]) => list.length);
   const cardOf = (s, big) => {
     const st = sceneStats(s.id), mine = s.lines.filter(l => l[0] === "m").length;
-    const sc = sceneChapter(s), open = () => sceneSheet(s, mine);
+    const sc = sceneChapter(s), open = () => { scene.heroCard = card; sceneSheet(s, mine); };
     const card = h("article", {class: "scene-card scene-pick" + (s === suggested ? " suggested" : "") + (big ? " scene-feature" : ""), tabindex: "0", role: "button", "aria-label": s.title, onclick: open},
       h("div", {class: "scene-top"}, h("span", {class: "tag", text: sc !== null ? (sc >= NW_A2_BASE ? "A2, cap. " + s.nw2 : "Cap. " + s.nw) + ", " + s.theme : s.level + " · " + s.theme}),
         st ? h("span", {class: "status s-learned", text: "Melhor: " + Math.round(st.best * 100) + "%"}) : s === suggested ? h("span", {class: "status s-next", text: "Sugerida"}) : null),
       h("h3", {text: s.title}),
       h("p", {class: "muted small-text", text: big ? s.setting : s.other.name}),
-      big ? h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: e => { e.stopPropagation(); openScene(s.id, false); }}, "Praticar agora"), h("span", {class: "muted small-text", text: "Você faz as " + mine + " falas suas, com " + s.other.name + "."})) : null);
+      big ? h("div", {class: "row"}, h("button", {class: "primary", type: "button", onclick: e => { e.stopPropagation(); scene.heroCard = card; openScene(s.id, false); }}, "Praticar agora"), h("span", {class: "muted small-text", text: "Você faz as " + mine + " falas suas, com " + s.other.name + "."})) : null);
     card.addEventListener("keydown", e => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); open(); } });
     return card;
   };
@@ -96,7 +96,66 @@ function sceneSheet(s, mine) {
     {label: "Trocar papéis", note: "Você faz o papel de " + s.other.name, icon: "repeat", onclick: () => openScene(s.id, true)},
     {label: "Só ouvir", note: "A cena inteira, sem falar", icon: "volume", onclick: () => openScene(s.id, false, true)}]});
 }
+/* Transição herói (24/11/2026, visual de assinatura, rodada 2): o cartão tocado na lista vira o palco da cena, com as
+   guardas de sempre (View Transitions, janela visível e com foco, sem “reduzir movimento”) e trava de 1,5 s. */
+function sceneHeroMotion() {
+  return typeof document.startViewTransition === "function" && document.visibilityState === "visible" && document.hasFocus() && !reducedMotion();
+}
+function sceneHeroClear() { document.querySelectorAll("[data-sc-hero]").forEach(el => { el.style.viewTransitionName = ""; delete el.dataset.scHero; }); }
+function sceneHeroName(el) { if (el) { el.style.viewTransitionName = "sc-hero"; el.dataset.scHero = "1"; } }
 function openScene(id, swap, listenOnly = false) {
+  const card = scene.heroCard;
+  scene.heroCard = null;
+  if (!card || !card.isConnected || !card.offsetParent || !sceneHeroMotion()) { openSceneNow(id, swap, listenOnly); return; }
+  const root = document.documentElement;
+  root.dataset.nav = "scene";
+  sceneHeroName(card);
+  const t = document.startViewTransition(() => { sceneHeroClear(); openSceneNow(id, swap, listenOnly); sceneHeroName($("sceneStage")); });
+  const guard = setTimeout(() => { try { t.skipTransition(); } catch (e) { /* já terminou */ } }, 1500);
+  t.ready.catch(() => {});
+  t.finished.catch(() => {}).finally(() => { clearTimeout(guard); delete root.dataset.nav; sceneHeroClear(); });
+}
+/* Palco da cena (“Drehbuch”): faixa fixa no alto do diálogo com quem fala (a inicial pulsa enquanto ela fala e fica verde
+   na sua vez), o seu papel e uma fileira de pontos, um por fala: as suas e as dela com formas diferentes, a atual acesa,
+   as já praticadas em verde ou âmbar pelo resultado. Fala que já passou: tocar ouve de novo. */
+/* Puro (testado): o estado de cada fala para os pontos. */
+function sceneDotStates(lines, role, idx, results) {
+  let k = 0;
+  return lines.map((l, i) => {
+    const mine = l[0] === role;
+    let st = i < idx ? "done" : i === idx ? "now" : "next";
+    if (mine && i < idx) { const r = results[k++]; st = r === true ? "ok" : r === false ? "miss" : "done"; }
+    return {i, mine, st};
+  });
+}
+function sceneStageEl() {
+  let el = $("sceneStage");
+  if (!el) {
+    el = h("section", {id: "sceneStage", class: "sc-stage", "aria-label": "Andamento da cena"},
+      h("span", {class: "sc-avatar", "aria-hidden": "true"}, h("span", {class: "sc-initial"})),
+      h("div", {class: "sc-text"}, h("p", {class: "sc-who"}), h("p", {class: "sc-role"})),
+      h("div", {class: "sc-dots", role: "list"}));
+    $("sceneChat").before(el);
+  }
+  return el;
+}
+function sceneStageRender() {
+  const d = scene.data;
+  if (!d) return;
+  const el = sceneStageEl(), other = d.other.name, mode = scene.mode;
+  el.dataset.mode = mode;
+  el.querySelector(".sc-initial").textContent = (other.replace(/^(Dr\.|Dra\.|Frau|Herr)\s+/, "")[0] || "?").toUpperCase();
+  el.querySelector(".sc-who").textContent = mode === "turn" || mode === "recording" || mode === "busy" || mode === "graded" ? "Sua vez" : mode === "listening" ? other + " fala" : mode === "idle" && scene.idx >= d.lines.length ? "Cena terminada" : other;
+  el.querySelector(".sc-role").textContent = scene.swap ? "Você faz o papel de " + other : "Você · com " + other;
+  const dots = sceneDotStates(d.lines, myRole(), scene.idx, scene.results);
+  fill(el.querySelector(".sc-dots"), dots.map(s => {
+    const label = (s.mine ? "Sua fala " : "Fala de " + other + " ") + (s.i + 1) + ({ok: ", saiu bem", miss: ", para repetir", now: ", agora"}[s.st] || "");
+    const past = s.i < scene.idx;
+    return h("button", {type: "button", class: "sc-dot " + (s.mine ? "mine " : "other ") + s.st, role: "listitem", "aria-label": label, title: past ? label + " (tocar para ouvir)" : label,
+      disabled: !past, onclick: () => { if (past) playSceneLine(s.i); }});
+  }));
+}
+function openSceneNow(id, swap, listenOnly = false) {
   const data = SCENES.find(s => s.id === id);
   if (!data) return;
   Object.assign(scene, {data, idx: 0, swap, results: [], mode: "idle", token: scene.token + 1});
@@ -110,6 +169,7 @@ function openScene(id, swap, listenOnly = false) {
   $("sceneShowOther").checked = settings.sceneShowOther !== false;
   $("sceneHelp").value = SCENE_HELP[settings.sceneHelp] ? settings.sceneHelp : "auto";
   scene.help = sceneHelpLevel(data.id, swap);
+  sceneStageRender();
   window.scrollTo({top: 0});
   if (listenOnly) listenWholeScene(); else advanceScene();
 }
@@ -173,6 +233,7 @@ async function advanceScene() {
 }
 function setSceneControls(mode) {
   scene.mode = mode;
+  sceneStageRender();
   const speech = speechAvailable();
   $("sceneSpeak").hidden = !(mode === "turn" || mode === "recording") || !speech;
   $("sceneSpeak").replaceChildren(icon(mode === "recording" ? "stop" : "mic", 18), mode === "recording" ? "Parar e conferir" : "Falar e conferir", h("kbd", null, "F"));

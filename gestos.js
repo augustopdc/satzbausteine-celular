@@ -93,9 +93,22 @@ function sheetDrag(dlg) {
 function clearCardDrag(flash) {
   flash.classList.remove("dragging");
   for (const p of ["transform", "--sw-good", "--sw-again"]) flash.style.removeProperty(p);
+  if (flash.parentElement) flash.parentElement.style.removeProperty("--sw-k");
+}
+/* Pilha física (24/11/2026, visual de assinatura, rodada 2): o cartão fica dentro de .flash-stack, com até duas folhas
+   embaixo conforme os cartões que faltam (data-remaining 0, 1, 2+, posto pelo renderSessionCard). Puro e testado:
+   flashRemaining(n) com n = cartões que ainda vêm depois deste. */
+function flashRemaining(n) { return n <= 0 ? "0" : n === 1 ? "1" : "2+"; }
+function flashStackInit(flash) {
+  if (!flash || (flash.parentElement && flash.parentElement.classList.contains("flash-stack"))) return;
+  const stack = h("div", {id: "flashStack", class: "flash-stack", "data-remaining": "0"},
+    h("i", {class: "flash-sheet s2", "aria-hidden": "true"}), h("i", {class: "flash-sheet s1", "aria-hidden": "true"}));
+  flash.before(stack);
+  stack.append(flash);
 }
 function initCardSwipe() {
   const flash = $("flashCard");
+  flashStackInit(flash);
   trackDrag(flash, {
     axis: "x",
     accept: e => e.pointerType !== "mouse" && session.active && session.revealed && session.step !== "present"
@@ -106,6 +119,11 @@ function initCardSwipe() {
       flash.style.transform = "translateX(" + d + "px)" + (motionOff() ? "" : " rotate(" + d / 60 + "deg)");
       flash.style.setProperty("--sw-good", String(d > 0 ? k : 0));
       flash.style.setProperty("--sw-again", String(d < 0 ? k : 0));
+      // A folha de baixo sobe junto com o dedo, pronta para virar o próximo cartão.
+      if (flash.parentElement) flash.parentElement.style.setProperty("--sw-k", k.toFixed(3));
+      // Cruzou o limiar (soltar agora avalia): um tique seco, uma vez por travessia.
+      const over = k >= 1;
+      if (over !== !!flash._swOver) { flash._swOver = over; if (over && typeof uiSound === "function") uiSound("tick"); }
     },
     onEnd: (d, v) => {
       const limit = Math.min(110, flash.offsetWidth * .3), go = Math.abs(d) >= 16 && Math.abs(projected(d, v)) >= limit && Math.sign(projected(d, v)) === Math.sign(d);
@@ -120,6 +138,7 @@ function initCardSwipe() {
 }
 function backCard(flash) {
   flash.classList.remove("dragging");
+  if (flash.parentElement) flash.parentElement.style.removeProperty("--sw-k");
   flash.style.removeProperty("--sw-good");
   flash.style.removeProperty("--sw-again");
   springBack(flash);
@@ -185,5 +204,70 @@ function titleWatch(view) {
 }
 function initGestures() {
   initCardSwipe();
+  pillInit();
   window.matchMedia("(max-width: 600px)").addEventListener("change", () => titleWatch(currentView));
+}
+
+// ---------- Pílula deslizante dos seletores segmentados (24/11/2026, visual de assinatura, etapa 3) ----------
+/* O fundo do botão escolhido vira uma pílula só (::before do grupo) que desliza até o novo botão, em vez de pular.
+   syncSlidingPill mede o botão ativo e grava --pill-x/y/w/h no grupo; no 1º desenho não há transição (data-pill-ready
+   só entra no quadro seguinte). Grupo refeito do zero (o Krimi redesenha o painel a cada fala) começa da posição anterior
+   do mesmo tipo de grupo, e assim também desliza. Atualiza em cliques, trocas pelo código (MutationObserver) e tamanho
+   (ResizeObserver: em linha no PC, em coluna no celular). */
+const PILL_SEL = "#practiceSetup .segmented, .segmented.conv-tabs, .segmented.kr-tabs, .segmented.conv-flow";
+const pillLast = new Map();
+// Janela escondida ou sem pintura (autoteste, app na bandeja) não roda requestAnimationFrame: um temporizador de reserva
+// garante o próximo passo (o que chegar primeiro roda; o outro não faz nada).
+function pillFrame(fn) {
+  let done = false;
+  const run = () => { if (!done) { done = true; fn(); } };
+  requestAnimationFrame(run);
+  setTimeout(run, 50);
+  return 1;
+}
+let pillRO = null;
+function pillKind(g) { return ["kr-tabs", "conv-tabs", "conv-flow"].find(k => g.classList.contains(k)) || "practice"; }
+function syncSlidingPill(group) {
+  if (!group || !group.isConnected) return;
+  const act = [...group.children].find(b => b.getAttribute("aria-pressed") === "true" || b.classList.contains("active"));
+  if (!act || !act.offsetWidth) return;
+  // Medida em relação ao próprio grupo (pelas caixas na tela, com a rolagem lateral das abas no celular).
+  const fresh = !group.classList.contains("has-pill");
+  if (fresh) group.classList.add("has-pill");
+  const ra = act.getBoundingClientRect(), rg = group.getBoundingClientRect();
+  const box = {x: Math.round(ra.left - rg.left - group.clientLeft + group.scrollLeft), y: Math.round(ra.top - rg.top - group.clientTop + group.scrollTop), w: act.offsetWidth, h: act.offsetHeight}, kind = pillKind(group);
+  const set = b => { for (const k of ["x", "y", "w", "h"]) group.style.setProperty("--pill-" + k, b[k] + "px"); };
+  if (fresh) {
+    const prev = pillLast.get(kind);
+    // Mesmo tipo de grupo redesenhado: parte do lugar antigo (se o tamanho bate) e desliza até o novo.
+    if (prev && Math.abs(prev.w - box.w) < 40 && Math.abs(prev.h - box.h) < 20 && !motionOff()) {
+      set(prev);
+      group.offsetWidth; // aplica a posição antiga antes da transição
+      group.dataset.pillReady = "1";
+      pillFrame(() => set(box));
+    } else {
+      set(box);
+      pillFrame(() => { group.dataset.pillReady = "1"; });
+    }
+  } else set(box);
+  pillLast.set(kind, box);
+}
+function pillScan() {
+  pillScan.raf = 0;
+  for (const g of document.querySelectorAll(PILL_SEL)) {
+    if (!g._pill) {
+      g._pill = true;
+      if (pillRO) pillRO.observe(g);
+      g.addEventListener("click", e => { if (e.target.closest("button") && !g.classList.contains("kr-tabs") && typeof uiSound === "function") uiSound("tick"); });
+    }
+    // Só mede de novo quando o escolhido mudou (ler offsets a cada mutação forçaria layout durante a fala em fluxo).
+    const act = [...g.children].find(b => b.getAttribute("aria-pressed") === "true" || b.classList.contains("active"));
+    if (act !== g._pillAct) { g._pillAct = act; syncSlidingPill(g); }
+  }
+}
+function pillInit() {
+  if (typeof ResizeObserver === "function") pillRO = new ResizeObserver(entries => { for (const e of entries) syncSlidingPill(e.target); });
+  const schedule = () => { if (!pillScan.raf) pillScan.raf = pillFrame(pillScan); };
+  if (typeof MutationObserver === "function") new MutationObserver(schedule).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["aria-pressed", "hidden"]});
+  schedule();
 }

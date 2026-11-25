@@ -604,7 +604,8 @@ body.focus main { max-width: 860px; padding-top: 1.6rem; }
   .hub-back button { color: var(--accent-strong); font-weight: 500; font-size: 1rem; min-height: 40px; padding: 0 .55rem 0 .2rem; gap: .05rem; }
   @media (hover: hover) { .hub-back button:hover { background: transparent; } }
   .hub-back svg { width: 24px; height: 24px; }
-  body.focus .hub-back, body.book-open .hub-back { display: none !important; }
+  body.focus .hub-back, body.book-open .hub-back, body.conv-open .hub-back { display: none !important; }
+  html.wco .hub-back:not([hidden]) { top: var(--tb, 0px); }
   #view-hub .page-head h1 { font-size: 2.1rem; }
   .nav button[aria-current="page"] { background: transparent; color: var(--accent-strong); }
   .nav svg { width: 23px; height: 23px; }
@@ -2693,7 +2694,7 @@ html { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   body.title-small .mini-title { opacity: 1; visibility: visible; }
   .mini-title:has(+ .hub-back:not([hidden])) { background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 0; }
   html.wco .mini-title { top: var(--tb); }
-  body.focus .mini-title, body.book-open .mini-title, body.reading-focus .mini-title { display: none !important; }
+  body.focus .mini-title, body.book-open .mini-title, body.reading-focus .mini-title, body.conv-open .mini-title { display: none !important; }
 }
 /* O cartão arrastado não pode criar rolagem de lado; a etiqueta some para o selo aparecer limpo. */
 html:has(.flash.dragging), html:has(.flash.dragging) body { overflow-x: clip; }
@@ -3130,27 +3131,21 @@ body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
 @keyframes cv-pop { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 
 .cv-stage { --her: 0; --me: 0; position: sticky; top: calc(var(--tb, 0px) + .6rem); z-index: 3; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.1rem;
-  max-width: 780px; margin: 0 auto 1.1rem; padding: .8rem 1.1rem .8rem .9rem; border-radius: 20px; border: 1px solid var(--line);
+  max-width: 780px; margin: 0 auto 1.1rem; padding: .8rem 1.1rem .8rem 1.35rem; border-radius: 20px; border: 1px solid var(--line);
   background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(14px) saturate(1.2); box-shadow: var(--shadow-sm); }
-.cv-orb { position: relative; width: 58px; height: 58px; flex: none; }
-.cv-avatar { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; color: #fcfcfa;
-  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent) 55%, var(--accent-strong));
-  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--accent) 80%, transparent); transition: transform var(--t-card) var(--ease-out); }
+.cv-orb { position: relative; width: 58px; height: 58px; flex: none; transition: width var(--t-card) var(--ease); }
+/* Orbe fluido (conversa-sala.js, salaDraw): o canvas passa 19 px de cada lado do avatar para os lóbulos e o halo. */
+.cv-canvas { position: absolute; inset: -19px; width: calc(100% + 38px); height: calc(100% + 38px); pointer-events: none; z-index: 0; }
+.cv-avatar { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; border-radius: 50%; color: #fcfcfa;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--orb-b, var(--accent)) 62%, #fff), var(--orb-b, var(--accent)) 55%, var(--orb-a, var(--accent-strong)));
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--orb-b, var(--accent)) 80%, transparent);
+  filter: brightness(calc(1 + var(--glow, 0) * .14)); opacity: calc(1 - var(--morph, 0)); transform: scale(calc(1 - var(--morph, 0) * .4));
+  transition: transform var(--t-card) var(--ease-out); }
 .cv-initial { font: italic 500 1.7rem/1 var(--font-de); transform: translateY(-1px); }
-.cv-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--accent); opacity: 0; pointer-events: none; transition: border-color var(--t-micro); }
-.cv-stage[data-state="speaking"] .r1 { opacity: calc(.25 + var(--her) * .7); transform: scale(calc(1.06 + var(--her) * .22)); }
-.cv-stage[data-state="speaking"] .r2 { opacity: calc(var(--her) * .45); transform: scale(calc(1.12 + var(--her) * .45)); }
-.cv-stage[data-state="speaking"] .r3 { opacity: calc(var(--her) * .25); transform: scale(calc(1.18 + var(--her) * .7)); }
-.cv-stage[data-state="speaking"] .cv-avatar { transform: scale(calc(1 + var(--her) * .05)); }
-/* Você falando: os anéis ficam âmbar e seguem o seu microfone. */
-.cv-stage[data-state="listening"] .cv-ring { border-color: var(--accent); }
-.cv-stage[data-state="listening"] .r1 { opacity: calc(.3 + var(--me) * .6); transform: scale(calc(1.06 + var(--me) * .2)); }
-.cv-stage[data-state="listening"] .r2 { opacity: calc(var(--me) * .4); transform: scale(calc(1.12 + var(--me) * .4)); }
-/* Ela pensando: o anel respira devagar em volta do avatar (as reticências do texto já dizem que está pensando). */
-.cv-stage[data-state="thinking"] .r1, .cv-stage[data-state="connecting"] .r1 { border-color: var(--accent); animation: cv-breathe 1.6s var(--ease-in-out) infinite alternate; }
-.cv-stage[data-state="turn"] .r1 { opacity: .35; transform: scale(1.08); border-style: dashed; border-color: var(--line-strong); }
-.cv-stage[data-state="muted"] .cv-avatar, .cv-stage[data-state="done"] .cv-avatar { filter: grayscale(.7); opacity: .7; }
-@keyframes cv-breathe { from { opacity: .2; transform: scale(1.04); } to { opacity: .55; transform: scale(1.12); } }
+.cv-stage[data-state="speaking"] .cv-avatar { transform: scale(calc((1 + var(--her) * .05) * (1 - var(--morph, 0) * .4))); }
+.cv-stage[data-state="muted"] .cv-avatar, .cv-stage[data-state="done"] .cv-avatar { filter: grayscale(.7); opacity: calc(.7 * (1 - var(--morph, 0))); }
+/* Linha de telefone: o orbe vira um visor horizontal (osciloscópio) com a forma de onda dela. */
+.cv-stage[data-line="on"] .cv-orb { width: 132px; }
 .cv-stage-text p { margin: 0; }
 .cv-who { display: flex; align-items: baseline; gap: .5rem; font-size: 1.05rem; }
 .cv-who b { font-weight: 650; }
@@ -3174,14 +3169,14 @@ body[data-view="home"] .sidebar-foot .streak { visibility: hidden; }
 @keyframes cv-caret { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   #convChat .bubble, .conv-opts-pop { animation: none; }
-  .cv-ring, .cv-avatar { transition: none; animation: none !important; }
-  .cv-stage .cv-ring { transform: scale(1.08) !important; opacity: .28 !important; }
-  .cv-stage .cv-avatar { transform: none !important; }
+  .cv-orb, .cv-avatar { transition: none; animation: none !important; }
+  .cv-stage .cv-avatar { transform: scale(calc(1 - var(--morph, 0) * .4)) !important; }
 }
 @media (max-width: 600px) {
-  .cv-stage { grid-template-columns: auto 1fr; top: .4rem; border-radius: 16px; }
+  .cv-stage { grid-template-columns: auto 1fr; top: calc(var(--tb, 0px) + .4rem); border-radius: 16px; }
   .cv-stage-act { grid-column: 1 / -1; }
   .cv-orb { width: 48px; height: 48px; }
+  .cv-stage[data-line="on"] .cv-orb { width: 108px; }
 }
 
 /* ---------- Leitura: o livro é o protagonista (12/11/2026, crítica colada pelo usuário) ----------
@@ -3968,3 +3963,288 @@ dialog { overscroll-behavior: contain; }
 @media (max-width: 600px) { .segmented.kr-tabs { grid-template-columns: minmax(0, 1fr); } .segmented.kr-tabs button { min-height: 44px; } }
 .kr-case { margin: var(--s-2) 0 0; font: 500 1.04rem/1.5 var(--font-de); color: var(--ink); }
 .scene-group > .row + .scene-grid { margin-top: var(--s-3); }
+/* Mídia curta na Leitura (23/11/2026): o vídeo fica em cima do texto, no tamanho da coluna. */
+.rd-video-wrap { margin: 0 auto var(--s-4); max-width: var(--rd-col, 800px); }
+.rd-video-wrap video { display: block; width: 100%; max-height: 44vh; border-radius: var(--r-lg); background: #000; }
+@media (max-width: 600px) { .rd-video-wrap { margin: 0 0 var(--s-3); } .rd-video-wrap video { max-height: 32vh; border-radius: var(--r-md); } }
+
+/* ---------- Visual de assinatura (24/11/2026, _dev/.cache/PEDIDO-VISUAL-ASSINATURA.md) ----------
+   Etapa 1: recado de voz como mensagem de áudio (pessoas.js, pessoaWaveNode). As barras vêm do texto (pessoaWaveBars);
+   tocando, as já faladas ficam em --accent e a atual sobe um pouco. */
+.ps-wave-player { display: flex; align-items: center; gap: var(--s-3); margin: .35rem 0 .1rem; max-width: 420px; }
+.ps-wave-btn { position: relative; flex: none; width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); border: 0; }
+.ps-wave-btn svg { width: 16px; height: 16px; }
+.ps-wave-player.playing .ps-wave-btn { background: var(--accent-strong); }
+.ps-bars { flex: 1; min-width: 0; height: 30px; display: flex; align-items: center; gap: 2px; }
+.ps-bar { flex: 1; min-width: 2px; max-width: 5px; height: calc(var(--h, .5) * 100%); border-radius: 2px; background: var(--line-strong); cursor: pointer;
+  transition: background-color 80ms linear, transform var(--t-micro) var(--ease-out); transform-origin: center; }
+.ps-bar.on { background: var(--accent); }
+.ps-bar.now { background: var(--accent-strong); transform: scaleY(1.12); }
+.ps-wave-time { flex: none; font-size: .8rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { .ps-wave-btn::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; } }
+@media (prefers-reduced-motion: reduce) { .ps-bar { transition: none; } .ps-bar.now { transform: none; } }
+
+/* Etapa 2: monitor de beira de leito no Plantão na Innere (plantao-clinico.js, innereMonitorNode). Superfície escura
+   própria também no tema claro; números em tabular-nums; alteração também por seta, não só por cor. */
+.in-monitor { margin-bottom: var(--s-4); padding: .75rem .9rem .85rem; border-radius: var(--r-md); background: #101514; color: #e8efed;
+  border: 1px solid rgba(255, 255, 255, .1); display: grid; gap: .55rem; }
+.in-monitor.waiting { display: flex; align-items: center; gap: .6rem; padding: .55rem .9rem; color: #9fb0ab; font-size: .86rem; }
+.in-mon-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4744; flex: none; }
+.in-mon-top { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; font-size: .78rem; color: #9fb0ab; }
+.in-mon-name { letter-spacing: .02em; }
+.in-mon-rhythm { font: 600 .8rem/1 var(--mono, ui-monospace, monospace); color: #4ade80; }
+.in-monitor[data-rhythm="afib"] .in-mon-rhythm { color: #fbbf24; }
+.in-ecg { position: relative; height: 64px; border-radius: 8px; overflow: hidden;
+  background: linear-gradient(rgba(74, 222, 128, .06) 1px, transparent 1px) 0 0 / 100% 16px, linear-gradient(90deg, rgba(74, 222, 128, .06) 1px, transparent 1px) 0 0 / 25px 100%, #0b100f; }
+.in-ecg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.in-ecg-line { fill: none; stroke: #4ade80; stroke-width: 1.6; stroke-linejoin: round; filter: drop-shadow(0 0 2px rgba(74, 222, 128, .55)); }
+.in-ecg-sweep { position: absolute; inset: 0; pointer-events: none; transform: translateX(-100%); will-change: transform;
+  background: linear-gradient(90deg, transparent 0, transparent calc(100% - 46px), rgba(11, 16, 15, .0) calc(100% - 46px), rgba(11, 16, 15, .65) calc(100% - 6px), rgba(190, 255, 214, .9) calc(100% - 2px), transparent 100%);
+  animation: in-sweep var(--sweep, 4s) linear infinite; }
+@keyframes in-sweep { to { transform: translateX(0); } }
+.in-ecg.off { display: grid; place-items: center; }
+.in-ecg-hint { font-size: .8rem; color: #6f817c; }
+.in-mon-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .4rem; }
+.in-mon-cell { display: grid; gap: .05rem; padding: .3rem .1rem 0; border-top: 1px solid rgba(255, 255, 255, .08); min-width: 0; }
+.in-mon-l { font-size: .74rem; font-weight: 650; letter-spacing: .03em; color: #9fb0ab; }
+.in-mon-v { font: 600 1.55rem/1.05 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.in-mon-u { font-size: .74rem; color: #9fb0ab; white-space: nowrap; }
+.in-mon-cell.hf .in-mon-v { color: #4ade80; }
+.in-mon-cell.spo2 .in-mon-v { color: #38bdf8; }
+.in-mon-cell.rr .in-mon-v { color: #f4f7f6; font-size: 1.3rem; }
+.in-mon-cell.temp .in-mon-v, .in-mon-cell.af .in-mon-v { color: #d7e0de; }
+.in-mon-flag { display: inline-block; margin-left: .2rem; padding: 0 .3rem; border-radius: 4px; background: #fbbf24; color: #1a1305; font-weight: 700; }
+.in-mon-cell.alert .in-mon-l { color: #fcd34d; }
+/* Laudo: etiqueta de alteração alinhada à direita, como num LIS. */
+.in-exam-r li.flagged { display: flex; justify-content: space-between; gap: .6rem; align-items: baseline; }
+.in-flag { flex: none; font: 700 .86rem/1 var(--mono, ui-monospace, monospace); color: var(--warn, #b45309); min-width: 1.6em; text-align: right; }
+.in-exam.just { animation: in-just 180ms var(--ease-out) both; box-shadow: inset 3px 0 0 var(--accent); }
+@keyframes in-just { from { opacity: 0; transform: translateY(6px); } }
+@media (max-width: 600px) {
+  .in-mon-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .in-mon-v { font-size: 1.3rem; }
+  .in-mon-cell.rr .in-mon-v { font-size: 1.12rem; }
+}
+@media (prefers-reduced-motion: reduce) { .in-ecg-sweep { display: none; } .in-exam.just { animation: none; } }
+
+/* Etapa 2: Krimi. Régua da noite (krimi.js, krimiTimelineNode) e pistas como fichas de arquivo (Beweisstück). */
+.kr-timeline { margin: var(--s-3) 0 0; padding: var(--s-3) var(--s-4) var(--s-3); border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--group-line); }
+.kr-timeline .label { margin: 0 0 var(--s-2); }
+.kr-timeline.empty { padding: var(--s-2) var(--s-4); }
+.kr-timeline.empty p { margin: 0; }
+.kr-tl-track { position: relative; height: 58px; margin: 0 14px; }
+.kr-tl-line { position: absolute; left: 0; right: 0; top: 30px; height: 2px; border-radius: 1px; background: var(--line-strong); }
+.kr-tl-at { position: absolute; left: var(--x); top: calc(31px - var(--stack, 0) * 22px); transform: translate(-50%, -50%); }
+.kr-tl-end { position: absolute; bottom: -4px; font: 600 .74rem/1 var(--mono); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.kr-tl-end.lo { left: 0; transform: translateX(-30%); }
+.kr-tl-end.hi { right: 0; transform: translateX(30%); }
+.kr-pin { display: grid; place-items: center; width: 20px; height: 20px; font: 700 .72rem/1 var(--font); color: var(--accent-ink); }
+.kr-pin.proof { border-radius: 4px; background: var(--warn); color: transparent; box-shadow: 0 0 0 3px var(--surface); }
+.kr-pin.open { width: 12px; height: 12px; border-radius: 3px; background: var(--ink-3); box-shadow: 0 0 0 3px var(--surface); }
+.kr-pin.said { border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--surface); }
+.kr-tl-list { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; gap: .3rem; }
+.kr-tl-item { display: grid; grid-template-columns: 3.4rem 20px minmax(0, 1fr); gap: .55rem; align-items: center; font-size: .88rem; }
+.kr-tl-t { font: 600 .82rem/1 var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.kr-tl-item .kr-pin { justify-self: center; }
+.kr-tl-item.open .kr-tl-txt { color: var(--ink-2); }
+/* Fichas de arquivo investigativo */
+.kr-clues li.kr-file { gap: .35rem; border-color: var(--line); background: var(--surface); }
+.kr-file-head { margin: 0; font: 600 .74rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--warn); padding-bottom: .35rem; border-bottom: 1px dashed var(--line-strong); justify-self: stretch; }
+
+/* Etapa 3.2: envelope que abre sem pulo seco de altura (0fr → 1fr). */
+.smooth-open { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--t-card) var(--ease), opacity var(--t-card) var(--ease); }
+.smooth-open > * { overflow: hidden; min-height: 0; }
+.smooth-open.open { grid-template-rows: 1fr; opacity: 1; }
+.smooth-open > * > :first-child { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .smooth-open { transition: none; } }
+
+/* Etapa 3.1: pílula deslizante (gestos.js, syncSlidingPill). O fundo do escolhido é um ::before do grupo que desliza. */
+.has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow) { position: relative; }
+.has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow)::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  width: var(--pill-w, 0); height: var(--pill-h, 0); transform: translate(var(--pill-x, 0), var(--pill-y, 0));
+  border-radius: var(--r-sm); background: var(--surface); box-shadow: var(--shadow-sm); }
+.has-pill[data-pill-ready]:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow)::before { transition: transform 220ms var(--ease), width 220ms var(--ease), height 220ms var(--ease); }
+.has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow) > button { position: relative; z-index: 1; }
+.has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow) > button[aria-pressed="true"] { background: transparent !important; box-shadow: none !important; }
+:root[data-theme="dark"] .has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow)::before { background: var(--surface-3); box-shadow: 0 1px 2px rgba(0, 0, 0, .4); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .has-pill:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow)::before { background: var(--surface-3); box-shadow: 0 1px 2px rgba(0, 0, 0, .4); } }
+@media (prefers-reduced-motion: reduce) { .has-pill[data-pill-ready]:is(#practiceSetup .segmented, .conv-tabs, .kr-tabs, .conv-flow)::before { transition: none; } }
+
+/* Etapa 3.2: revelar a resposta do cartão sem tranco (opacidade + 6 px, 180 ms; dentro do teto de 220 ms da sessão). */
+@media (prefers-reduced-motion: no-preference) {
+  .flash.revealed .answer-row { animation: flash-reveal 180ms var(--ease-out) both; }
+}
+@keyframes flash-reveal { from { opacity: 0; transform: translateY(6px); } }
+
+/* Etapa 3.3: transição herói do cartão (conhecido, Innere, Krimi) para a faixa da ligação, e de volta. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-nav="conv"]::view-transition-group(cv-hero) { animation-duration: .42s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); border-radius: 16px; overflow: hidden; }
+  html[data-nav="conv"]::view-transition-old(cv-hero), html[data-nav="conv"]::view-transition-new(cv-hero) { width: 100%; height: 100%; object-fit: cover; }
+  html[data-nav="conv"]::view-transition-old(cv-hero) { animation: vt-fade-out .2s ease both; }
+  html[data-nav="conv"]::view-transition-new(cv-hero) { animation: vt-fade-up .3s .08s var(--ease) both; }
+  html[data-nav="conv"]::view-transition-old(root) { animation: vt-fade-out .2s ease both; }
+  html[data-nav="conv"]::view-transition-new(root) { animation: vt-fade-up .3s .1s var(--ease) both; }
+}
+
+/* Etapa 4: física da frase alemã. Voo em arco (gramatica-frase.js, gfArcFrames) com sombra suave durante o voo e um traço
+   curvo temporário da origem ao pouso; botão “Ver movimento” / “Ver ordem” com um palco pequeno (gfMiniButton). */
+.gf-stage { position: relative; }
+.gf-w.flying { position: relative; z-index: 2; box-shadow: 0 6px 14px -6px rgba(18, 26, 25, .35); background: var(--surface); }
+.gf-arc { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 1; }
+.gf-arc path { fill: none; stroke: var(--vb-1); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: .55;
+  animation: gf-arc-draw 760ms cubic-bezier(.65, 0, .35, 1) forwards, gf-arc-fade 500ms 900ms ease forwards; }
+@keyframes gf-arc-draw { to { stroke-dashoffset: 0; } }
+@keyframes gf-arc-fade { to { opacity: 0; } }
+.gf-mini-wrap { display: grid; gap: var(--s-2); justify-items: start; margin: .2rem 0; }
+.gf-mini-btn { gap: .35rem; }
+.gf-stage.gf-mini { justify-self: stretch; }
+.gf-stage.small .gf-row { font-size: 1.08rem; }
+.card-order { margin-top: var(--s-3); }
+.foco-others li .gf-mini-wrap { margin-top: .25rem; }
+@media (prefers-reduced-motion: reduce) { .gf-arc { display: none; } .gf-w.flying { box-shadow: none; } }
+
+/* Etapa 5.1: grão óptico de papel (0 KB: feTurbulence em data URI, ladrilho de 120 px). Só na página da leitura, nos cartões
+   do painel da leitura e na face do cartão de estudo; ~1,8% no claro e ~2,2% no escuro. Some com contraste alto e com
+   transparência reduzida. */
+:root {
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .17 0 0 0 0 .12 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.072'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] {
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.088'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.088'/%3E%3C/svg%3E");
+  }
+}
+.flash, #view-reading .reader-text, #view-reading .reader-detail > .rd-card { background-image: var(--paper-grain); background-size: 120px 120px; }
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
+  .flash, #view-reading .reader-text, #view-reading .reader-detail > .rd-card { background-image: none; }
+}
+
+/* Etapa 5.2: fio especular no alto das superfícies protagonistas, só no escuro (luz vinda de cima, sem sombra pesada). */
+:root[data-theme="dark"] :is(#flashCard, #convStage, .hero, .rd-card, .ps-note) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); }
+:root[data-theme="dark"] .in-monitor { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(#flashCard, #convStage, .hero, .rd-card, .ps-note) { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); }
+  :root:not([data-theme="light"]) .in-monitor { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), var(--shadow); }
+}
+
+/* Etapa 5.3: luz atmosférica bem fraca no alto da folha, por lugar (navegacao.js grava data-hub, data-view e data-conv-mode
+   no <html>). Hoje/Treinar: verde-pinho; Ler e escrever: âmbar editorial; Krimi: azul-noite; Innere: verde-ciano. */
+@property --atmo { syntax: "<color>"; inherits: true; initial-value: transparent; }
+.main-col { --atmo: transparent; background-image: radial-gradient(120% 360px at 50% -40px, var(--atmo), transparent 72%); background-repeat: no-repeat; transition: --atmo .6s var(--ease); }
+:root[data-hub="hoje"] .main-col, :root[data-hub="treinar"] .main-col { --atmo: color-mix(in srgb, var(--accent) 4%, transparent); }
+:root[data-hub="ler"] .main-col { --atmo: color-mix(in srgb, #d99a3a 4.5%, transparent); }
+:root[data-conv-mode="krimi"] .main-col { --atmo: color-mix(in srgb, #3d5a8a 6%, transparent); }
+:root[data-conv-mode="innere"] .main-col { --atmo: color-mix(in srgb, #1aa39a 5%, transparent); }
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) { .main-col { background-image: none; } }
+@media (prefers-reduced-motion: reduce) { .main-col { transition: none; } }
+.sound-demo { margin-top: var(--s-2); }
+.card-order { align-self: stretch; text-align: left; }
+.card-order .gf-stage.gf-mini, .gf-stage.gf-mini { width: 100%; box-sizing: border-box; background: var(--surface-2); }
+/* Prontuário e interrogatório no celular: o placar desce para baixo do título (antes os dois se sobrepunham em 390 px). */
+@media (max-width: 600px) { .mis-head { grid-template-columns: minmax(0, 1fr); } .mis-stat { grid-column: 1; grid-row: auto; text-align: left; } }
+
+/* ---------- Visual de assinatura, rodada 2 (24/11/2026, _dev/.cache/PEDIDO-VISUAL-RODADA2.md) ----------
+   Etapa 1: Pronúncia e Melodia em Retina. Curva com agulha (pronuncia-melodia.js, melCurve) e ondas com a anatomia do som
+   (pronuncia-voz.js, pvWave: colchete do sopro em ms, cauda vibrando) e medidor do microfone ao gravar. */
+.mel-curve-wrap, .pv-wave-wrap { position: relative; }
+.mel-curve, .pv-wave { display: block; }
+.mel-needle, .pv-needle { position: absolute; top: 4px; bottom: 4px; width: 2px; border-radius: 1px; pointer-events: none; opacity: 0;
+  background: var(--ink); box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent); transition: opacity var(--t-micro); }
+.mel-needle { left: calc(8px + var(--pos, 0) * (100% - 16px)); }
+.pv-needle { left: calc(var(--pos, 0) * var(--span, 1) * 100%); }
+.mel-needle.on, .pv-needle.on { opacity: .85; }
+.pv-track { padding-top: .6rem; }
+.pv-vot { position: absolute; top: -12px; left: calc(var(--x0) * 100%); width: max(2px, calc((var(--x1) - var(--x0)) * 100%)); height: 9px;
+  border: 1.5px solid var(--ink-2); border-bottom: 0; border-radius: 3px 3px 0 0;
+  font: 600 .72rem/1 var(--font); color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; text-indent: calc(100% + 4px); overflow: visible; }
+.pv-tail { position: absolute; top: 6px; bottom: 6px; left: calc(var(--x0) * 100%); width: max(4px, calc((var(--x1) - var(--x0)) * 100%)); border-radius: 6px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--warn) 22%, transparent) 0 3px, transparent 3px 6px); outline: 1.5px dashed var(--warn); outline-offset: -1px; }
+.pv-meter { display: inline-block; width: 7rem; height: 6px; margin-left: .6rem; vertical-align: middle; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.pv-meter i { display: block; height: 100%; width: 100%; border-radius: inherit; background: var(--danger); transform-origin: left; transform: scaleX(var(--lv, 0)); transition: transform 60ms linear; }
+@media (prefers-reduced-motion: reduce) { .pv-meter i { transition: none; transform: scaleX(.5); } .mel-needle, .pv-needle { display: none; } }
+
+/* Etapa 2: o baralho físico. Até duas folhas embaixo do cartão conforme o que falta (gestos.js, flashStackInit;
+   data-remaining 0, 1, 2+); arrastando, a de baixo sobe com o dedo (--sw-k). Selos do gesto como carimbo. */
+.flash-stack { position: relative; isolation: isolate; --sw-k: 0; }
+.flash-sheet { position: absolute; inset: 0; z-index: -1; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line);
+  transform-origin: 50% 100%; pointer-events: none; transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out); }
+.flash-sheet.s1 { transform: translateY(calc(5px * (1 - var(--sw-k)))) scale(calc(.982 + var(--sw-k) * .013)); }
+.flash-sheet.s2 { transform: translateY(10px) scale(.964); opacity: .75; }
+.flash-stack[data-remaining="0"] .flash-sheet { opacity: 0; }
+.flash-stack[data-remaining="1"] .flash-sheet.s2 { opacity: 0; }
+.flash-stack:has(.flash.dragging) .flash-sheet { transition: none; }
+.swipe-hint span { letter-spacing: .04em; text-transform: uppercase; font-size: .9rem; }
+.sw-good { transform: rotate(-7deg) scale(calc(.92 + var(--sw-good, 0) * .12)); transform-origin: left top; }
+.sw-again { transform: rotate(7deg) scale(calc(.92 + var(--sw-again, 0) * .12)); transform-origin: right top; }
+/* Fio de progresso da sessão: anda em 180 ms, com um brilho suave na ponta. */
+#sessionBar { position: relative; display: block; height: 100%; transition: width 180ms var(--ease-out); }
+#sessionBar::after { content: ""; position: absolute; right: 0; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, #fff 80%, var(--accent)) 0, color-mix(in srgb, var(--accent) 40%, transparent) 55%, transparent 70%); }
+@media (prefers-reduced-motion: reduce) { .flash-sheet, #sessionBar { transition: none; } }
+@media (prefers-contrast: more), (prefers-reduced-transparency: reduce) { #sessionBar::after { display: none; } }
+
+/* Etapa 3: Hoje viva. Ponta luminosa no arco (hoje.js, hojeRingTip), coroa de 12 traços ao fechar a meta (hojeCrown),
+   curva editorial da Escrita (hojeSparkPath) e trilha clicável com a leitura rápida do nível (hojeTrailDetail). */
+.ring-tip { fill: #fff; opacity: 0; filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 90%, transparent)); transition: opacity var(--t-micro); }
+.ring-tip.on { opacity: .95; }
+#view-home .ring, #heroRing { position: relative; }
+.ring-crown { position: absolute; inset: -14px; width: calc(100% + 28px); height: calc(100% + 28px); pointer-events: none; overflow: visible; }
+.ring-crown line { stroke: var(--good); stroke-width: 2; stroke-linecap: round; transform-origin: 80px 80px; animation: ring-crown 900ms var(--ease-out) forwards; }
+@keyframes ring-crown { from { opacity: .95; transform: scale(.86); } to { opacity: 0; transform: scale(1.14); } }
+.spark-wrap { position: relative; }
+.spark-stop-a { stop-color: var(--accent); stop-opacity: .18; }
+.spark-stop-b { stop-color: var(--accent); stop-opacity: 0; }
+.spark-area { stroke: none; }
+.spark-line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+.spark-dot { position: absolute; left: var(--x); top: var(--y); width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+.trail-box { display: grid; gap: .45rem; }
+button.trail-step { appearance: none; display: grid; grid-template-columns: minmax(0, 1fr); justify-content: stretch; gap: .3rem; width: 100%; min-width: 0; align-content: start; justify-items: stretch; border: 0; background: transparent; box-shadow: none; padding: .25rem .1rem; min-height: 0; margin: 0; border-radius: var(--r-sm); text-align: left; cursor: pointer; color: inherit; font: inherit; }
+button.trail-step .trail-seg { width: 100%; }
+button.trail-step[aria-pressed="true"] small { color: var(--ink); font-weight: 700; }
+button.trail-step[aria-pressed="true"] .trail-seg { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+@media (hover: hover) { button.trail-step:hover { background: var(--surface-2); } }
+.trail-detail { margin: 0; font-size: .82rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+@media (pointer: coarse) { button.trail-step { min-height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .ring-crown { display: none; } }
+
+/* Etapa 4: palco das Cenas (pratica-oral.js, sceneStageRender): quem fala, o seu papel e um ponto por fala. */
+.sc-stage { position: sticky; top: calc(var(--tb, 0px) + .5rem); z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: .3rem 1rem;
+  margin: 0 0 var(--s-4); padding: .7rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(14px) saturate(1.2); box-shadow: var(--shadow-sm); }
+.sc-avatar { grid-row: span 2; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fcfcfa;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--accent) 60%, #fff), var(--accent) 60%, var(--accent-strong)); transition: background-color var(--t-micro), box-shadow var(--t-card); }
+.sc-initial { font: italic 500 1.35rem/1 var(--font-de); }
+.sc-stage[data-mode="listening"] .sc-avatar { animation: sc-talk 1.1s var(--ease-in-out) infinite alternate; }
+.sc-stage:is([data-mode="turn"], [data-mode="recording"], [data-mode="busy"], [data-mode="graded"]) .sc-avatar { background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 22%, transparent); }
+@keyframes sc-talk { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); } to { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 0%, transparent); } }
+.sc-text p { margin: 0; }
+.sc-who { font-weight: 650; }
+.sc-role { font-size: .82rem; color: var(--ink-3); }
+.sc-dots { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.sc-dot { position: relative; appearance: none; padding: 0; margin: 0; min-height: 0; border: 0; cursor: default; background: var(--surface-3); flex: none; }
+.sc-dot.other { width: 8px; height: 8px; border-radius: 50%; }
+.sc-dot.mine { width: 16px; height: 8px; border-radius: 4px; }
+.sc-dot.done { background: var(--ink-3); cursor: pointer; }
+.sc-dot.ok { background: var(--good); cursor: pointer; }
+.sc-dot.miss { background: var(--warn); cursor: pointer; }
+.sc-dot.now { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.sc-dot:disabled { opacity: 1; }
+@media (pointer: coarse) { .sc-dot:not(:disabled)::after { content: ""; position: absolute; inset: -18px -4px; } }
+@media (max-width: 600px) { .sc-stage { top: calc(var(--tb, 0px) + .4rem); border-radius: 14px; } }
+@media (prefers-reduced-motion: reduce) { .sc-stage[data-mode="listening"] .sc-avatar { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .sc-stage { background: var(--surface); backdrop-filter: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  html[data-nav="scene"]::view-transition-group(sc-hero) { animation-duration: .42s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); border-radius: 16px; overflow: hidden; }
+  html[data-nav="scene"]::view-transition-old(sc-hero), html[data-nav="scene"]::view-transition-new(sc-hero) { width: 100%; height: 100%; object-fit: cover; }
+  html[data-nav="scene"]::view-transition-old(sc-hero) { animation: vt-fade-out .2s ease both; }
+  html[data-nav="scene"]::view-transition-new(sc-hero) { animation: vt-fade-up .3s .08s var(--ease) both; }
+  html[data-nav="scene"]::view-transition-old(root) { animation: vt-fade-out .2s ease both; }
+  html[data-nav="scene"]::view-transition-new(root) { animation: vt-fade-up .3s .1s var(--ease) both; }
+}
+.ring-tip-g { transform-origin: 66px 66px; transform-box: view-box; transition: transform .65s var(--ease-out); }
+@media (prefers-reduced-motion: reduce) { .ring-tip-g { transition: none; } }

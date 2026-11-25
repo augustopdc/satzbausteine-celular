@@ -70,6 +70,15 @@ function hojeRing(box, m) {
     svg.append(svgEl("circle", {cx: 66, cy: 66, r, class: "ring-track"}), bar);
   }
   bar.classList.toggle("empty", pct === 0 && prev === 0);
+  // Ponta luminosa no fim do arco (como no Apple Fitness), só com o anel andando e a meta aberta.
+  // A ponta gira num grupo (mesma curva e tempo do traço), então acompanha o arco em vez de cortar pelo meio.
+  let tipG = svg.querySelector(".ring-tip-g");
+  if (!tipG) { tipG = svgEl("g", {class: "ring-tip-g"}); tipG.append(svgEl("circle", {cx: 66, cy: 66 - r, r: 4.2, class: "ring-tip"})); svg.append(tipG); }
+  const tipTurn = deg => tipG.style.setProperty("transform", "rotate(" + deg.toFixed(2) + "deg)");
+  if (still || !tipG.dataset.on) tipTurn((still ? pct : prev) * 360);
+  if (!still) requestAnimationFrame(() => requestAnimationFrame(() => tipTurn(pct * 360)));
+  tipG.dataset.on = "1";
+  tipG.firstChild.classList.toggle("on", pct > .03 && !m.complete);
   const num = h("b", {text: still ? m.done : prevDone});
   const center = h("div", {class: "ring-center"}, m.complete ? icon("check", 34) : num, h("span", {text: m.complete ? "meta cumprida" : "de " + m.goal + " min"}));
   if (svg.parentNode === box) box.querySelector(".ring-center").replaceWith(center);
@@ -105,11 +114,30 @@ function navRing(m) {
   ring.classList.toggle("zero", pct === 0);
   btn.title = "Hoje · " + (m.complete ? "meta cumprida" : m.done + " de " + m.goal + " min");
 }
+/* Puro (testado): onde fica a ponta do arco (o anel começa no alto e anda no sentido do relógio). */
+function hojeRingTip(pct, cx = 66, cy = 66, r = 54) {
+  const a = -Math.PI / 2 + Math.max(0, Math.min(1, pct)) * 2 * Math.PI;
+  return {x: cx + r * Math.cos(a), y: cy + r * Math.sin(a)};
+}
+/* Coroa de 12 traços finos que se abrem e somem em 900 ms em volta do anel (nada com “reduzir movimento”). */
+function hojeCrown(ring) {
+  if (!ring || reducedMotion()) return;
+  const old = ring.querySelector(".ring-crown");
+  if (old) old.remove();
+  const svg = svgEl("svg", {class: "ring-crown", viewBox: "0 0 160 160", "aria-hidden": "true"});
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * 2 * Math.PI, c = Math.cos(a), s = Math.sin(a);
+    svg.append(svgEl("line", {x1: (80 + 62 * c).toFixed(1), y1: (80 + 62 * s).toFixed(1), x2: (80 + 74 * c).toFixed(1), y2: (80 + 74 * s).toFixed(1)}));
+  }
+  ring.append(svg);
+  setTimeout(() => svg.remove(), 1000);
+}
 function hojeCelebrate() {
   const ring = $("heroRing");
   ring.classList.remove("celebrate");
   void ring.offsetWidth;
   ring.classList.add("celebrate");
+  hojeCrown(ring);
   setTimeout(() => ring.classList.remove("celebrate"), 1600);
   toast("Meta de hoje cumprida. Até amanhã!", "success");
   uiSound("meta");
@@ -119,6 +147,7 @@ function hojeRouteList(items, next) {
   hoje.routeDone = now;
   const fresh = before ? [...now].filter(id => !before.has(id)) : [];
   if (fresh.length && navigator.vibrate) navigator.vibrate(15);
+  if (fresh.length && typeof uiSound === "function") uiSound("stamp");
   fill($("homeRoute"), items.map(it => {
     let bar = null;
     if (!it.done && it.progress > 0) { const fillEl = h("i"); setWidth(fillEl, it.progress * 100); bar = h("span", {class: "route-bar"}, fillEl); }
@@ -143,13 +172,40 @@ function hojeWeek() {
     return {label, st, title: d.toLocaleDateString("pt-BR", {weekday: "long", day: "numeric"}) + ": " + {ok: "estudou", today: "hoje", rest: SHIFT_LABELS[type].toLowerCase(), future: "ainda não chegou", miss: "sem estudo"}[st]};
   });
 }
-function hojeSpark(values) {
-  const w = 200, hgt = 40, max = Math.max(...values), min = Math.min(...values), span = max - min || 1;
-  const pts = values.map((v, i) => (values.length === 1 ? w / 2 : i / (values.length - 1) * w).toFixed(1) + "," + (4 + (1 - (v - min) / span) * (hgt - 8)).toFixed(1)).join(" ");
-  const svg = svgEl("svg", {class: "spark", viewBox: "0 0 " + w + " " + hgt, preserveAspectRatio: "none", "aria-hidden": "true"});
-  svg.append(svgEl("polyline", {points: pts, "vector-effect": "non-scaling-stroke"}));
-  return svg;
+/* Puro (testado): caminho suave (pontos médios) da curva da Escrita, a área embaixo e o último ponto. */
+function hojeSparkPath(values, w = 200, hgt = 40) {
+  const max = Math.max(...values), min = Math.min(...values), span = max - min || 1;
+  const pts = values.map((v, i) => ({x: values.length === 1 ? w / 2 : i / (values.length - 1) * w, y: 5 + (1 - (v - min) / span) * (hgt - 10)}));
+  const f = n => n.toFixed(1);
+  let d = "M" + f(pts[0].x) + " " + f(pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) d += " Q" + f(pts[i].x) + " " + f(pts[i].y) + " " + f((pts[i].x + pts[i + 1].x) / 2) + " " + f((pts[i].y + pts[i + 1].y) / 2);
+  if (pts.length > 1) d += " L" + f(pts[pts.length - 1].x) + " " + f(pts[pts.length - 1].y);
+  const last = pts[pts.length - 1];
+  return {line: d, area: d + " L" + f(last.x) + " " + hgt + " L" + f(pts[0].x) + " " + hgt + " Z", last};
 }
+let hojeSparkN = 0;
+function hojeSpark(values) {
+  const w = 200, hgt = 40, p = hojeSparkPath(values, w, hgt), id = "sparkFill" + (++hojeSparkN);
+  const svg = svgEl("svg", {class: "spark", viewBox: "0 0 " + w + " " + hgt, preserveAspectRatio: "none", "aria-hidden": "true"});
+  const defs = svgEl("defs"), grad = svgEl("linearGradient", {id, x1: 0, y1: 0, x2: 0, y2: 1});
+  grad.append(svgEl("stop", {offset: "0", class: "spark-stop-a"}), svgEl("stop", {offset: "1", class: "spark-stop-b"}));
+  defs.append(grad);
+  svg.append(defs, svgEl("path", {d: p.area, class: "spark-area", fill: "url(#" + id + ")"}), svgEl("path", {d: p.line, class: "spark-line", "vector-effect": "non-scaling-stroke"}));
+  // O ponto do valor mais recente fica fora do svg esticado (senão vira elipse): um span posicionado em %.
+  const dot = h("span", {class: "spark-dot", "aria-hidden": "true"});
+  dot.style.setProperty("--x", (p.last.x / w * 100).toFixed(2) + "%");
+  dot.style.setProperty("--y", (p.last.y / hgt * 100).toFixed(2) + "%");
+  return h("div", {class: "spark-wrap"}, svg, dot);
+}
+/* Puro (testado): a linha de leitura rápida de um nível da trilha. */
+function hojeTrailDetail(level, s) {
+  const name = (HOME_LEVELS.find(x => x[0] === level) || [level, ""])[1];
+  if (!s || !s.total) return level + " " + name + ": ainda sem frases liberadas";
+  const training = Math.max(0, s.total - s.unseen - s.learned);
+  return level + " " + name + ": " + s.learned.toLocaleString("pt-BR") + " de " + s.total.toLocaleString("pt-BR") + " frases firmes · "
+    + training.toLocaleString("pt-BR") + " em treino" + (s.unseen ? " · " + s.unseen.toLocaleString("pt-BR") + " ainda não vistas" : "");
+}
+const hojeTrailState = {open: null};
 function hojeTile(iconName, label, value, unit, extra, sub, tone) {
   return h("section", {class: "tile" + (tone ? " " + tone : "")},
     h("div", {class: "tile-head"}, icon(iconName, 17), h("span", {text: label})),
@@ -161,11 +217,19 @@ function hojeTiles() {
   const week = h("div", {class: "week"}, hojeWeek().map(d => h("span", {class: "wk wk-" + d.st, title: d.title},
     h("i", null, d.st === "ok" ? icon("check", 12) : d.st === "rest" ? "P" : null), h("small", {text: d.label}))));
   const lv = levelSummary(), li = LEVELS.indexOf(lv.level), plan = planSettings();
-  const trail = h("div", {class: "trail"}, LEVELS.map((l, i) => {
+  // Trilha clicável: tocar num nível mostra a leitura rápida dele embaixo (o atual vem aberto; tocar de novo fecha).
+  const stats = levelStats(), open = hojeTrailState.open == null ? lv.level : hojeTrailState.open;
+  const detail = h("p", {class: "trail-detail", "aria-live": "polite"});
+  const show = l => { hojeTrailState.open = l; detail.hidden = !l; detail.textContent = l ? hojeTrailDetail(l, stats[l]) : "";
+    for (const b of trailBox.querySelectorAll(".trail-step")) b.setAttribute("aria-pressed", String(b.dataset.level === l)); };
+  const trailBox = h("div", {class: "trail"}, LEVELS.map((l, i) => {
     const seg = h("span", {class: "trail-seg"}, h("i"));
     setWidth(seg.firstChild, i < li ? 100 : i === li ? lv.pct : 0);
-    return h("span", {class: "trail-step" + (i < li ? " past" : i === li ? " now" : "")}, seg, h("small", {text: l === "B2" ? "B2 · FSP" : l}));
+    return h("button", {type: "button", class: "trail-step" + (i < li ? " past" : i === li ? " now" : ""), dataset: {level: l}, "aria-pressed": "false",
+      onclick: () => show(hojeTrailState.open === l ? "" : l)}, seg, h("small", {text: l === "B2" ? "B2 · FSP" : l}));
   }));
+  const trail = h("div", {class: "trail-box"}, trailBox, detail);
+  show(open);
   const b2 = daysUntil(plan.b2), move = daysUntil(plan.move);
   const learned = cards.filter(studied).length, acc = accuracy30();
   const texts = typeof escritaTexts === "function" ? escritaTexts().filter(t => t.fb && escritaWords(t.v1).length).slice(0, 8).reverse() : [];

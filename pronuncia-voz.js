@@ -125,7 +125,7 @@ async function pvDecode(buf) {
 }
 /* Grava até você parar de falar: mede o ruído por 250 ms, começa quando o volume passa de 3× o ruído e para depois de
    0,7 s de silêncio (ou 4 s no total). Sem cancelamento de eco nem ganho automático, para não deformar o som. */
-async function pvRecord(onState) {
+async function pvRecord(onState, onLevel) {
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({audio: {echoCancellation: false, noiseSuppression: false, autoGainControl: false}}); }
   catch (e) { setStatus("Acesso ao microfone negado ou indisponível. Verifique o microfone nas configurações de privacidade do Windows.", "error"); return null; }
@@ -142,6 +142,7 @@ async function pvRecord(onState) {
   await new Promise(resolve => {
     const tick = () => {
       const now = performance.now() - t0, v = level();
+      if (onLevel) onLevel(v);
       if (now < 250) { noise += v; nN++; }
       else {
         const loud = v > Math.max(.004, 3 * noise / Math.max(1, nN));
@@ -156,16 +157,30 @@ async function pvRecord(onState) {
   const blob = await done;
   return spoke ? blob : null;
 }
-function pvPlay(src) {
+/* Toca um áudio; com {needle}, uma agulha (elemento com --pos) acompanha currentTime / duration. A agulha some no fim;
+   com “reduzir movimento”, não anda. */
+function pvPlay(src, opts = {}) {
   return new Promise(resolve => {
     stopAudio();
-    const a = new Audio(src);
+    const a = new Audio(src), nd = opts.needle || null;
     audioPlayer = a;
-    const end = () => resolve();
+    let raf = 0, done = false;
+    const end = () => { if (done) return; done = true; if (raf) cancelAnimationFrame(raf); if (nd) nd.classList.remove("on"); resolve(); };
     a.onended = end; a.onerror = end; a.onpause = end;
+    if (nd && !reducedMotion()) {
+      const tick = () => { raf = 0; if (done) return; if (a.duration > 0) { nd.classList.add("on"); nd.style.setProperty("--pos", Math.min(1, a.currentTime / a.duration).toFixed(4)); } raf = requestAnimationFrame(tick); };
+      raf = requestAnimationFrame(tick);
+    }
     a.play().catch(end);
     setTimeout(end, 6000);
   });
+}
+/* Medidor do microfone ao lado de “Gravando:” (quadros que o pvRecord já mede, ~30 ms). Parado com “reduzir movimento”. */
+function pvMeterNode() { return h("span", {class: "pv-meter", role: "meter", "aria-label": "Nível do microfone", "aria-valuemin": "0", "aria-valuemax": "100"}, h("i")); }
+function pvMeterLevel(v) {
+  if (reducedMotion()) return;
+  const m = document.querySelector(".pv-meter i");
+  if (m) { const p = Math.min(1, v * 14); m.style.setProperty("--lv", p.toFixed(3)); m.parentElement.setAttribute("aria-valuenow", String(Math.round(p * 100))); }
 }
 
 // ---------- Gravações (só neste computador) ----------
@@ -192,16 +207,46 @@ async function pvStore(mode, value) {
 // ---------- Tela ----------
 function pvModelVoice() { return typeof PRON_MODEL_VOICE !== "undefined" ? PRON_MODEL_VOICE : "katja"; }
 const pv = {busy: false, model: new Map()};
-function pvWave(env, cls, scale) {
-  const c = h("canvas", {class: "pv-wave " + cls, width: 600, height: 56, "aria-hidden": "true"});
+/* Puro (testado): onde ficam, em x (0–W), a janela do sopro do p/t/k e a cauda vibrando no fim. Cada quadro do envelope
+   vale 5 ms; a onda ocupa W × n / scale (a mais longa das duas enche a largura). */
+function pvWaveMarks(an, checks, scale, W = 600) {
+  if (!an || !an.env || !an.env.length) return {vot: null, tail: null};
+  const fw = W / Math.max(scale, an.env.length), ms = PV_HOP / PV_SR * 1000;
+  const vot = checks && checks.vot && an.vot != null ? {x0: an.start * fw, x1: (an.start + an.vot / ms) * fw, ms: Math.round(an.vot)} : null;
+  // Cauda: os últimos 60 ms de fala, quando o fim acusou vogal a mais ou voz vibrando.
+  const tail = checks && checks.fimBad ? {x0: Math.max(an.start, an.end - 12) * fw, x1: (an.end + 1) * fw} : null;
+  return {vot, tail};
+}
+/* Onda em Retina com barras arredondadas simétricas (como um gravador) e a anatomia do som por cima: colchete do sopro
+   rotulado em ms e a cauda vibrando no fim. A agulha (.pv-needle) acompanha o áudio. */
+function pvWave(an, cls, scale, marks = {}) {
+  const env = an.env, c = h("canvas", {class: "pv-wave " + cls, width: 600, height: 56, "aria-hidden": "true"});
+  const wrap = h("div", {class: "pv-wave-wrap"}, c, h("span", {class: "pv-needle", "aria-hidden": "true"}));
+  wrap.style.setProperty("--span", Math.min(1, env.length / Math.max(1, scale)).toFixed(4));
+  const m0 = pvWaveMarks(an, marks, scale, 1);
+  if (m0.vot) wrap.append(h("span", {class: "pv-vot", "aria-label": "sopro " + m0.vot.ms + " ms", text: m0.vot.ms + " ms"}));
+  if (m0.vot) { wrap.lastChild.style.setProperty("--x0", m0.vot.x0.toFixed(4)); wrap.lastChild.style.setProperty("--x1", m0.vot.x1.toFixed(4)); }
+  if (m0.tail) { const t = h("span", {class: "pv-tail", "aria-label": "voz vibrando no fim"}); t.style.setProperty("--x0", m0.tail.x0.toFixed(4)); t.style.setProperty("--x1", m0.tail.x1.toFixed(4)); wrap.append(t); }
   requestAnimationFrame(() => {
-    const g = c.getContext("2d"), css = getComputedStyle(document.documentElement);
-    g.clearRect(0, 0, c.width, c.height);
+    const g = c.getContext("2d");
+    if (!g) return;
+    const css = getComputedStyle(document.documentElement), dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = c.clientWidth || 600, H = c.clientHeight || 56;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
     g.fillStyle = css.getPropertyValue(cls === "me" ? "--warn" : "--accent").trim() || "#0b6e63";
-    const n = env.length, w = Math.max(1, c.width * Math.min(1, n / scale) / Math.max(1, n));
-    env.forEach((v, k) => { const hgt = Math.max(1, v * (c.height - 4)); g.fillRect(k * w, (c.height - hgt) / 2, Math.max(1, w - .5), hgt); });
+    const span = W * Math.min(1, env.length / Math.max(1, scale)), step = 3, bars = Math.max(1, Math.floor(span / step));
+    for (let b = 0; b < bars; b++) {
+      const a = Math.floor(b * env.length / bars), z = Math.max(a + 1, Math.floor((b + 1) * env.length / bars));
+      let v = 0; for (let k = a; k < z; k++) v = Math.max(v, env[k]);
+      const hgt = Math.max(2, v * (H - 6)), x = b * step, y = (H - hgt) / 2;
+      g.beginPath();
+      if (g.roundRect) g.roundRect(x, y, 2, hgt, 1); else g.rect(x, y, 2, hgt);
+      g.fill();
+    }
   });
-  return c;
+  return wrap;
 }
 async function pvModel(g, pair, side) {
   const url = pronUrl(g.id, pair, side, pvModelVoice()), key = url;
@@ -218,12 +263,12 @@ async function pvTry(groupId, pair, side) {
   if (!box) return;
   pv.busy = true;
   box.hidden = false;
-  const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t, " ", h("b", {lang: "de", text: word})));
+  const say = (t, cls = "") => fill(box, h("p", {class: "pv-step " + cls}, t, " ", h("b", {lang: "de", text: word}), cls.includes("on") ? pvMeterNode() : null));
   try {
     say("Ouça o modelo:");
     await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()));
     say("Agora você. Fale:", "rec");
-    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); });
+    const blob = await pvRecord(st => { if (st === "fala") say("Gravando:", "rec on"); }, pvMeterLevel);
     if (!blob) { fill(box, h("p", {class: "muted", text: "Não ouvi nada. Fale mais perto do microfone e tente de novo."}), pvAgain(groupId, pair, side)); return; }
     say("Medindo…");
     const [model, me] = await Promise.all([pvModel(g, pair, side), blob.arrayBuffer().then(pvDecode).then(pvAnalyze)]);
@@ -234,22 +279,25 @@ async function pvTry(groupId, pair, side) {
     await pvStore("put", rec);
     const myUrl = URL.createObjectURL(blob), firstUrl = old ? URL.createObjectURL(old.first.blob) : null;
     const scale = Math.max(model ? model.env.length : 1, me ? me.env.length : 1);
+    // Anatomia: o colchete do sopro nas duas ondas (quando a palavra tem p/t/k) e a cauda só na sua, se o fim acusou.
+    const want = pvChecks(word, g.id, side), fimBad = checks.some(c => c.k === "fim" && c.ok !== true);
+    const tracks = {}, nd = k => tracks[k] && tracks[k].querySelector(".pv-needle");
     fill(box,
       h("p", {class: "pv-step"}, "Modelo × você: ", h("b", {lang: "de", text: word})),
       h("div", {class: "pv-waves"},
-        h("div", {class: "pv-track"}, h("span", {class: "pv-who", text: "Modelo"}), model ? pvWave(model.env, "model", scale) : null),
-        h("div", {class: "pv-track"}, h("span", {class: "pv-who", text: "Você"}), me ? pvWave(me.env, "me", scale) : h("span", {class: "muted small-text", text: "Gravação curta demais para medir."}))),
+        h("div", {class: "pv-track"}, h("span", {class: "pv-who", text: "Modelo"}), model ? (tracks.model = pvWave(model, "model", scale, {vot: want.vot})) : null),
+        h("div", {class: "pv-track"}, h("span", {class: "pv-who", text: "Você"}), me ? (tracks.me = pvWave(me, "me", scale, {vot: want.vot, fimBad})) : h("span", {class: "muted small-text", text: "Gravação curta demais para medir."}))),
       checks.length ? h("ul", {class: "pv-checks"}, ...checks.map(c => h("li", {class: c.ok === true ? "ok" : c.ok === false ? "no" : "meh"},
         h("span", {class: "pv-dot", "aria-hidden": "true"}), c.label))) : h("p", {class: "muted small-text", text: "Nesta palavra não há o que medir por regra: compare de ouvido."}),
       h("div", {class: "row"},
-        h("button", {class: "small", type: "button", onclick: () => pvPlay(pronUrl(g.id, pair, side, pvModelVoice()))}, icon("volume", 16), "Modelo"),
-        h("button", {class: "small", type: "button", onclick: () => pvPlay(myUrl)}, icon("volume", 16), "Você"),
-        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(pronUrl(g.id, pair, side, pvModelVoice())); await pvPlay(myUrl); }}, "Os dois"),
+        h("button", {class: "small", type: "button", onclick: () => pvPlay(pronUrl(g.id, pair, side, pvModelVoice()), {needle: nd("model")})}, icon("volume", 16), "Modelo"),
+        h("button", {class: "small", type: "button", onclick: () => pvPlay(myUrl, {needle: nd("me")})}, icon("volume", 16), "Você"),
+        h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()), {needle: nd("model")}); await pvPlay(myUrl, {needle: nd("me")}); }}, "Os dois"),
         firstUrl && old.first.at < now - 60000 ? h("button", {class: "small", type: "button", onclick: async () => { await pvPlay(firstUrl); await pvPlay(myUrl); }}, "Antes × agora") : null,
         pvAgain(groupId, pair, side)),
       h("p", {class: "muted small-text", text: "Medida aproximada: use como pista para ouvir de novo. Quem decide é o seu ouvido e a sua professora."}));
-    await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()));
-    await pvPlay(myUrl);
+    await pvPlay(pronUrl(g.id, pair, side, pvModelVoice()), {needle: nd("model")});
+    await pvPlay(myUrl, {needle: nd("me")});
   } finally { pv.busy = false; }
 }
 function pvAgain(groupId, pair, side) {

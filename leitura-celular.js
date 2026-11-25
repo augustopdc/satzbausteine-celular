@@ -12,8 +12,10 @@ const rdMB = n => (n / 1048576).toLocaleString("pt-BR", {maximumFractionDigits: 
 const rdWeb = {busy: null, done: 0, total: 0, index: null, error: ""};
 
 // ---------- PC: enviar para o celular ----------
+/* Puro: o livro pode ir para o celular? Mídia pessoal (localOnly) nunca vai. */
+function rdPhoneSendable(b) { return !!(b && !b.localOnly && b.kind !== "media" && b.audio && b.sync && b.sync.state === "done"); }
 function rdSendButton(b) {
-  if (!window.satzDesktop || !window.satzDesktop.sendBookToPhone || !b.audio || b.sync.state !== "done") return null;
+  if (!window.satzDesktop || !window.satzDesktop.sendBookToPhone || !rdPhoneSendable(b)) return null;
   const connected = desktopInfo && desktopInfo.cloud && desktopInfo.cloud.connected;
   const sent = (readingState().sent || {})[b.id];
   const status = h("span", {id: "rdSend-" + b.id, class: "muted small-text", text: !connected ? "Para ler no celular, conecte o GitHub em Configurações → Sincronizar com o celular."

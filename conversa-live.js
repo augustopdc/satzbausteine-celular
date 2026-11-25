@@ -83,6 +83,8 @@ function livePlayer(phone = false) {
     stop() { for (const s of sources) { try { s.stop(); } catch (e) { /* já parou */ } } sources.clear(); next = 0; },
     playing() { return sources.size > 0; },
     level() { meter.getFloatTimeDomainData(mbuf); let s = 0; for (const v of mbuf) s += v * v; return Math.sqrt(s / mbuf.length); },
+    /* Espectro e forma de onda para o orbe da sala (conversa-sala.js, salaAudioFrame). */
+    spectrum(freqBuf, waveBuf) { if (freqBuf) meter.getByteFrequencyData(freqBuf); if (waveBuf) meter.getFloatTimeDomainData(waveBuf); return {sampleRate: ctx.sampleRate, fftSize: meter.fftSize}; },
     close() { this.stop(); ctx.close().catch(() => {}); }
   };
 }

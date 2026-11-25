@@ -107,6 +107,63 @@ const KRIMI_CASOS = [
       explicacaoDe: "Ole sagt, er war gestern und heute nicht im Museum. Aber gestern Nachmittag hat er die Fensterrahmen hellblau gestrichen, und am offenen Fenster ist frische hellblaue Farbe. Um Viertel nach sieben hat Herr Jansen einen Mann mit Leiter im Hof gesehen."}}];
 const KRIMI_BY_ID = new Map(KRIMI_CASOS.map(c => [c.id, c]));
 
+/* Régua da noite (24/11/2026, visual de assinatura, etapa 2): os horários de cada caso, sem mudar o texto em alemão já revisado.
+   kind: open (abertura, sempre visível), clue (pista material: só depois de abrir as Pistas), said (depoimento: só depois que
+   aquela fala apareceu na conversa com o suspeito; need = grupos de alternativas, todos os grupos numa mesma fala dele).
+   d = −1: dia anterior; show = rótulo quando a hora não é exata. */
+const KRIMI_TIMELINE = {
+  station4: [
+    {t: "02:00", kind: "open", pt: "Começa a janela do furto"},
+    {t: "02:30", kind: "open", pt: "Termina a janela"},
+    {t: "02:14", kind: "clue", clue: 0, pt: "Porta da farmácia aberta (crachá reserva 3)"},
+    {t: "01:40", kind: "clue", clue: 1, pt: "Quarto 12 chama (a última chamada da noite)"},
+    {t: "02:00", kind: "said", sid: "jonas", pt: "Jonas: com a paciente do quarto 12 até 2h30", need: [["zimmer 12", "zimmer zwolf"], ["geklingelt", "klingel"]]},
+    {t: "01:30", kind: "said", sid: "mira", pt: "Mira: na emergência até 2h40", need: [["notaufnahme"]]},
+    {t: "02:45", kind: "said", sid: "mira", pt: "Mira: volta à ala 4", need: [["viertel vor drei", "2:45", "02:45"]]},
+    {t: "02:10", kind: "said", sid: "kaya", pt: "Kaya: vê Jonas indo para a farmácia", need: [["zehn nach zwei", "2:10", "02:10", "2.10"], ["jonas"]]}],
+  nachtzug: [
+    {t: "23:05", kind: "clue", clue: 0, pt: "Maleta ainda na cabine 7"},
+    {t: "23:08", kind: "clue", clue: 0, pt: "Trem para em Würzburg"},
+    {t: "23:18", kind: "clue", clue: 0, pt: "Trem parte"},
+    {t: "23:20", kind: "clue", clue: 0, pt: "Maleta sumiu"},
+    {t: "23:10", kind: "clue", clue: 1, pt: "Neve forte na plataforma"},
+    {t: "23:05", kind: "said", sid: "petra", pt: "Petra: confere a cabine 7, a maleta está lá", need: [["23:05", "23.05", "kontrolliert"], ["koffer"]]},
+    {t: "23:08", kind: "said", sid: "brandl", pt: "Brandl: diz ter ficado os dez minutos na plataforma", need: [["bahnsteig", "draussen"], ["telefoniert", "zehn minuten"]]},
+    {t: "23:15", kind: "said", sid: "jan", pt: "Jan: alguém sai da cabine 8", need: [["kabine 8", "kabine acht"]]}],
+  alpenlabor: [
+    {t: "02:37", kind: "clue", clue: 0, pt: "Arquivo apagado na sala de controle"},
+    {t: "02:34", kind: "clue", clue: 1, pt: "Câmera: gorro vermelho rumo à sala de controle"},
+    {t: "02:33", kind: "said", sid: "sanne", pt: "Sanne: o quarto do Nils está vazio", need: [["leer"], ["nils", "zimmer"]]},
+    {t: "02:43", kind: "said", sid: "sanne", pt: "Sanne: a energia volta", need: [["2:43", "02:43", "strom wieder", "strom ist wieder"]]},
+    {t: "02:20", kind: "said", sid: "ruth", pt: "Ruth: ao telefone com Zurique até 2h50", need: [["telefoniert", "telefon"], ["zurich", "kollegen"]]},
+    {t: "03:00", kind: "said", sid: "nils", pt: "Nils: diz que dormiu e acordou às 3h", need: [["drei"], ["aufgewacht", "geschlafen", "wach"]]}],
+  hafen: [
+    {t: "18:00", d: -1, kind: "clue", clue: 0, pt: "Porta da frente fechada (alarme ligado)"},
+    {t: "09:30", kind: "clue", clue: 0, pt: "Frau Möller destranca a porta"},
+    {t: "18:00", d: -1, kind: "said", sid: "inken", pt: "Inken: o relógio ainda está na vitrine", need: [["18 uhr", "18:00", "sechs uhr"], ["vitrine"]]},
+    {t: "15:00", d: -1, show: "tarde", kind: "said", sid: "inken", pt: "Inken: Ole pinta os batentes de azul-claro", need: [["gestrichen", "streich", "farbe"], ["ole", "hellblau", "fensterrahmen"]]},
+    {t: "12:00", d: -1, show: "ontem", kind: "said", sid: "ole", pt: "Ole: diz que não foi ao museu ontem nem hoje", need: [["nicht im museum", "zu hause", "krank"]]},
+    {t: "07:15", kind: "said", sid: "jansen", pt: "Jansen: vê um homem com escada no pátio", need: [["viertel nach sieben", "7:15", "7.15"], ["leiter"]]},
+    {t: "08:00", kind: "said", sid: "jansen", pt: "Jansen: a porta dos fundos está trancada", need: [["acht"], ["hintertur"]]}]
+};
+for (const c of KRIMI_CASOS) c.timeline = KRIMI_TIMELINE[c.id] || [];
+/* Puro (testado): os marcos que o jogador já pode ver, em ordem cronológica. Sem spoiler: pista só com as Pistas abertas,
+   depoimento só depois que o suspeito disse aquilo (numa fala dele em threads[sid].turns). */
+function krimiTimelineEvents(caso, threads = {}, cluesOpen = false) {
+  const heard = (sid, need) => ((threads[sid] || {}).turns || []).some(t => {
+    if (!t || t.who === "me") return false;
+    const x = krimiNorm(t.de || t.text || "");
+    return need.every(group => group.some(k => x.includes(krimiNorm(k))));
+  });
+  return (caso.timeline || []).filter(e => e.kind === "open" || (e.kind === "clue" && cluesOpen) || (e.kind === "said" && heard(e.sid, e.need || [])))
+    .map(e => {
+      const [hh, mm] = e.t.split(":").map(Number), s = e.sid ? krimiSuspect(caso, e.sid) : null;
+      return {t: e.t, show: e.show || e.t, min: (e.d || 0) * 1440 + hh * 60 + mm, kind: e.kind, sid: e.sid || null, clue: e.clue == null ? null : e.clue,
+        initial: s ? s.nome.replace(/^(Dr\.|Prof\.|Herr|Frau)\s+/, "")[0] : "", who: s ? s.nome : "", pt: e.pt};
+    })
+    .sort((a, b) => a.min - b.min || (a.kind === "said") - (b.kind === "said"));
+}
+
 // ---------- Regras (puras, testadas em _dev/tests/krimi.test.cjs) ----------
 const krimiNorm = s => (typeof wasNorm === "function" ? wasNorm(s) : String(s || "").toLowerCase()).replace(/[„“”"]/g, " ");
 /* Chave no começo de uma palavra (“ole” não pode valer dentro de “holen”). */
@@ -168,6 +225,7 @@ function krimiSwitch(sid) {
   const s = krimiSuspect(topic.krimi, sid);
   Object.assign(topic, {sid: s.id, role: s.papelDe + " " + s.nome, rolePt: s.nome, voice: s.voz});
   K.sid = s.id; K.asked.add(s.id);
+  if (typeof uiSound === "function") uiSound("tick");
   const th = K.threads[s.id] || {messages: [{role: "system", content: convSystemPrompt({name: s.nome, level: convLevel(), topic, known: []})}], turns: []};
   conv.messages = th.messages; conv.turns = th.turns;
   conv.token++;
@@ -197,18 +255,41 @@ function krimiSolve(text) {
   const r = krimiEvaluate(text, c);
   if (r.status !== "none") K.tries.push(text);
   K.result = r;
-  if (r.status === "solved") toast("Caso resolvido!", "success");
+  if (r.status === "solved") { toast("Caso resolvido!", "success"); if (typeof uiSound === "function") uiSound("stamp"); }
   missionRender();
+}
+/* Régua da noite: pinos quadrados = evidência física, redondos com a inicial = depoimento; embaixo, a lista em ordem. */
+function krimiTimelineNode(c, K) {
+  const threads = {...K.threads, [K.sid]: {messages: conv.messages, turns: conv.turns}};
+  const ev = krimiTimelineEvents(c, threads, !!(K.cluesOpen || K.seenClues));
+  if (!ev.length) return h("div", {class: "kr-timeline empty"}, h("p", {class: "muted small-text", text: "Régua da noite: abra as pistas e interrogue para os horários aparecerem aqui."}));
+  const lo = ev[0].min, hi = ev[ev.length - 1].min, span = Math.max(1, hi - lo);
+  const pin = e => {
+    const el = h("span", {class: "kr-pin " + (e.kind === "said" ? "said" : e.kind === "clue" ? "proof" : "open"), title: e.show + " · " + e.pt, "aria-hidden": "true"}, e.kind === "said" ? e.initial : "");
+    return el;
+  };
+  const track = h("div", {class: "kr-tl-track", "aria-hidden": "true"}, h("span", {class: "kr-tl-line"}),
+    ...ev.map((e, i) => { const at = h("span", {class: "kr-tl-at"}, pin(e)); at.style.setProperty("--x", (ev.length === 1 ? 50 : (e.min - lo) / span * 100).toFixed(2) + "%");
+      // Mesmo minuto: os pinos se empilham (a contradição fica um sobre o outro).
+      const same = ev.slice(0, i).filter(o => Math.abs(o.min - e.min) <= 2).length; at.style.setProperty("--stack", String(same)); return at; }),
+    h("span", {class: "kr-tl-end lo", text: ev[0].show}), ev.length > 1 ? h("span", {class: "kr-tl-end hi", text: ev[ev.length - 1].show}) : null);
+  return h("section", {class: "kr-timeline", "aria-label": "Régua da noite"},
+    h("p", {class: "label", text: "Régua da noite"}),
+    track,
+    h("ol", {class: "kr-tl-list"}, ...ev.map(e => h("li", {class: "kr-tl-item " + e.kind}, h("span", {class: "kr-tl-t", text: e.show}), pin(e),
+      h("span", {class: "kr-tl-txt", text: e.pt + (e.kind === "said" ? "" : e.kind === "clue" ? " (Beweisstück " + String(e.clue + 1).padStart(2, "0") + ")" : "")})))));
 }
 function krimiPanel(box) {
   const K = krimiState(), c = conv.topic.krimi, solved = K.result && K.result.status === "solved";
   const tabs = h("div", {class: "segmented kr-tabs", role: "group", "aria-label": "Quem interrogar"},
     ...c.suspeitos.map(s => h("button", {type: "button", "aria-pressed": String(s.id === K.sid), disabled: conv.busy || conv.finished,
       onclick: () => krimiSwitch(s.id)}, h("b", {text: s.nome}), h("small", {text: s.papelPt}))));
-  const clue = p => {
-    const pt = h("p", {class: "muted small-text", hidden: true, text: p.pt});
-    return h("li", null, h("p", {lang: "de", class: "kr-clue-de", text: p.de}), pt,
-      h("button", {class: "quiet small", type: "button", onclick: e => { pt.hidden = !pt.hidden; e.currentTarget.textContent = pt.hidden ? "Tradução" : "Esconder"; }}, "Tradução"));
+  // Fichas de arquivo: cabeçalho “Beweisstück 01” e a tradução abrindo sem pulo (envelope .smooth-open).
+  const clue = (p, i) => {
+    const wrap = h("div", {class: "smooth-open"}, h("div", null, h("p", {class: "muted small-text", text: p.pt})));
+    return h("li", {class: "kr-file"}, h("p", {class: "kr-file-head", text: "Beweisstück " + String(i + 1).padStart(2, "0")}),
+      h("p", {lang: "de", class: "kr-clue-de", text: p.de}), wrap,
+      h("button", {class: "quiet small", type: "button", "aria-expanded": "false", onclick: e => { const on = !wrap.classList.contains("open"); wrap.classList.toggle("open", on); e.currentTarget.setAttribute("aria-expanded", String(on)); e.currentTarget.textContent = on ? "Esconder" : "Tradução"; }}, "Tradução"));
   };
   const ta = h("textarea", {lang: "de", rows: "3", placeholder: "Ich glaube, … lügt, weil …", "aria-label": "Quem está mentindo e qual prova entrega a mentira, em alemão"});
   ta.value = K.text || "";
@@ -220,8 +301,9 @@ function krimiPanel(box) {
     h("p", {class: "kr-case", lang: "de", text: c.aberturaDe}),
     tabs,
     h("div", {class: "row kr-acts"},
-      h("button", {class: "small", type: "button", "aria-expanded": String(K.cluesOpen), onclick: () => { K.cluesOpen = !K.cluesOpen; missionRender(); }}, icon("search", 15), "Pistas (" + c.pistas.length + ")"),
+      h("button", {class: "small", type: "button", "aria-expanded": String(K.cluesOpen), onclick: () => { K.cluesOpen = !K.cluesOpen; if (K.cluesOpen) K.seenClues = true; missionRender(); }}, icon("search", 15), "Pistas (" + c.pistas.length + ")"),
       h("button", {class: (solved ? "" : "primary ") + "small", type: "button", "aria-expanded": String(K.accuseOpen), onclick: () => { K.accuseOpen = !K.accuseOpen; missionRender(); }}, "Acusar / Resolver")),
+    krimiTimelineNode(c, K),
     K.cluesOpen ? h("ul", {class: "kr-clues"}, ...c.pistas.map(clue)) : null,
     K.accuseOpen || K.result ? h("div", {class: "kr-accuse"},
       solved ? h("div", {class: "mis-result ok"}, h("p", {text: "Resolvido. " + c.solucao.explicacaoPt}), h("p", {lang: "de", class: "kr-clue-de", text: c.solucao.explicacaoDe}))
@@ -248,9 +330,9 @@ function krimiSetupNode() {
   const solved = new Set(sessions.filter(s => s.krimi && s.krimi.solved).map(s => s.krimi.id));
   return h("section", {class: "scene-group"},
     ...titled("h2", "Krimi", "Um mistério curto com três suspeitos. Interrogue cada um em alemão, compare com as duas pistas e descubra quem mente: diga o nome e a prova. Nada de alternativas: a conferência é por regra."),
-    h("div", {class: "scene-grid"}, ...KRIMI_CASOS.map(c => h("article", {class: "scene-card"},
+    h("div", {class: "scene-grid"}, ...KRIMI_CASOS.map(c => h("article", {class: "scene-card", "data-hero": krimiTopic(c).id},
       h("div", {class: "scene-top"}, h("span", {class: "tag", text: c.level}), solved.has(c.id) ? h("span", {class: "tag ok", text: "resolvido"}) : null),
       h("h3", {lang: "de", text: c.tituloDe}),
       h("p", {class: "muted small-text", text: c.tituloPt}),
-      h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: () => openConversaTopic(krimiTopic(c))}, "Investigar"))))));
+      h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: e => openConversaFromCard(krimiTopic(c), e)}, "Investigar"))))));
 }

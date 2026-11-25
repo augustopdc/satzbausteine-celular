@@ -263,13 +263,107 @@ function innerePrompt(topic, level) {
 }
 const INNERE_START = "(The doctor comes to you. Greet him and say only your main complaint, in one or two short sentences.)";
 
+// ---------- Monitor de beira de leito (24/11/2026, visual de assinatura, etapa 2) ----------
+/* Puro (testado): sinais vitais e ritmo tirados dos textos do caso (exames.vital e exames.ekg), com alertas por regra. */
+function innereParseVitals(caso) {
+  const ex = (caso && caso.exames) || {}, vit = (ex.vital || []).join(" | "), ekg = (ex.ekg || []).join(" ");
+  const num = re => { const m = vit.match(re); return m ? m[1] : null; };
+  const rr = num(/RR\s+(\d{2,3}\/\d{2,3})/), hf = Number(num(/HF\s+(\d{2,3})/)) || null;
+  const temp = num(/Temp\s+(\d{2}(?:,\d)?)/), spo2 = Number(num(/SpO2\s+(\d{2,3})/)) || null, af = Number(num(/AF\s+(\d{1,2})/)) || null;
+  const sys = rr ? Number(rr.split("/")[0]) : null, tempN = temp ? parseFloat(temp.replace(",", ".")) : null;
+  const rhythm = /Vorhofflimmern/i.test(ekg) ? "afib" : hf && hf >= 100 ? "tachy" : "normal";
+  const ekgHf = Number((ekg.match(/(\d{2,3})\/min/) || [])[1]) || null;
+  return {rr, sys, hf, ekgHf, temp, spo2, af, rhythm,
+    alerts: {spo2Low: spo2 != null && spo2 < 94, hfHigh: hf != null && hf >= 100, tempHigh: tempN != null && tempN >= 38, rrLow: sys != null && sys <= 100, afHigh: af != null && af > 20}};
+}
+/* Puro (testado): etiqueta de alteração de uma linha do laboratório, como num LIS (↑↑ muito alto, ↑ alto, ↓ baixo, + positivo). */
+function innereLabFlag(line) {
+  const t = String(line || "").toLowerCase();
+  if (/(stark|deutlich)\s+erh(ö|oe)ht/.test(t)) return "↑↑";
+  if (/erniedrigt/.test(t)) return "↓";
+  if (/erh(ö|oe)ht/.test(t)) return "↑";
+  if (/\+\+\+|positiv/.test(t)) return "+";
+  return "";
+}
+/* Puro (testado): tira de ECG em SVG (600 × 64, 4 s). P-QRS-T limpo no ritmo sinusal; na fibrilação atrial, intervalos R-R
+   irregulares, sem onda P e com tremor fibrilatório na linha de base. Devolve o caminho e a posição de cada batimento. */
+const INNERE_ECG = {w: 600, h: 64, secs: 4, base: 38};
+function innereEcgPath(rhythm = "normal", hf = 75) {
+  const {w, h: H, secs, base} = INNERE_ECG, pps = w / secs, rate = Math.max(40, Math.min(180, Number(hf) || 75)), rr = 60 / rate;
+  const beats = [];
+  let seed = 7;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (let t = .22; t < secs + rr; ) {
+    beats.push(t);
+    t += rhythm === "afib" ? rr * (.62 + rnd() * .8) : rr;
+  }
+  const bump = (t, c, wd, amp) => { const u = (t - c) / wd; return Math.abs(u) < 1 ? amp * Math.cos(u * Math.PI / 2) ** 2 : 0; };
+  const yAt = t => {
+    let y = 0;
+    for (const b of beats) {
+      const d = t - b;
+      if (d < -.3 || d > .45) continue;
+      if (rhythm !== "afib") y += bump(t, b - .16, .05, -4);
+      // QRS: Q pequeno, R alto e S, em ~70 ms.
+      if (d > -.03 && d <= -.012) y += (d + .03) / .018 * 3;
+      else if (d > -.012 && d <= .004) y += 3 - (d + .012) / .016 * 30;
+      else if (d > .004 && d <= .022) y += -27 + (d - .004) / .018 * 35;
+      else if (d > .022 && d <= .04) y += 8 - (d - .022) / .018 * 8;
+      y += bump(t, b + .24, .09, -6.5);
+    }
+    if (rhythm === "afib") y += .9 * Math.sin(t * 2 * Math.PI * 6.3) + .6 * Math.sin(t * 2 * Math.PI * 9.1 + 1);
+    return base + y;
+  };
+  const pts = [];
+  for (let x = 0; x <= w; x += 1.5) pts.push(x.toFixed(1) + " " + yAt(x / pps).toFixed(1));
+  return {d: "M" + pts.join(" L"), beats: beats.filter(b => b <= secs).map(b => Math.round(b * pps * 10) / 10), width: w, height: H, secs};
+}
+function innereMonitorNode(c, st) {
+  const has = id => st.orders.has(id);
+  if (!has("vital") && !has("ekg")) return h("div", {class: "in-monitor waiting", role: "note"}, h("span", {class: "in-mon-dot", "aria-hidden": "true"}),
+    h("span", {text: "Monitor aguardando aferição — peça os sinais vitais ou o ECG em alemão."}));
+  const v = innereParseVitals(c), A = v.alerts, showV = has("vital");
+  const cell = (cls, label, unit, val, alert, arrow) => h("div", {class: "in-mon-cell " + cls + (showV && alert ? " alert" : "")},
+    h("span", {class: "in-mon-l", text: label}), h("b", {class: "in-mon-v", text: showV && val != null ? String(val) : "—"}),
+    h("span", {class: "in-mon-u"}, unit, showV && alert ? h("span", {class: "in-mon-flag", "aria-label": arrow === "↓" ? "baixo" : "alto", text: " " + arrow}) : null));
+  const ekg = has("ekg") ? innereEcgPath(v.rhythm, v.ekgHf || v.hf || 75) : null;
+  const svgNS = "http://www.w3.org/2000/svg", strip = h("div", {class: "in-ecg" + (ekg ? "" : " off"), role: "img",
+    "aria-label": ekg ? "ECG: " + {afib: "fibrilação atrial, R-R irregular", tachy: "taquicardia sinusal", normal: "ritmo sinusal"}[v.rhythm] : "ECG ainda não pedido"});
+  if (ekg && typeof document.createElementNS === "function") {
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("viewBox", "0 0 " + ekg.width + " " + ekg.height);
+    svg.setAttribute("preserveAspectRatio", "none");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("d", ekg.d);
+    path.setAttribute("class", "in-ecg-line");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.append(path);
+    strip.append(svg, h("span", {class: "in-ecg-sweep", "aria-hidden": "true"}));
+    strip.style.setProperty("--sweep", ekg.secs + "s");
+  } else strip.append(h("span", {class: "in-ecg-hint", text: "ECG: peça em alemão"}));
+  return h("div", {class: "in-monitor", "data-rhythm": ekg ? v.rhythm : "none"},
+    h("div", {class: "in-mon-top"}, h("span", {class: "in-mon-name", text: "Monitor · Notaufnahme"}),
+      ekg ? h("span", {class: "in-mon-rhythm", lang: "de", text: {afib: "VHF", tachy: "Sinustachy", normal: "Sinusrhythmus"}[v.rhythm]}) : null),
+    strip,
+    h("div", {class: "in-mon-grid"},
+      cell("hf", "HF", "/min", v.hf, A.hfHigh, "↑"),
+      cell("spo2", "SpO2", "%", v.spo2, A.spo2Low, "↓"),
+      cell("rr", "RR", "mmHg", v.rr, A.rrLow, "↓"),
+      cell("temp", "Temp", "°C", v.temp, A.tempHigh, "↑"),
+      cell("af", "AF", "/min", v.af, A.afHigh, "↑")));
+}
+
 // ---------- Prontuário (painel da sala, #convMission via missionRender) ----------
 function innereState() {
   return mis.innere || (mis.innere = {orders: new Set(), manual: new Set(), tries: [], guess: null, reveal: false, ueb: null, uebText: ""});
 }
 function innereUnlock(ids, manual = false) {
-  const st = innereState();
+  const st = innereState(), fresh = ids.filter(id => !st.orders.has(id));
   for (const id of ids) { st.orders.add(id); if (manual) st.manual.add(id); }
+  // Só o exame que acabou de abrir ganha a entrada (deslize curto + filete); o resto fica parado.
+  st.justOpened = new Set(fresh);
+  if (fresh.length && typeof uiSound === "function") uiSound("stamp");
 }
 /* Depois de cada fala sua no chat: um pedido claro de exame já destrava o resultado. */
 function innereAfterTurn(turn) {
@@ -308,11 +402,14 @@ function innerePanel(box) {
   const order = h("input", {type: "text", lang: "de", placeholder: "Peça em alemão: Ich möchte ein EKG und ein Blutbild.", "aria-label": "Pedir exame em alemão"});
   const sendOrder = () => { innereOrder(order.value); order.value = ""; };
   order.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); sendOrder(); } });
+  const just = st.justOpened || new Set();
+  st.justOpened = null;
   const exam = ([id, label, de]) => {
     const open = st.orders.has(id);
-    return h("article", {class: "in-exam" + (open ? " open" : ""), "data-exam": id},
+    return h("article", {class: "in-exam" + (open ? " open" : "") + (open && just.has(id) && !reducedMotion() ? " just" : ""), "data-exam": id},
       h("p", {class: "in-exam-t"}, h("b", {text: label}), h("span", {class: "muted small-text", lang: "de", text: " · " + de})),
-      open ? h("ul", {class: "in-exam-r", lang: "de"}, ...c.exames[id].map(x => h("li", {text: x})))
+      open ? h("ul", {class: "in-exam-r", lang: "de"}, ...c.exames[id].map(x => { const f = id === "labor" ? innereLabFlag(x) : "";
+        return h("li", {class: f ? "flagged" : null}, h("span", {text: x}), f ? h("span", {class: "in-flag", "aria-label": {"↑↑": "muito alto", "↑": "alto", "↓": "baixo", "+": "positivo"}[f], text: f}) : null); }))
         : h("div", {class: "row"}, h("span", {class: "muted small-text", text: "Peça em alemão para ver."}),
           h("button", {class: "quiet small", type: "button", title: "Use se você pediu de um jeito que o app não reconheceu", onclick: () => { innereUnlock([id], true); missionRender(); }}, "Destravar")));
   };
@@ -322,6 +419,7 @@ function innerePanel(box) {
   ueb.value = st.uebText || "";
   const solved = st.guess && st.guess.ok, mark = ok => h("span", {class: "in-mark" + (ok ? " ok" : "")}, ok ? icon("check", 13) : null);
   fill(box,
+    innereMonitorNode(c, st),
     h("div", {class: "mis-head"},
       h("p", {class: "label", text: "Prontuário do plantão"}),
       h("p", {class: "mis-stat"}, h("b", {text: String(found)}), " de " + c.fatos.length + " dados da anamnese · " + st.orders.size + " de " + INNERE_EXAMES.length + " exames")),
@@ -362,9 +460,9 @@ function innereSetupNode() {
     ...titled("h2", "Plantão na Innere", "Você está de plantão na clínica médica: o paciente conta só o que você perguntar. Peça os exames em alemão (os resultados aparecem no prontuário), dê a hipótese e passe o caso para o Oberarzt. Tudo é conferido por regra."),
     h("div", {class: "row"}, h("button", {class: "primary", type: "button", disabled: !ok, onclick: () => openConversaTopic(innereTopic(innerePick()))}, "Atender o próximo"),
       h("span", {class: "muted small-text", text: solved.size + " de " + INNERE_CASOS.length + " casos resolvidos"})),
-    h("div", {class: "scene-grid"}, ...INNERE_CASOS.map(c => h("article", {class: "scene-card"},
+    h("div", {class: "scene-grid"}, ...INNERE_CASOS.map(c => h("article", {class: "scene-card", "data-hero": innereTopic(c).id},
       h("div", {class: "scene-top"}, h("span", {class: "tag", text: c.level}), solved.has(c.id) ? h("span", {class: "tag ok", text: "resolvido"}) : null),
       h("h3", {text: c.tituloPt}),
       h("p", {class: "muted small-text", text: c.nome + ", " + c.idade + " anos"}),
-      h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: () => openConversaTopic(innereTopic(c))}, "Atender"))))));
+      h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: e => openConversaFromCard(innereTopic(c), e)}, "Atender"))))));
 }

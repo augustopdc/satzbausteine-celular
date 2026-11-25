@@ -251,7 +251,92 @@ function pessoaNoteReply(note) {
   if (currentView !== "conversa") showView("conversa");
   openConversaTopic(pessoaTopic(note.p, {noteLine: note.ep.voiceLineDe}));
 }
-/* Cartão “Recado de …” (Hoje e aba Pessoas): o resumo, Ouvir e Responder. */
+/* Puro (testado): o desenho do recado como mensagem de áudio, tirado da cadência do texto: cada sílaba (grupo de vogais)
+   vira um pico, a sílaba tônica provável (1ª da palavra, palavra longa mais alta) sobe, pontuação vira vale. Sempre o mesmo
+   desenho para o mesmo texto; count barras entre 0,22 e 1. */
+function pessoaWaveBars(text, count = 28) {
+  const seq = [];
+  let hsh = 2166136261;
+  for (const tok of String(text || "").match(/[\p{L}\p{N}]+|[.,!?;:…–-]/gu) || []) {
+    for (const ch of tok) hsh = Math.imul(hsh ^ ch.charCodeAt(0), 16777619) >>> 0;
+    if (/^[.,!?;:…–-]$/.test(tok)) { seq.push(/[.!?…]/.test(tok) ? .05 : .2); continue; }
+    const syl = tok.toLowerCase().match(/[aeiouyäöü]+/g) || ["x"];
+    syl.forEach((_, i) => seq.push((i === 0 ? .78 : .5) + Math.min(.22, tok.length * .02) + ((hsh >> (i % 24)) & 7) / 50));
+  }
+  if (!seq.length) seq.push(.5);
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const a = i * seq.length / count, b = Math.max(a + 1, (i + 1) * seq.length / count);
+    let s = 0, n = 0;
+    for (let j = Math.floor(a); j < Math.ceil(b) && j < seq.length; j++) { s += seq[j]; n++; }
+    const jitter = (((hsh >>> (i % 29)) ^ (i * 2654435761 >>> 0)) & 15) / 100;
+    out.push(Math.round(Math.max(.22, Math.min(1, (n ? s / n : .5) + jitter - .04)) * 1000) / 1000);
+  }
+  return out;
+}
+/* Duração estimada do recado (s): ~70 ms por letra, como a voz local fala. */
+function pessoaNoteSecs(text) { return Math.max(2, Math.round(String(text || "").replace(/\s+/g, "").length * .07)); }
+const pessoaPlay = {raf: 0, box: null};
+/* Toca o recado no player compacto: barras faladas em --accent, a atual em destaque; --wave-pct de 0 a 100%. */
+function pessoaWavePlay(note, box) {
+  if (pessoaPlay.box === box) { stopAudio(); if (conv.speaker) conv.speaker.cancel(); return; }
+  if (pessoaPlay.box) pessoaWaveStop(pessoaPlay.box);
+  pessoaPlay.box = box;
+  box.classList.add("playing");
+  const btn = box.querySelector(".ps-wave-btn");
+  if (btn) { fill(btn, icon("stop", 16)); btn.setAttribute("aria-label", "Parar o recado"); }
+  const est = pessoaNoteSecs(note.ep.voiceLineDe) * 1000, t0 = performance.now();
+  let started = 0;
+  pessoaNoteSpeak(note);
+  const bars = [...box.querySelectorAll(".ps-bar")];
+  const frame = now => {
+    pessoaPlay.raf = 0;
+    if (pessoaPlay.box !== box || !box.isConnected) return;
+    const ap = typeof audioPlayer !== "undefined" ? audioPlayer : null, sp = conv.speaker;
+    const playing = (ap && !ap.paused && !ap.ended && ap.currentTime > 0) || (sp && !sp.finished && sp.playing) || (typeof speechSynthesis !== "undefined" && speechSynthesis.speaking);
+    if (playing && !started) started = now;
+    let pct;
+    if (ap && isFinite(ap.duration) && ap.duration > 0 && (!sp || sp.items.length <= 1) && playing) pct = ap.currentTime / ap.duration;
+    else pct = started ? (now - started) / est : 0;
+    pct = Math.max(0, Math.min(1, pct));
+    box.style.setProperty("--wave-pct", (pct * 100).toFixed(1) + "%");
+    const cur = Math.min(bars.length - 1, Math.floor(pct * bars.length));
+    bars.forEach((b, i) => { b.classList.toggle("on", i < cur || pct >= 1); b.classList.toggle("now", i === cur && started && pct < 1); });
+    // Acabou (ou nem começou em 6 s: sem voz).
+    if ((started && !playing && now - started > 300) || (!started && now - t0 > 6000)) { pessoaWaveStop(box, true); return; }
+    pessoaPlay.raf = requestAnimationFrame(frame);
+  };
+  pessoaPlay.raf = requestAnimationFrame(frame);
+  const de = box.closest(".ps-note");
+  if (de && !de.querySelector(".ps-note-de")) de.querySelector(".ps-note-text").append(h("p", {class: "ps-note-de", lang: "de", text: "„" + note.ep.voiceLineDe + "“"}));
+}
+function pessoaWaveStop(box, done = false) {
+  if (pessoaPlay.raf) cancelAnimationFrame(pessoaPlay.raf);
+  pessoaPlay.raf = 0;
+  if (pessoaPlay.box === box) pessoaPlay.box = null;
+  box.classList.remove("playing");
+  box.style.setProperty("--wave-pct", done ? "100%" : "0%");
+  box.querySelectorAll(".ps-bar").forEach(b => { b.classList.toggle("on", done); b.classList.remove("now"); });
+  const btn = box.querySelector(".ps-wave-btn");
+  if (btn) { fill(btn, icon("play", 16)); btn.setAttribute("aria-label", "Ouvir o recado"); }
+}
+/* Tocar numa barra com o áudio tocando (duração conhecida) pula para aquele ponto. */
+function pessoaWaveSeek(box, i, n) {
+  const ap = typeof audioPlayer !== "undefined" ? audioPlayer : null;
+  if (pessoaPlay.box !== box || !ap || !isFinite(ap.duration) || !(ap.duration > 0)) return;
+  ap.currentTime = ap.duration * i / n;
+}
+function pessoaWaveNode(note) {
+  const vals = pessoaWaveBars(note.ep.voiceLineDe), secs = pessoaNoteSecs(note.ep.voiceLineDe);
+  const box = h("div", {class: "ps-wave-player"});
+  const bars = h("div", {class: "ps-bars", "aria-hidden": "true"},
+    ...vals.map((v, i) => { const b = h("span", {class: "ps-bar", onclick: () => pessoaWaveSeek(box, i, vals.length)}); b.style.setProperty("--h", String(v)); return b; }));
+  box.append(h("button", {class: "ps-wave-btn", type: "button", "aria-label": "Ouvir o recado", onclick: () => pessoaWavePlay(note, box)}, icon("play", 16)),
+    bars, h("span", {class: "ps-wave-time", text: "0:" + String(secs).padStart(2, "0")}));
+  box.style.setProperty("--wave-pct", "0%");
+  return box;
+}
+/* Cartão “Recado de …” (Hoje e aba Pessoas): o resumo, o recado como mensagem de áudio e Responder. */
 function pessoaNoteNode(note) {
   if (!note) return null;
   const ok = !!(conv.status ? conv.status.installed : convAvailable());
@@ -260,9 +345,9 @@ function pessoaNoteNode(note) {
     h("div", {class: "ps-note-text"},
       h("p", {class: "label", text: "Recado de " + note.p.name + " · Cap. " + note.ep.ep + " de " + note.p.arc.length}),
       h("p", {class: "ps-note-teaser", text: note.ep.teaserPt}),
+      pessoaWaveNode(note),
       note.heard ? h("p", {class: "ps-note-de", lang: "de", text: "„" + note.ep.voiceLineDe + "“"}) : null),
     h("div", {class: "row ps-note-act"},
-      h("button", {class: "small", type: "button", onclick: e => { pessoaNoteSpeak(note); const box = e.currentTarget.closest(".ps-note"); if (box && !box.querySelector(".ps-note-de")) box.querySelector(".ps-note-text").append(h("p", {class: "ps-note-de", lang: "de", text: "„" + note.ep.voiceLineDe + "“"})); }}, icon("play", 14), "Ouvir"),
       h("button", {class: "primary small", type: "button", disabled: !ok, onclick: () => pessoaNoteReply(note)}, "Responder")));
 }
 /* Clube do livro: a pessoa leu o mesmo capítulo e tem opinião própria (sem perguntas de escola). */
@@ -368,13 +453,13 @@ async function pessoaSummaryFacts(p, box) {
 // ---------- Tela: aba “Pessoas” ----------
 function pessoaCard(p) {
   const ok = !!(conv.status && conv.status.installed), talks = pessoaTalks(p.id), nf = pessoaFacts(p.id, 99).length;
-  return h("article", {class: "scene-card ps-card"},
+  return h("article", {class: "scene-card ps-card", "data-hero": pessoaTopic(p).id},
     h("div", {class: "scene-top"}, h("span", {class: "tag", text: p.city}), p.sie ? h("span", {class: "tag", text: "Sie"}) : null),
     h("h3", {text: p.name + ", " + p.age}),
     h("p", {class: "muted small-text", text: p.job}),
     h("p", {class: "ps-sample", lang: "de", text: "„" + p.samples[0] + "“"}),
     h("p", {class: "muted small-text", text: talks ? plural(talks, "conversa", "conversas") + (nf ? " · lembra " + plural(nf, "coisa", "coisas") + " sobre você" : "") : "Ainda não conversaram"}),
-    h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: () => openConversaTopic(pessoaTopic(p))}, "Conversar")));
+    h("div", {class: "row"}, h("button", {class: "small", type: "button", disabled: !ok, onclick: e => openConversaFromCard(pessoaTopic(p), e)}, "Conversar")));
 }
 function pessoasMemoryNode() {
   const all = CONV_PESSOAS.map(p => [p, pessoaFacts(p.id, 99)]).filter(([, f]) => f.length);

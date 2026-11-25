@@ -48,7 +48,7 @@ function syncStatusNode(b) {
   if (b.sync.state === "running") {
     const bar = h("span");
     setWidth(bar, b.sync.pct || 0);
-    return h("div", {class: "book-status"}, h("span", {text: "Sincronizando o áudio com o texto… " + (b.sync.pct || 0) + "%"}),
+    return h("div", {class: "book-status"}, h("span", {text: (b.kind === "media" ? "Transcrevendo a mídia… " : "Sincronizando o áudio com o texto… ") + (b.sync.pct || 0) + "%"}),
       h("div", {class: "track"}, bar),
       h("span", {class: "muted small-text", text: "Pode continuar usando o app. Fechar o aplicativo interrompe a sincronização."}),
       h("button", {class: "quiet small", type: "button", onclick: () => window.satzDesktop.cancelAlign(b.id)}, "Cancelar"));
@@ -233,6 +233,8 @@ function rdHeadActions() {
   input.addEventListener("blur", () => { if (!input.value) open(false); });
   const canImport = window.satzDesktop && window.satzDesktop.importBook;
   row.append(h("div", {id: "rdHeadActions", class: "rd-head-actions"}, wrap, btn,
+    canImport && window.satzDesktop.importMedia ? h("button", {class: "rd-head-import rd-head-media", type: "button", title: "Áudio ou vídeo curto em alemão (até 15 min): música, entrevista, podcast. Fica só neste computador.",
+      onclick: () => importMediaFile()}, icon("mic", 17), h("span", {text: "Áudio ou vídeo"})) : null,
     canImport ? h("button", {class: "primary rd-head-import", type: "button", onclick: () => importBook()}, icon("plus", 18), h("span", {text: "Importar livro"})) : null));
 }
 /* Esconde os livros que não batem com a busca (título ou autor, sem acento). */
@@ -332,7 +334,7 @@ function rdShelfAlert(b) {
   if (!b.audio) return "Sem áudio";
   if (b.audio.fixing) return "Corrigindo o áudio…";
   if (b.audio.vbr) return "O áudio precisa de correção";
-  if (b.sync.state === "running") return "Sincronizando… " + (b.sync.pct || 0) + "%";
+  if (b.sync.state === "running") return (b.kind === "media" ? "Transcrevendo… " : "Sincronizando… ") + (b.sync.pct || 0) + "%";
   if (b.sync.state !== "done") return "Áudio não sincronizado";
   if (!b.annotated) return "Sem traduções";
   return null;
@@ -425,6 +427,17 @@ async function importBook(files) {
     if (b.audio && b.sync.state === "none") alignBook(b.id);
   } catch (e) { reading.importing = false; if (dropped) renderLibrary(); setStatus(cleanIpcError(e, "Não consegui importar o livro."), "error"); }
 }
+/* Mídia curta (áudio ou vídeo de até 15 min): o Whisper transcreve neste computador e ela vira um “livro” de um capítulo. */
+async function importMediaFile() {
+  try {
+    setStatus("Escolha um áudio ou vídeo curto em alemão (até 15 minutos).", "info");
+    const b = await window.satzDesktop.importMedia();
+    if (!b) return;
+    setStatus("Transcrevendo “" + b.title + "” neste computador. Leva alguns minutos; pode continuar usando o app.", "info");
+    await renderLibrary();
+    rdFlashBook(b.id);
+  } catch (e) { setStatus(cleanIpcError(e, "Não consegui importar a mídia."), "error"); }
+}
 /* O livro que acabou de chegar entra na estante com um destaque breve (para o olho achar onde ele ficou). */
 function rdFlashBook(id) {
   const el = document.querySelector("#readingLibrary .shelf-item [data-book=\"" + CSS.escape(id) + "\"]");
@@ -463,10 +476,12 @@ function onBookProgress(data) {
     else if (data.state === "done") b.sync = {state: "done", matched: data.matched};
     else b.sync = {state: "none"};
   }
-  if (data.state === "done") setStatus("Áudio do livro sincronizado. Toque numa frase para ouvir.", "success");
+  // Mídia que falhou ou foi cancelada some da estante (a pasta foi apagada).
+  if (data.removed) reading.books = reading.books.filter(x => x.id !== data.id);
+  if (data.state === "done") setStatus(data.media ? "Transcrição pronta: toque numa frase para ouvir. Confira o texto: o Whisper pode errar palavras." : "Áudio do livro sincronizado. Toque numa frase para ouvir.", "success");
   if (data.state === "error") setStatus(data.message || "A sincronização falhou.", "error");
   if (currentView === "reading") {
-    if (!reading.book) renderLibrary();
+    if (!reading.book || data.removed) renderLibrary();
     else if (reading.book.id === data.id && data.state === "done") openBook(data.id, true);
   }
 }
@@ -517,6 +532,7 @@ async function openBook(id, keepPlace, preloaded) {
   let book = preloaded;
   try { if (!book) book = window.satzDesktop ? await window.satzDesktop.getBook(id) : await rdWebGetBook(id); }
   catch (e) { setStatus(cleanIpcError(e, "Não consegui abrir o livro."), "error"); return; }
+  if (!book.chapters || !book.chapters.length) { setStatus("Ainda transcrevendo: o texto aparece quando o Whisper terminar.", "info"); return; }
   stopReadingAudio();
   const prevCh = reading.ch, prevSel = reading.sel;
   reading.book = book;
@@ -536,7 +552,8 @@ async function openBook(id, keepPlace, preloaded) {
   reading.wt = reading.order.map(s => Array.isArray(wt[s.id]) ? wt[s.id] : null);
   reading.lit = null;
   reading.wordCount = reading.articles = null;
-  reading.audio = new Audio();
+  // Vídeo curto (mídia .mp4): o mesmo elemento toca e mostra a imagem, em cima do texto.
+  reading.audio = book.video ? h("video", {class: "rd-video", playsinline: true, "aria-label": "Vídeo de " + book.title}) : new Audio();
   reading.audio.preload = "metadata";
   // No PC, um arquivo para o livro todo; no celular, um por capítulo (book.parts, com o início de cada um no tempo do livro).
   reading.partIdx = -1;
@@ -711,6 +728,7 @@ function renderBook() {
     inPaper ? null : chips,
     inPaper ? null : summaryNode,
     reading.cycle && typeof rdCycleBanner === "function" ? rdCycleBanner() : null,
+    book.video && reading.audio ? h("div", {class: "rd-video-wrap"}, reading.audio) : null,
     // O player fica embaixo do texto: no PC, uma pílula que acompanha a rolagem; no celular, a faixa fixa do polegar.
     h("div", {class: "reader" + (reading.flow ? " flow" : "") + (typeof rdCycleHides === "function" && rdCycleHides() ? " cycle-hide" : "")}, text, h("aside", {id: "rdDetail", class: "reader-detail panel" + (phone ? " rd-sheet " + (reading.sheet === "full" ? "full" : "peek") : " rd-detail-empty"), hidden: reading.flow || (phone && !reading.sheet)}, detailPlaceholder()),
       // No PC a pílula fica numa faixa que acompanha a rolagem e esmaece o texto embaixo dela (nunca corta uma linha seca).

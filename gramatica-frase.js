@@ -114,6 +114,35 @@ function gfRow(toks, withFields, punct) {
   if (punct) row.append(h("span", {class: "gf-punct", text: punct}));
   return row;
 }
+/* Puro (testado): os quadros do voo em arco (24/11/2026, visual de assinatura, etapa 4). A palavra parte de onde estava
+   (dx, dy em relação ao lugar novo), sobe até o pico no meio do caminho (yPeak entre −10 e −22 px, maior quanto mais longe)
+   com escala 1,05 e pousa no lugar sem passar do ponto. */
+function gfArcPeak(dx) { return -Math.min(22, Math.max(10, Math.abs(dx) * .09)); }
+function gfArcFrames(dx, dy, steps = 5) {
+  const peak = gfArcPeak(dx), out = [];
+  for (let i = 0; i < steps; i++) {
+    const u = i / (steps - 1), x = dx * (1 - u), y = dy * (1 - u) + peak * 4 * u * (1 - u), sc = 1 + .05 * 4 * u * (1 - u);
+    out.push({offset: u, transform: i === steps - 1 ? "none" : "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px) scale(" + sc.toFixed(3) + ")"});
+  }
+  return out;
+}
+/* Traço curvo temporário da origem ao pouso (a Satzklammer à vista); some sozinho. */
+function gfArcTrace(box, from, to) {
+  if (typeof document.createElementNS !== "function") return;
+  const r = box.getBoundingClientRect(), NS = "http://www.w3.org/2000/svg";
+  const x1 = from.left + from.width / 2 - r.left, y1 = from.top - r.top + 2, x2 = to.left + to.width / 2 - r.left, y2 = to.top - r.top + 2;
+  const peak = gfArcPeak(x2 - x1) * 2, cx = (x1 + x2) / 2, cy = Math.min(y1, y2) + peak;
+  const svg = document.createElementNS(NS, "svg"), path = document.createElementNS(NS, "path");
+  svg.setAttribute("class", "gf-arc");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("width", String(Math.round(r.width)));
+  svg.setAttribute("height", String(Math.round(r.height)));
+  path.setAttribute("d", "M" + x1.toFixed(1) + " " + y1.toFixed(1) + " Q" + cx.toFixed(1) + " " + cy.toFixed(1) + " " + x2.toFixed(1) + " " + y2.toFixed(1));
+  path.setAttribute("pathLength", "1");
+  svg.append(path);
+  box.append(svg);
+  setTimeout(() => svg.remove(), 1500);
+}
 /* Mostra a ordem “from” e, depois de uma pausa, leva cada palavra até o lugar dela na ordem “to” (com os campos). */
 function gfPlay(box, demo, {hold = 650} = {}) {
   const {from, to} = demo, moved = new Set(demo.moved || gfMoved(from, to));
@@ -129,6 +158,15 @@ function gfPlay(box, demo, {hold = 650} = {}) {
       if (!old) { el.animate([{opacity: 0, transform: "translateY(-6px)"}, {opacity: 1, transform: "none"}], {duration: 420, delay: 380, easing: "ease-out", fill: "backwards"}); continue; }
       const dx = old.left - now.left, dy = old.top - now.top;
       if (Math.abs(dx) + Math.abs(dy) < 1) continue;
+      // Palavra que viaja por cima das outras (verbo para o fim, particípio, prefixo): voo em arco por cima da linha.
+      if (moved.has(Number(id)) && Math.abs(dx) > 48) {
+        el.classList.add("flying");
+        const a = el.animate(gfArcFrames(dx, dy), {duration: 760, easing: "cubic-bezier(.65, 0, .35, 1)"});
+        const land = () => el.classList.remove("flying");
+        a.finished.then(land, land);
+        gfArcTrace(box, old, now);
+        continue;
+      }
       el.animate([{transform: "translate(" + dx + "px," + dy + "px)"}, {transform: "none"}], {duration: 700, easing: "cubic-bezier(.77, 0, .175, 1)"});
     }
   };
@@ -215,4 +253,37 @@ function gfFeedback(item, ok, mine) {
   const box = h("div", {class: "gf-stage small"});
   gfPlay(box, demo, {hold: ok ? 0 : 500});
   return box;
+}
+
+/* ---------- Física da frase fora da Gramática (24/11/2026, etapa 4.2) ---------- */
+/* Puro (testado): erro que é só troca de ordem (as mesmas palavras, em outra ordem) vira demonstração from → to;
+   senão, a demonstração do tópico na frase certa (gfDemo), ou null. */
+function gfOrderDemo(wrong, right, topicHint = null) {
+  const tok = s => String(s || "").replace(/[.,!?;:"„“”()…]/g, " ").split(/\s+/).filter(Boolean);
+  const a = tok(wrong), b = tok(right), key = w => w.toLocaleLowerCase("de");
+  const punct = (String(right || "").trim().match(/[.!?]$/) || [""])[0];
+  if (a.length >= 2 && a.length === b.length && a.map(key).sort().join(" ") === b.map(key).sort().join(" ") && a.map(key).join(" ") !== b.map(key).join(" ")) {
+    const used = new Set(), from = a.map((w, k) => ({id: k, w}));
+    const toks = b.map(w => { const f = from.find(t => !used.has(t.id) && key(t.w) === key(w)); used.add(f.id); return {id: f.id, w}; });
+    const m = gfMain(right);
+    return {from, to: m && m.words.length === toks.length ? gfMainFields(toks, m.fin, m.end) : toks, punct};
+  }
+  if (topicHint && GF_DEMO_TOPICS[topicHint]) return gfDemo(topicHint, right);
+  return null;
+}
+/* Tópicos do cartão com demonstração válida na frase dele (v2, separáveis, modais, Perfekt, subordinada). */
+function gfCardDemo(card) {
+  if (!card || !card.frase || typeof topicsFor !== "function") return null;
+  for (const t of topicsFor(card)) { const id = t && (t.id || t); if (GF_DEMO_TOPICS[id]) { const d = gfDemo(id, card.frase); if (d) return {topic: id, demo: d}; } }
+  return null;
+}
+/* Botão compacto “Ver movimento”: abre ali mesmo um palco pequeno com as palavras voando em arco até o lugar certo. */
+function gfMiniButton(wrongOrBase, rightText, topicHint = null, demo = null, label = "Ver movimento") {
+  const d = demo || gfOrderDemo(wrongOrBase, rightText, topicHint);
+  if (!d) return null;
+  const stage = h("div", {class: "gf-stage small gf-mini", hidden: true, "aria-label": "A frase se montando"});
+  const btn = h("button", {class: "quiet small gf-mini-btn", type: "button", onclick: () => { stage.hidden = false; gfPlay(stage, d, {hold: 450}); btn.setAttribute("aria-expanded", "true"); }},
+    ...iconText("play", label, 14));
+  btn.setAttribute("aria-expanded", "false");
+  return h("div", {class: "gf-mini-wrap"}, btn, stage);
 }

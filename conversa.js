@@ -171,17 +171,31 @@ function convPhoneChain(ctx, on) {
   convPhoneSet(ch, on);
   return ch;
 }
-function convPhoneRoute(player, topic = conv.topic) {
-  if (!player || !topic || !topic.phone || typeof AudioContext === "undefined") return;
+/* Roteador único da voz dela (24/11/2026, visual de assinatura): todo Audio local/blob passa por
+   source → (linha de telefone, se a situação pede) → conv.analyser → saída. O analisador (fftSize 256) alimenta o orbe da sala
+   (conversa-sala.js, salaAudioFrame) com o espectro real também na voz local e na do Google, não só no Ao vivo.
+   player._tapped impede um 2º createMediaElementSource no mesmo elemento (o Chromium recusa). Sem Web Audio: voz limpa. */
+function convAudioTap(player, topic = conv.topic) {
+  if (!player || player._tapped || typeof AudioContext === "undefined") return;
   try {
     const ctx = conv.phoneCtx || (conv.phoneCtx = new AudioContext());
     if (ctx.state === "suspended") ctx.resume().catch(() => {});
-    const ch = convPhoneChain(ctx, convPhoneOn(topic));
-    ctx.createMediaElementSource(player).connect(ch.input);
-    ch.output.connect(ctx.destination);
-    conv.phoneChain = ch;
+    if (!conv.analyser || conv.analyser.context !== ctx) {
+      const a = ctx.createAnalyser();
+      a.fftSize = 256; a.smoothingTimeConstant = .72;
+      a.connect(ctx.destination);
+      conv.analyser = a;
+    }
+    const src = ctx.createMediaElementSource(player);
+    player._tapped = true;
+    if (topic && topic.phone) {
+      const ch = convPhoneChain(ctx, convPhoneOn(topic));
+      src.connect(ch.input); ch.output.connect(conv.analyser);
+      conv.phoneChain = ch;
+    } else src.connect(conv.analyser);
   } catch (e) { /* sem Web Audio: voz limpa */ }
 }
+const convPhoneRoute = convAudioTap; // nome antigo
 function convPhoneToggle() {
   settings.convPhoneFx = !convPhoneOn();
   saveSettings();
@@ -402,6 +416,8 @@ function convErrorCard(e, frase) {
       t ? h("button", {class: "chip ce-topic", type: "button", title: "Fazer a aula deste tópico", onclick: () => convOpenTopic(topic)}, t.title) : null),
     h("p", {class: "ce-label", text: "Você disse"}), h("p", {class: "ce-de ce-said", lang: "de"}, ...said),
     h("p", {class: "ce-label", text: "Certo"}), h("p", {class: "ce-de ce-fix", lang: "de"}, ...fix, " ", convSpeakBtn(e.certo, "Ouvir a forma correta")),
+    // Erro só de ordem (ou do tópico com demonstração): as palavras dele voam em arco até o lugar certo.
+    typeof gfMiniButton === "function" ? gfMiniButton(e.errado, e.certo, topic) : null,
     e.explicacao ? h("p", {class: "ce-why", text: e.explicacao}) : null,
     convPatternNode(e),
     convFichaNode(topic, t),
@@ -904,7 +920,7 @@ async function convSpeak(text, slow = false) {
         conv.audio.set(key, url);
       }
       const player = new Audio(url);
-      convPhoneRoute(player);
+      convAudioTap(player);
       audioPlayer = player;
       await player.play().catch(() => {});
       return player;
@@ -970,7 +986,7 @@ function convSpeaker({voice, slow = false, group, onStart} = {}) {
       if (sp.canceled) return finish();
       if (!r || r.canceled || !r.audio) continue;
       const url = URL.createObjectURL(new Blob([r.audio], {type: "audio/wav"})), player = new Audio(url);
-      convPhoneRoute(player);
+      convAudioTap(player);
       sp.playing = player; audioPlayer = player;
       if (sp.ducked) player.volume = CONV_BARGE.duckVolume;
       sp.spoken.push(it.text);
@@ -1280,6 +1296,7 @@ function openConversa(id) {
 }
 function openConversaTopic(topic) {
   if (!topic) return;
+  if (typeof navConvMode === "function") setTimeout(() => navConvMode(), 0);
   if (conv.live && typeof liveEnd === "function") liveEnd();
   const level = convLevel();
   const mood = convMoodOn(topic) ? convMoodPick(topic.id, convData().sessions.filter(s => s.topic === topic.id).length, settings.convMood) : null;
@@ -1287,6 +1304,7 @@ function openConversaTopic(topic) {
     messages: [{role: "system", content: convSystemPrompt({name: convName(topic), level, topic, known: convKnownSentences(), mood})}]});
   $("convSetup").replaceChildren();
   $("convRoom").hidden = false;
+  convOpenMark();
   $("convSummary").hidden = true;
   $("convHelp").hidden = true;
   $("convTitle").textContent = topic.pt;
@@ -1791,14 +1809,55 @@ function convCardButton(entry, extraClass = "") {
   }}, "Criar cartão");
   return btn;
 }
+/* Transição herói (24/11/2026, visual de assinatura, etapa 3): o cartão tocado (conhecido, caso da Innere, Krimi) vira a
+   faixa da ligação (#convStage), com as mesmas guardas do rdOpenFromCover (View Transitions, janela visível e com foco, sem
+   “reduzir movimento”) e trava de 1,5 s. Voltar à mesma grade (convReset) faz o caminho inverso até o cartão. */
+function convHeroMotion() {
+  return typeof document.startViewTransition === "function" && document.visibilityState === "visible" && typeof document.hasFocus === "function" && document.hasFocus() && !reducedMotion();
+}
+function convHeroName(el) { if (el) { el.style.viewTransitionName = "cv-hero"; el.dataset.cvHero = "1"; } }
+function convHeroClear() { document.querySelectorAll("[data-cv-hero]").forEach(el => { el.style.viewTransitionName = ""; delete el.dataset.cvHero; }); }
+function convHeroRun(update) {
+  const root = document.documentElement;
+  root.dataset.nav = "conv";
+  const t = document.startViewTransition(update);
+  const guard = setTimeout(() => { try { t.skipTransition(); } catch (e) { /* já terminou */ } }, 1500);
+  t.ready.catch(() => {});
+  t.finished.catch(() => {}).finally(() => { clearTimeout(guard); delete root.dataset.nav; convHeroClear(); });
+}
+function openConversaFromCard(topic, e) {
+  const card = e && e.currentTarget && e.currentTarget.closest ? e.currentTarget.closest("[data-hero]") : null;
+  if (!card || !convHeroMotion()) { openConversaTopic(topic); return; }
+  conv.heroKey = card.dataset.hero;
+  convHeroName(card);
+  convHeroRun(() => { convHeroClear(); openConversaTopic(topic); convHeroName($("convStage")); });
+}
 function convReset() {
+  const key = conv.heroKey, stage = $("convStage");
+  conv.heroKey = null;
+  if (key && stage && !stage.hidden && convHeroMotion()) {
+    convHeroName(stage);
+    convHeroRun(() => { convHeroClear(); convResetNow(); convHeroName(document.querySelector('#view-conversa [data-hero="' + CSS.escape(key) + '"]')); });
+    return;
+  }
+  convResetNow();
+}
+/* Sala aberta no celular: o topo fica só para a faixa da ligação (#convStage); o título pequeno e o “Voltar” somem
+   (style.css, body.conv-open). Chamado ao abrir, ao voltar aos temas e pelo showView. */
+function convOpenMark() {
+  const room = $("convRoom");
+  document.body.classList.toggle("conv-open", typeof currentView !== "undefined" && currentView === "conversa" && !!conv.topic && !!room && !room.hidden);
+}
+function convResetNow() {
   conv.token++;
+  if (typeof navConvMode === "function") setTimeout(() => navConvMode(), 0);
   convInterrupt();
   if (conv.clip) { conv.clip.stop(); conv.clip = null; }
   stopAudio();
   conv.topic = null; conv.turns = []; conv.messages = []; conv.busy = false; conv.finished = false;
   if (typeof missionReset === "function") missionReset(null);
   renderConvSetup();
+  convOpenMark();
   window.scrollTo({top: 0});
 }
 function convLeave() {

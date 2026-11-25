@@ -129,6 +129,7 @@ function focoCardNode(f) {
     h("p", {class: "ce-k", text: "O seu ponto de hoje"}),
     h("h4", {text: f.regra || (t ? t.title : "Correção")}),
     h("p", {class: "ce-de foco-pair", lang: "de"}, h("span", {class: "ce-said"}, ...said), " → ", h("span", {class: "ce-fix"}, ...fix), " ", convSpeakBtn(f.right || f.certo, "Ouvir a frase certa")),
+    typeof gfMiniButton === "function" ? gfMiniButton(f.errado, f.right || f.certo, f.topic) : null,
     f.times >= 2 ? h("p", {class: "foco-times", text: "Você errou isso " + f.times + " vezes nas últimas conversas."}) : null,
     why ? h("p", {class: "ce-why", text: why}) : null,
     convFichaNode(f.topic, t),
@@ -144,7 +145,8 @@ function focoOthersNode(errors, f) {
   if (!rest.length) return null;
   return h("details", {class: "foco-others"},
     h("summary", null, "Mais " + plural(rest.length, "coisa", "coisas"), icon("chevron", 14)),
-    h("ul", null, ...rest.map(e => { const [said, fix] = convDiffPair(e); return h("li", {lang: "de"}, h("span", {class: "ce-said"}, ...said), " → ", h("span", {class: "ce-fix"}, ...fix)); })));
+    h("ul", null, ...rest.map(e => { const [said, fix] = convDiffPair(e); return h("li", {lang: "de"}, h("span", {class: "ce-said"}, ...said), " → ", h("span", {class: "ce-fix"}, ...fix),
+      typeof gfMiniButton === "function" ? gfMiniButton(e.errado, e.certo, convErrTopic(e)) : null); })));
 }
 
 // ---------- Treinar agora ----------

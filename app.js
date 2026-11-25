@@ -186,25 +186,58 @@ function staggerWords(el) {
   };
   walk(el);
 }
-/* Sons discretos (opcionais, desligados por padrão; cada aparelho escolhe): sintetizados na hora, sem arquivo. */
-let uiAudio = null;
-function uiSound(kind) {
-  if (!settings.sounds) return;
+/* Sons discretos (opcionais, desligados por padrão; cada aparelho escolhe): sintetizados na hora, sem arquivo.
+   2.0 (24/11/2026, visual de assinatura, etapa 6): flip (papel cartão ao revelar), tick (pílula, suspeito, limiar do
+   deslizar), good (toque duplo amadeirado no Bom/Fácil), stamp (exame destravado, etapa feita, caso resolvido) e meta
+   (acorde de marimba ao fechar o dia). force = true toca mesmo com os sons desligados (o “Ouvir exemplo”). */
+let uiAudio = null, uiNoiseBuf = null;
+function uiNoise(ctx) {
+  if (uiNoiseBuf && uiNoiseBuf.sampleRate === ctx.sampleRate) return uiNoiseBuf;
+  const n = Math.round(ctx.sampleRate * .06), buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  let b = 0;
+  for (let i = 0; i < n; i++) { const w = Math.random() * 2 - 1; b = .97 * b + .03 * w; d[i] = w * .6 + b * 3; } // entre branco e rosa
+  return (uiNoiseBuf = buf);
+}
+function uiBurst(ctx, at, dur, freq, q, peak) {
+  const src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+  src.buffer = uiNoise(ctx);
+  bp.type = "bandpass"; bp.frequency.value = freq; bp.Q.value = q;
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(peak, at + Math.min(.003, dur / 4));
+  g.gain.exponentialRampToValueAtTime(.0001, at + dur);
+  src.connect(bp).connect(g).connect(ctx.destination);
+  src.start(at); src.stop(at + dur + .02);
+}
+function uiTone(ctx, at, freq, dur, peak, {tri = .35, lp = 1800, harm = 0} = {}) {
+  const f = ctx.createBiquadFilter(), g = ctx.createGain();
+  f.type = "lowpass"; f.frequency.value = lp;
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(peak, at + .006);
+  g.gain.exponentialRampToValueAtTime(.0001, at + dur);
+  f.connect(g).connect(ctx.destination);
+  const osc = (type, fr, gain) => { const o = ctx.createOscillator(), og = ctx.createGain(); o.type = type; o.frequency.value = fr; og.gain.value = gain; o.connect(og).connect(f); o.start(at); o.stop(at + dur + .05); };
+  osc("sine", freq, 1);
+  if (tri) osc("triangle", freq, tri);
+  if (harm) osc("sine", freq * 4, harm);
+}
+const UI_SOUNDS = {
+  flip: (c, t) => uiBurst(c, t, .022, 950, 1.4, .035),
+  tick: (c, t) => uiBurst(c, t, .008, 1900, 3, .022),
+  good: (c, t) => { uiTone(c, t, 440, .09, .04); uiTone(c, t + .05, 587.33, .09, .04); },
+  stamp: (c, t) => { uiTone(c, t, 196, .07, .05, {tri: .2, lp: 900}); uiTone(c, t + .035, 293.66, .07, .045, {tri: .2, lp: 900}); },
+  meta: (c, t) => [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => uiTone(c, t + i * .045, f, .65 - i * .05, .045, {tri: 0, lp: 3200, harm: .12}))
+};
+function uiSound(kind, force = false) {
+  if (!settings.sounds && !force) return;
   try {
     uiAudio = uiAudio || new (window.AudioContext || window.webkitAudioContext)();
-    const meta = kind === "meta", notes = meta ? [523.25, 659.25, 783.99, 1046.5] : [880, 1318.5], t0 = uiAudio.currentTime + .01;
-    notes.forEach((f, i) => {
-      const o = uiAudio.createOscillator(), g = uiAudio.createGain(), at = t0 + i * (meta ? .09 : .07);
-      o.type = "sine";
-      o.frequency.value = f;
-      g.gain.setValueAtTime(0, at);
-      g.gain.linearRampToValueAtTime(.07, at + .012);
-      g.gain.exponentialRampToValueAtTime(.0001, at + (meta ? .5 : .22));
-      o.connect(g).connect(uiAudio.destination);
-      o.start(at);
-      o.stop(at + .55);
-    });
+    if (uiAudio.state === "suspended") uiAudio.resume().catch(() => {});
+    (UI_SOUNDS[kind === "ok" ? "good" : kind] || UI_SOUNDS.good)(uiAudio, uiAudio.currentTime + .01);
   } catch (e) { /* sem áudio: segue em silêncio */ }
+}
+/* “Ouvir exemplo” nas Configurações: a série inteira, uma vez, mesmo com os sons desligados. */
+function uiSoundDemo() {
+  ["flip", "tick", "good", "stamp", "meta"].forEach((k, i) => setTimeout(() => uiSound(k, true), i * 420));
 }
 function fill(el, ...nodes) { el.replaceChildren(...nodes.flat().filter(n => n != null && n !== false)); return el; }
 function node(tag, className, value) { return h(tag, className || null, value === undefined ? null : String(value)); }
@@ -677,6 +710,7 @@ function showView(view) {
   document.body.dataset.view = view;
   all(".view").forEach(e => { e.hidden = e.id !== "view-" + view; e.classList.remove("vt"); });
   updateNav(view);
+  if (typeof convOpenMark === "function") convOpenMark();
   if (view === "home") renderHome();
   if (view === "hub") renderHub();
   if (view === "practice") renderPracticeSetup();
@@ -1279,7 +1313,28 @@ function situationNodes(card) {
   const pt = h("span", {class: "sit-pt", hidden: true, text: text});
   return [h("span", {lang: "de", text: de}), " ", h("button", {class: "quiet small sit-toggle", type: "button", onclick: e => { pt.hidden = !pt.hidden; e.currentTarget.textContent = pt.hidden ? "ver em português" : "ocultar"; }}, "ver em português"), pt];
 }
+/* Física da frase no cartão (24/11/2026, visual de assinatura, etapa 4.2): cartão com demonstração válida (gfCardDemo:
+   v2, separáveis, modais, Perfekt, subordinada) ganha um chip discreto “Ver ordem” na resposta; Errei ou Difícil abre o
+   palco sozinho. Nada disso fica na frente do cartão nem atrasa o Bom. */
+function cardOrderBox() {
+  let box = $("cardOrder");
+  if (!box && $("cardMore")) { box = h("div", {id: "cardOrder", class: "card-order", hidden: true}); $("cardMore").after(box); }
+  return box;
+}
+function cardOrderClear() { const box = $("cardOrder"); if (box) { box.replaceChildren(); box.hidden = true; } session.orderDemo = null; }
+function cardOrderSetup(card) {
+  const box = cardOrderBox(), d = typeof gfCardDemo === "function" && session.mode === "production" ? gfCardDemo(card) : null;
+  session.orderDemo = d;
+  if (!box || !d) return;
+  fill(box, gfMiniButton(null, card.frase, d.topic, d.demo, "Ver ordem"));
+  box.hidden = false;
+}
+function cardOrderPlay() {
+  const box = $("cardOrder"), btn = box && box.querySelector(".gf-mini-btn");
+  if (session.orderDemo && btn && btn.getAttribute("aria-expanded") !== "true") btn.click();
+}
 function renderSessionCard() {
+  cardOrderClear();
   const id = session.queue[0];
   const card = byId.get(id) || null;
   if (!card) { session.queue.shift(); if (session.queue.length) renderSessionCard(); else finishSession(); return; }
@@ -1339,6 +1394,10 @@ function renderSessionCard() {
   setWidth($("sessionBar"), total ? session.done / total * 100 : 0);
   $("undoRating").disabled = !session.undo.length;
   const flash = $("flashCard");
+  // Pilha física: quantas folhas aparecem embaixo (gestos.js, flashRemaining).
+  const rem = typeof flashRemaining === "function" ? flashRemaining(session.queue.length - 1) : "0";
+  flash.dataset.remaining = rem;
+  if (flash.parentElement && flash.parentElement.classList.contains("flash-stack")) flash.parentElement.dataset.remaining = rem;
   flash.classList.remove("enter");
   // Vindo de uma avaliação, a cópia do cartão anterior sai por cima e este já está no lugar (cardGhost).
   if (session.ghosted) session.ghosted = false;
@@ -1506,7 +1565,9 @@ function revealCard(answer) {
   const preview = scheduleAll(modeProgress(card.id, session.mode), Date.now());
   for (const g of GRADES) $("ivl-" + g).textContent = formatInterval(preview[g].interval);
   renderReasonChips();
+  cardOrderSetup(card);
   $("flashCard").classList.add("revealed");
+  uiSound("flip");
   $("gradeRow").hidden = false;
   $("rubric").hidden = !showRubric();
   $("swipeTip").hidden = !(showRubric() && window.matchMedia("(pointer: coarse)").matches);
@@ -1543,7 +1604,7 @@ function continuePresentation(skip = false) {
 function rateCard(grade) {
   const card = session.card;
   if (!card || !session.revealed || !GRADES.includes(grade)) return;
-  if (grade === "good" || grade === "easy") uiSound("ok");
+  if (grade === "good" || grade === "easy") uiSound("good");
   const id = card.id, mode = session.mode, now = Date.now(), day = dateKey();
   progress.dayStats = progress.dayStats || {};
   progress.reviewDays = progress.reviewDays || {};
@@ -1591,6 +1652,7 @@ function gradeTap(grade) {
   if ((grade === "again" || grade === "hard") && session.pendingGrade !== grade) {
     session.pendingGrade = grade;
     all("[data-grade]").forEach(b => b.classList.toggle("picked", b.dataset.grade === grade));
+    cardOrderPlay();
     $("reasonRow").hidden = false;
     return;
   }
@@ -2839,6 +2901,7 @@ function bindEvents() {
   $("sceneMiss").addEventListener("click", () => gradeSceneLine(false));
   $("sceneShowOther").addEventListener("change", e => { settings.sceneShowOther = e.target.checked; saveSettings(); });
   $("sceneHelp").addEventListener("change", e => { settings.sceneHelp = e.target.value; saveSettings(); setSceneHelp(); });
+  if ($("soundDemo")) $("soundDemo").addEventListener("click", uiSoundDemo);
   for (const [id, key] of [["setLevelGate", "levelGate"], ["setPresentNew", "presentNew"], ["setGermanSituations", "germanSituations"], ["setGenderColors", "genderColors"], ["setProvaPack", "provaPack"], ["setSounds", "sounds"]]) {
     $(id).addEventListener("change", e => { settings[key] = e.target.checked; saveSettings(); });
   }
